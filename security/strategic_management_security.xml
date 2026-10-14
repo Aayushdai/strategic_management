@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_strategic_management" model="ir.module.category">
+        <field name="name">Strategic Management</field>
+        <field name="sequence">25</field>
+    </record>
+
+    <record id="privilege_strategic_management" model="res.groups.privilege">
+        <field name="name">Strategic Management</field>
+        <field name="category_id" ref="module_category_strategic_management"/>
+    </record>
+
+    <record id="group_strategic_employee" model="res.groups">
+        <field name="name">Employee</field>
+        <field name="privilege_id" ref="privilege_strategic_management"/>
+    </record>
+
+    <record id="group_strategic_branch_manager" model="res.groups">
+        <field name="name">Branch Manager</field>
+        <field name="privilege_id" ref="privilege_strategic_management"/>
+        <field name="implied_ids" eval="[(4, ref('group_strategic_employee'))]"/>
+    </record>
+
+    <record id="group_strategic_head_office_manager" model="res.groups">
+        <field name="name">Head Office Manager</field>
+        <field name="privilege_id" ref="privilege_strategic_management"/>
+        <field name="implied_ids" eval="[(4, ref('group_strategic_branch_manager'))]"/>
+    </record>
+</odoo>

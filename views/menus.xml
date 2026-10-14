@@ -1,0 +1,63 @@
+
+<odoo>
+    <!-- Root menu: visible to all strategic roles -->
+    <menuitem id="menu_strategic_management_root"
+              name="Strategic Management"
+              sequence="45"
+              groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_employee"/>
+
+    <!-- KPI section -->
+    <menuitem id="menu_strategic_management_kpi"
+              name="KPIs"
+              parent="menu_strategic_management_root"
+              sequence="10"/>
+
+    <menuitem id="menu_strategic_kpi_definition"
+              name="Definitions"
+              parent="menu_strategic_management_kpi"
+              action="action_strategic_kpi_definition"
+              sequence="10"/>
+
+    <menuitem id="menu_strategic_kpi_target"
+              name="Targets"
+              parent="menu_strategic_management_kpi"
+              action="action_strategic_kpi_target"
+              sequence="20"/>
+
+    <menuitem id="menu_strategic_kpi_evaluation"
+              name="Evaluations"
+              parent="menu_strategic_management_kpi"
+              action="action_strategic_kpi_evaluation"
+              sequence="30"/>
+
+    <!-- Strategy section -->
+    <menuitem id="menu_strategic_management_strategy"
+              name="Strategy"
+              parent="menu_strategic_management_root"
+              sequence="20"
+              groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_employee"/>
+
+    <!-- Strategic Plans: Head Office Managers only -->
+    <menuitem id="menu_strategic_plan"
+              name="Strategic Plans"
+              parent="menu_strategic_management_strategy"
+              action="action_strategic_plan"
+              sequence="10"
+              groups="strategic_management.group_strategic_head_office_manager"/>
+
+    <!-- Objectives: all strategic roles -->
+    <menuitem id="menu_strategic_objective"
+              name="Objectives"
+              parent="menu_strategic_management_strategy"
+              action="action_strategic_objective"
+              sequence="20"
+              groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_employee"/>
+
+    <!-- OKRs: all strategic roles -->
+    <menuitem id="menu_strategic_okr"
+              name="OKR Objectives"
+              parent="menu_strategic_management_strategy"
+              action="action_strategic_okr"
+              sequence="30"
+              groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_employee"/>
+</odoo>

@@ -1,0 +1,23 @@
+{
+    "name": "Strategic Performance Management",
+    "version": "20.0.1.0.0",
+    "category": "Productivity",
+    "summary": "Strategic objectives, OKRs, KPIs, and performance management",
+    "author": "Strategic Management Team",
+    "license": "LGPL-3",
+    "depends": [
+        "base",
+        "mail",
+        "stock",
+    ],
+    "data": [
+        "security/strategic_management_security.xml",
+        "security/ir.access.csv",
+        "views/res_users_views.xml",
+        "views/kpi_views.xml",
+        "views/strategy_views.xml",
+        "views/menus.xml",
+    ],
+    "installable": True,
+    "application": True,
+}

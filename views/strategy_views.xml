@@ -1,0 +1,521 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================================
+         STRATEGIC PLAN
+    ============================================================= -->
+
+    <record id="view_strategic_plan_list" model="ir.ui.view">
+        <field name="name">strategic.plan.list</field>
+        <field name="model">strategic.plan</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_strategic_plan_form" model="ir.ui.view">
+        <field name="name">strategic.plan.form</field>
+        <field name="model">strategic.plan</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="company_id"
+                                   groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <field name="date_start"/>
+                            <field name="date_end"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Objectives">
+                            <field name="objective_ids" readonly="1">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="perspective"/>
+                                    <field name="scope"/>
+                                    <field name="deadline"/>
+                                    <field name="state"/>
+                                    <field name="scoring_status"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_strategic_plan" model="ir.actions.act_window">
+        <field name="name">Strategic Plans</field>
+        <field name="res_model">strategic.plan</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+
+    <!-- ============================================================
+         STRATEGIC OBJECTIVE
+    ============================================================= -->
+
+    <record id="view_strategic_objective_list" model="ir.ui.view">
+        <field name="name">strategic.objective.list</field>
+        <field name="model">strategic.objective</field>
+        <field name="arch" type="xml">
+            <list
+                decoration-danger="overdue == True"
+                decoration-muted="state in ('draft', 'archived')"
+                decoration-warning="state == 'pending_approval'"
+                decoration-success="state in ('active', 'completed')"
+                decoration-info="state == 'closed'">
+
+                <field name="name"/>
+                <field name="plan_id"/>
+                <field name="perspective"/>
+                <field name="scope"/>
+                <field name="warehouse_id" optional="hide"/>
+                <field name="owner_id"/>
+                <field name="deadline"/>
+                <field name="overdue" widget="boolean_toggle" optional="show"/>
+                <field name="state" widget="badge"/>
+                <field name="scoring_status" optional="show"/>
+                <field name="score" optional="show" string="Score %"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_strategic_objective_form" model="ir.ui.view">
+        <field name="name">strategic.objective.form</field>
+        <field name="model">strategic.objective</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_submit"
+                            string="Submit for Approval"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'draft'"/>
+
+                    <button name="action_approve"
+                            string="Approve"
+                            type="object"
+                            class="btn-success"
+                            invisible="state != 'pending_approval'"
+                            groups="strategic_management.group_strategic_head_office_manager"/>
+
+                    <button name="action_activate"
+                            string="Activate Directly"
+                            type="object"
+                            invisible="state != 'draft'"
+                            groups="strategic_management.group_strategic_head_office_manager"/>
+
+                    <button name="action_complete"
+                            string="Mark as Completed"
+                            type="object"
+                            invisible="state != 'active'"
+                            groups="strategic_management.group_strategic_head_office_manager"/>
+
+                    <button name="action_close"
+                            string="Close"
+                            type="object"
+                            invisible="state != 'completed'"
+                            groups="strategic_management.group_strategic_head_office_manager"/>
+
+                    <button name="action_archive"
+                            string="Archive"
+                            type="object"
+                            invisible="state != 'closed'"
+                            groups="strategic_management.group_strategic_head_office_manager"/>
+
+                    <field name="state"
+                           widget="statusbar"
+                           statusbar_visible="draft,pending_approval,active,completed,closed,archived"/>
+                </header>
+
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" placeholder="Objective name..."/>
+                        </h1>
+                    </div>
+
+                    <div class="alert alert-warning"
+                         role="alert"
+                         invisible="overdue == False">
+                        This objective is <strong>overdue</strong>.
+                        The deadline has passed.
+                    </div>
+
+                    <group>
+                        <group string="Strategy">
+                            <field name="plan_id"/>
+                            <field name="perspective"/>
+                            <field name="scope"/>
+                            <field name="warehouse_id"
+                                   invisible="scope != 'branch'"/>
+                            <field name="parent_objective_id"
+                                   invisible="scope != 'branch'"/>
+                            <field name="company_id"
+                                   groups="base.group_multi_company"/>
+                        </group>
+
+                        <group string="Ownership &amp; Timing">
+                            <field name="owner_id"/>
+                            <field name="deadline"/>
+                            <field name="overdue"/>
+                        </group>
+                    </group>
+
+                    <group string="Audit Trail" invisible="state == 'draft'">
+                        <field name="proposer_id" readonly="1"/>
+                        <field name="approved_by_id" readonly="1"/>
+                        <field name="completed_by_id"
+                               readonly="1"
+                               invisible="state not in ('completed', 'closed', 'archived')"/>
+                        <field name="closed_by_id"
+                               readonly="1"
+                               invisible="state not in ('closed', 'archived')"/>
+                    </group>
+
+                    <group string="Scoring" invisible="state == 'draft'">
+                        <field name="score"
+                               readonly="1"
+                               string="Overall Score (%)"/>
+                        <field name="scoring_status" readonly="1"/>
+                    </group>
+
+                    <group>
+                        <field name="description" colspan="2"/>
+                    </group>
+
+                    <notebook>
+                        <page string="OKR Objectives">
+                            <field name="okr_objective_ids">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="owner_id"/>
+                                    <field name="date_start"/>
+                                    <field name="date_end"/>
+                                    <field name="score" string="Score %"/>
+                                    <field name="scoring_status"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <page string="Revisions">
+                            <field name="revision_ids" readonly="1">
+                                <list>
+                                    <field name="create_date"/>
+                                    <field name="revised_by_id"/>
+                                    <field name="field_name"/>
+                                    <field name="old_value"/>
+                                    <field name="new_value"/>
+                                    <field name="reason"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_strategic_objective_search" model="ir.ui.view">
+        <field name="name">strategic.objective.search</field>
+        <field name="model">strategic.objective</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="plan_id"/>
+                <field name="owner_id"/>
+                <field name="warehouse_id"/>
+
+                <separator/>
+
+                
+
+                <filter string="My Objectives"
+                        name="my_objectives"
+                        domain="[('owner_id', '=', uid)]"/>
+
+                <separator/>
+
+                <filter string="Draft"
+                        name="draft"
+                        domain="[('state', '=', 'draft')]"/>
+
+                <filter string="Pending Approval"
+                        name="pending"
+                        domain="[('state', '=', 'pending_approval')]"/>
+
+                <filter string="Active"
+                        name="active_state"
+                        domain="[('state', '=', 'active')]"/>
+
+                <filter string="Completed"
+                        name="completed"
+                        domain="[('state', '=', 'completed')]"/>
+
+                <filter string="Closed"
+                        name="closed"
+                        domain="[('state', '=', 'closed')]"/>
+
+                <separator/>
+
+                <filter string="Organization"
+                        name="org_scope"
+                        domain="[('scope', '=', 'organization')]"/>
+
+                <filter string="Branch"
+                        name="branch_scope"
+                        domain="[('scope', '=', 'branch')]"/>
+
+                <separator/>
+
+                <filter string="Financial"
+                        name="financial"
+                        domain="[('perspective', '=', 'financial')]"/>
+
+                <filter string="Customer"
+                        name="customer"
+                        domain="[('perspective', '=', 'customer')]"/>
+
+                <filter string="Internal Process"
+                        name="internal_process"
+                        domain="[('perspective', '=', 'internal_process')]"/>
+
+                <filter string="Learning &amp; Growth"
+                        name="learning_growth"
+                        domain="[('perspective', '=', 'learning_growth')]"/>
+
+                <group>
+                    <filter string="Plan"
+                            name="group_plan"
+                            context="{'group_by': 'plan_id'}"/>
+
+                    <filter string="Perspective"
+                            name="group_perspective"
+                            context="{'group_by': 'perspective'}"/>
+
+                    <filter string="Scope"
+                            name="group_scope"
+                            context="{'group_by': 'scope'}"/>
+
+                    <filter string="State"
+                            name="group_state"
+                            context="{'group_by': 'state'}"/>
+
+                    <filter string="Owner"
+                            name="group_owner"
+                            context="{'group_by': 'owner_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_strategic_objective" model="ir.actions.act_window">
+        <field name="name">Strategic Objectives</field>
+        <field name="res_model">strategic.objective</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_strategic_objective_search"/>
+        <field name="context">{'search_default_active_state': 1}</field>
+    </record>
+
+
+    <!-- ============================================================
+         OKR OBJECTIVE
+    ============================================================= -->
+
+    <record id="view_strategic_okr_list" model="ir.ui.view">
+        <field name="name">strategic.okr.objective.list</field>
+        <field name="model">strategic.okr.objective</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="strategic_objective_id"/>
+                <field name="owner_id"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
+                <field name="scope"/>
+                <field name="score" string="Score %"/>
+                <field name="scoring_status"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_strategic_okr_form" model="ir.ui.view">
+        <field name="name">strategic.okr.objective.form</field>
+        <field name="model">strategic.okr.objective</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" placeholder="OKR objective..."/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Linked Strategy">
+                            <field name="strategic_objective_id"/>
+                            <field name="scope" readonly="1"/>
+                            <field name="warehouse_id"
+                                   readonly="1"
+                                   invisible="scope != 'branch'"/>
+                            <field name="company_id"
+                                   groups="base.group_multi_company"
+                                   readonly="1"/>
+                        </group>
+
+                        <group string="Period &amp; Owner">
+                            <field name="owner_id"/>
+                            <field name="date_start"/>
+                            <field name="date_end"/>
+                        </group>
+                    </group>
+
+                    <group string="Scoring" col="2">
+                        <field name="score"
+                               readonly="1"
+                               string="OKR Score (%)"/>
+                        <field name="scoring_status" readonly="1"/>
+                    </group>
+
+                    <notebook>
+                        <page string="Key Results">
+                            <field name="key_result_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="required"/>
+                                    <field name="primary_kpi_id"/>
+                                    <field name="target_id"/>
+                                    <field name="evaluation_id"/>
+                                    <field name="unit" readonly="1"/>
+                                    <field name="attainment"
+                                           readonly="1"
+                                           string="Attainment %"/>
+                                    <field name="attainment_status" readonly="1"/>
+                                    <field name="scoring_status" readonly="1"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+          <record id="view_strategic_okr_search" model="ir.ui.view">
+        <field name="name">strategic.okr.objective.search</field>
+        <field name="model">strategic.okr.objective</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="strategic_objective_id"/>
+                <field name="owner_id"/>
+
+                <separator/>
+
+                <filter string="My OKRs"
+                        name="my_okrs"
+                        domain="[('owner_id', '=', uid)]"/>
+
+                <filter string="Organization"
+                        name="org_scope"
+                        domain="[('scope', '=', 'organization')]"/>
+
+                <filter string="Branch"
+                        name="branch_scope"
+                        domain="[('scope', '=', 'branch')]"/>
+
+                <group>
+                    <filter string="Strategic Objective"
+                            name="group_obj"
+                            context="{'group_by': 'strategic_objective_id'}"/>
+
+                    <filter string="Scope"
+                            name="group_scope"
+                            context="{'group_by': 'scope'}"/>
+
+                    <filter string="Owner"
+                            name="group_owner"
+                            context="{'group_by': 'owner_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_strategic_okr" model="ir.actions.act_window">
+        <field name="name">OKR Objectives</field>
+        <field name="res_model">strategic.okr.objective</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_strategic_okr_search"/>
+    </record>
+
+
+    <!-- ============================================================
+         KEY RESULT
+         Standalone view, also reachable via OKR form
+    ============================================================= -->
+
+    <record id="view_strategic_key_result_form" model="ir.ui.view">
+        <field name="name">strategic.key.result.form</field>
+        <field name="model">strategic.key.result</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group string="Key Result">
+                            <field name="name"/>
+                            <field name="okr_objective_id"/>
+                            <field name="required"/>
+                            <field name="sequence"/>
+                        </group>
+
+                        <group string="KPI Linkage">
+                            <field name="primary_kpi_id"/>
+
+                            <field name="target_id"
+                                   domain="[('kpi_id', '=', primary_kpi_id), ('state', '=', 'approved')]"/>
+
+                            <field name="evaluation_id"
+                                   domain="[('kpi_id', '=', primary_kpi_id), ('target_id', '=', target_id)]"/>
+
+                            <field name="unit" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <group string="Supporting KPIs (informational only — do not affect scoring)">
+                        <field name="supporting_kpi_ids"
+                               widget="many2many_tags"
+                               domain="[('id', '!=', primary_kpi_id)]"/>
+                    </group>
+
+                    <group string="Computed Scoring" readonly="1">
+                        <field name="attainment" string="Attainment %"/>
+                        <field name="attainment_status"/>
+                        <field name="scoring_status"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+</odoo>
