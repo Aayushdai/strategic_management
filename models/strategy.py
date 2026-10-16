@@ -120,6 +120,18 @@ class StrategicObjective(models.Model):
         "strategic.objective.revision",
         "objective_id",
     )
+    is_primary = fields.Boolean(
+        string="Current Primary Objective",
+        readonly=True,
+        copy=False,
+        index=True,
+    )
+    primary_history_ids = fields.One2many(
+        "strategic.objective.primary.history",
+        "objective_id",
+        string="Primary Designation History",
+        readonly=True,
+    )
     overdue = fields.Boolean(compute="_compute_overdue")
     score = fields.Float(compute="_compute_score")
     scoring_status = fields.Selection(
@@ -139,8 +151,24 @@ class StrategicObjective(models.Model):
         "Branch objectives must be aligned to an organization objective.",
     )
 
+    def init(self):
+        """Enforce one current primary organization objective per company."""
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS
+                strategic_objective_one_current_primary_per_company
+            ON strategic_objective (company_id)
+            WHERE is_primary IS TRUE AND scope = 'organization'
+            """
+        )
+
     @api.model_create_multi
     def create(self, vals_list):
+        if any(vals.get("is_primary") for vals in vals_list):
+            raise ValidationError(
+                "The primary objective designation can only be changed "
+                "through the Head Office designation workflow."
+            )
         vals_list = [
             self._prepare_objective_create_values(vals)
             for vals in vals_list
@@ -148,6 +176,12 @@ class StrategicObjective(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
+        if "is_primary" in vals:
+            raise ValidationError(
+                "The primary objective designation can only be changed "
+                "through the Head Office designation workflow."
+            )
+
         # Lifecycle state and audit fields can only be changed by lifecycle actions.
         lifecycle_fields = {
             "state",
@@ -215,6 +249,18 @@ class StrategicObjective(models.Model):
                     "Objective deadline cannot be after the strategic plan end date."
                 )
 
+    @api.constrains("is_primary", "scope", "state")
+    def _check_primary_designation(self):
+        for objective in self:
+            if objective.is_primary and objective.scope != "organization":
+                raise ValidationError(
+                    "Only organization-wide objectives can be designated primary."
+                )
+            if objective.is_primary and objective.state not in {"active", "completed"}:
+                raise ValidationError(
+                    "Only active or completed objectives can retain the current primary designation."
+                )
+
     @api.depends("deadline", "state")
     def _compute_overdue(self):
         today = fields.Date.context_today(self)
@@ -254,6 +300,80 @@ class StrategicObjective(models.Model):
             objective.scoring_status = eval_model._attainment_status(
                 objective.score
             )
+
+    def _write_primary_flag(self, value):
+        """Internal write used only after the primary workflow validates access."""
+        return super(StrategicObjective, self).write({"is_primary": value})
+
+    def _end_primary_designation(self, reason):
+        self.ensure_one()
+        if not self.is_primary:
+            return
+
+        now = fields.Datetime.now()
+        history = self.env["strategic.objective.primary.history"].sudo().search(
+            [
+                ("objective_id", "=", self.id),
+                ("ended_at", "=", False),
+            ],
+            order="designated_at desc, id desc",
+            limit=1,
+        )
+        if history:
+            history.write(
+                {
+                    "ended_at": now,
+                    "ended_by_id": self.env.user.id,
+                    "end_reason": reason,
+                }
+            )
+        self._write_primary_flag(False)
+
+    def action_designate_primary(self):
+        """Designate this active organization objective as the current primary."""
+        self.ensure_one()
+        self._require_head_office()
+
+        if self.scope != "organization":
+            raise ValidationError(
+                "Only organization-wide objectives can be designated primary."
+            )
+        if self.state != "active":
+            raise ValidationError(
+                "Only active organization-wide objectives can be designated primary."
+            )
+        if self.is_primary:
+            return True
+
+        current = self.search(
+            [
+                ("company_id", "=", self.company_id.id),
+                ("scope", "=", "organization"),
+                ("is_primary", "=", True),
+            ],
+            limit=1,
+        )
+        if current:
+            current._end_primary_designation(
+                "Replaced by primary objective: %s" % self.display_name
+            )
+            # Flush the previous primary flag before setting the replacement.
+            # PostgreSQL checks the partial unique index row-by-row, so making
+            # both flags dirty in one ORM flush can attempt to set the new row
+            # TRUE before the old row's FALSE update reaches the database.
+            current.flush_recordset(["is_primary"])
+
+        now = fields.Datetime.now()
+        self._write_primary_flag(True)
+        self.env["strategic.objective.primary.history"].sudo().create(
+            {
+                "name": "Primary designation: %s" % self.display_name,
+                "objective_id": self.id,
+                "designated_at": now,
+                "designated_by_id": self.env.user.id,
+            }
+        )
+        return True
 
     def action_submit(self):
         for objective in self:
@@ -307,7 +427,45 @@ class StrategicObjective(models.Model):
                 }
             )
 
+    def _eligible_primary_replacements(self):
+        """Return other active organization objectives eligible to become primary."""
+        self.ensure_one()
+        return self.search(
+            [
+                ("company_id", "=", self.company_id.id),
+                ("scope", "=", "organization"),
+                ("state", "=", "active"),
+                ("is_primary", "=", False),
+                ("id", "!=", self.id),
+            ],
+            order="deadline, id",
+        )
+
+    def action_open_close_wizard(self):
+        """Open replacement selection when closing the current primary objective."""
+        self.ensure_one()
+        self._require_head_office()
+        if self.state != "completed":
+            raise ValidationError("Only completed objectives can be closed.")
+
+        if not self.is_primary or not self._eligible_primary_replacements():
+            self.action_close()
+            return True
+
+        return {
+            "type": "ir.actions.act_window",
+            "name": "Close Strategic Objective",
+            "res_model": "strategic.objective.close.wizard",
+            "view_mode": "form",
+            "views": [(self.env.ref(
+                "strategic_management.view_strategic_objective_close_wizard_form"
+            ).id, "form")],
+            "target": "new",
+            "context": {"default_objective_id": self.id},
+        }
+
     def action_complete(self):
+        """Complete an active objective only when all required KRs are valid."""
         self._require_head_office()
 
         for objective in self:
@@ -316,6 +474,48 @@ class StrategicObjective(models.Model):
                     "Only active objectives can be completed."
                 )
 
+            required_key_results = (
+                objective.okr_objective_ids
+                .mapped("key_result_ids")
+                .filtered(lambda kr: kr.required)
+            )
+
+            if not required_key_results:
+                raise ValidationError(
+                    "The objective cannot be completed because it has no "
+                    "required Key Results. Add the required Key Results "
+                    "before requesting completion."
+                )
+
+            unresolved = required_key_results.filtered(
+                lambda kr: (
+                    not kr.evaluation_id
+                    or kr.evaluation_id.status != "valid"
+                    or kr.scoring_status != "valid"
+                )
+            )
+
+            if unresolved:
+                details = []
+                for kr in unresolved:
+                    if not kr.evaluation_id:
+                        reason = "missing evaluation"
+                    elif kr.evaluation_id.status != "valid":
+                        reason = "evaluation status: %s" % kr.evaluation_id.status
+                    else:
+                        reason = "Key Result scoring status: %s" % kr.scoring_status
+                    details.append("%s (%s)" % (kr.name, reason))
+
+                raise ValidationError(
+                    "The objective cannot be completed because these required "
+                    "Key Results do not have valid evaluations: %s. The objective "
+                    "remains Active and Not Evaluated; no partial completion "
+                    "will be recorded."
+                    % ", ".join(details)
+                )
+
+            # A completed objective retains its primary designation until it is
+            # explicitly closed. Closure performs the required atomic replacement.
             objective._write_lifecycle(
                 {
                     "state": "completed",
@@ -323,13 +523,71 @@ class StrategicObjective(models.Model):
                 }
             )
 
-    def action_close(self):
+    def action_close(self, replacement_primary_id=False):
+        """Close completed objectives, atomically replacing/clearing primary status."""
         self._require_head_office()
+
+        if replacement_primary_id and len(self) != 1:
+            raise ValidationError(
+                "Close one objective at a time when selecting a replacement primary objective."
+            )
 
         for objective in self:
             if objective.state != "completed":
                 raise ValidationError(
                     "Only completed objectives can be closed."
+                )
+
+            replacement = self.env["strategic.objective"]
+            if replacement_primary_id:
+                replacement = self.env["strategic.objective"].browse(
+                    replacement_primary_id
+                ).exists()
+
+            if objective.is_primary:
+                candidates = objective._eligible_primary_replacements()
+                if candidates and not replacement_primary_id:
+                    raise ValidationError(
+                        "This is the current primary objective. Select an active "
+                        "organization-wide replacement before closing it."
+                    )
+                if not candidates and replacement_primary_id:
+                    raise ValidationError(
+                        "No eligible active organization objective remains; "
+                        "a replacement must not be supplied."
+                    )
+                if replacement_primary_id and replacement not in candidates:
+                    raise ValidationError(
+                        "The replacement must be another active organization-wide "
+                        "objective in the same company."
+                    )
+
+                if replacement:
+                    end_reason = (
+                        "Replaced by primary objective: %s" % replacement.display_name
+                    )
+                else:
+                    end_reason = (
+                        "No eligible active organization objective remained "
+                        "when this objective was closed"
+                    )
+                objective._end_primary_designation(end_reason)
+                # Preserve the partial unique index while switching in one transaction.
+                objective.flush_recordset(["is_primary"])
+
+                if replacement:
+                    replacement._write_primary_flag(True)
+                    self.env["strategic.objective.primary.history"].sudo().create(
+                        {
+                            "name": "Primary designation: %s" % replacement.display_name,
+                            "objective_id": replacement.id,
+                            "designated_at": fields.Datetime.now(),
+                            "designated_by_id": self.env.user.id,
+                        }
+                    )
+            elif replacement_primary_id:
+                raise ValidationError(
+                    "A replacement can only be selected when closing the current primary objective."
                 )
 
             objective._write_lifecycle(
@@ -535,6 +793,83 @@ class StrategicObjectiveRevision(models.Model):
         required=True,
         readonly=True,
     )
+
+
+class StrategicObjectivePrimaryHistory(models.Model):
+    _name = "strategic.objective.primary.history"
+    _description = "Strategic Objective Primary Designation History"
+    _order = "designated_at desc, id desc"
+
+    name = fields.Char(required=True, readonly=True)
+    objective_id = fields.Many2one(
+        "strategic.objective",
+        required=True,
+        ondelete="restrict",
+        index=True,
+        readonly=True,
+    )
+    company_id = fields.Many2one(
+        related="objective_id.company_id",
+        store=True,
+        readonly=True,
+    )
+    designated_at = fields.Datetime(required=True, readonly=True, index=True)
+    designated_by_id = fields.Many2one(
+        "res.users",
+        required=True,
+        readonly=True,
+    )
+    ended_at = fields.Datetime(readonly=True, index=True)
+    ended_by_id = fields.Many2one("res.users", readonly=True)
+    end_reason = fields.Char(readonly=True)
+
+
+class StrategicObjectiveCloseWizard(models.TransientModel):
+    _name = "strategic.objective.close.wizard"
+    _description = "Close Strategic Objective Wizard"
+
+    objective_id = fields.Many2one(
+        "strategic.objective",
+        string="Objective to Close",
+        required=True,
+        readonly=True,
+        ondelete="cascade",
+    )
+    company_id = fields.Many2one(
+        related="objective_id.company_id",
+        readonly=True,
+    )
+    replacement_required = fields.Boolean(
+        compute="_compute_replacement_required",
+    )
+    replacement_primary_id = fields.Many2one(
+        "strategic.objective",
+        string="Replacement Primary Objective",
+        domain="[('company_id', '=', company_id), ('scope', '=', 'organization'), ('state', '=', 'active'), ('is_primary', '=', False)]",
+    )
+
+    @api.depends(
+        "objective_id",
+        "objective_id.is_primary",
+        "objective_id.company_id",
+        "objective_id.state",
+    )
+    def _compute_replacement_required(self):
+        for wizard in self:
+            wizard.replacement_required = bool(
+                wizard.objective_id
+                and wizard.objective_id.is_primary
+                and wizard.objective_id._eligible_primary_replacements()
+            )
+
+    def action_confirm(self):
+        self.ensure_one()
+        if not self.objective_id:
+            raise ValidationError("Select the objective to close.")
+        self.objective_id.with_user(self.env.user).action_close(
+            replacement_primary_id=self.replacement_primary_id.id or False
+        )
+        return {"type": "ir.actions.act_window_close"}
 
 
 class StrategicOkrObjective(models.Model):

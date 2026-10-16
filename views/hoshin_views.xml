@@ -1,0 +1,370 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Add Hoshin horizon to the existing objective screens. BSC perspective,
+         scope, and objective lifecycle remain the existing source of truth. -->
+    <record id="view_strategic_objective_list_hoshin" model="ir.ui.view">
+        <field name="name">strategic.objective.list.hoshin</field>
+        <field name="model">strategic.objective</field>
+        <field name="inherit_id" ref="view_strategic_objective_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list/field[@name='perspective']" position="after">
+                <field name="hoshin_level" optional="hide"
+                       groups="strategic_management.group_strategic_head_office_manager"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_strategic_objective_form_hoshin" model="ir.ui.view">
+        <field name="name">strategic.objective.form.hoshin</field>
+        <field name="model">strategic.objective</field>
+        <field name="inherit_id" ref="view_strategic_objective_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='perspective']" position="after">
+                <field name="hoshin_level"
+                       readonly="state != 'draft' or scope != 'organization'"
+                       groups="strategic_management.group_strategic_head_office_manager"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Improvement initiatives -->
+    <record id="view_strategic_initiative_list" model="ir.ui.view">
+        <field name="name">strategic.initiative.list</field>
+        <field name="model">strategic.initiative</field>
+        <field name="arch" type="xml">
+            <list decoration-success="state == 'active'"
+                  decoration-muted="state in ('closed', 'archived')">
+                <field name="name"/>
+                <field name="plan_id"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
+                <field name="owner_id"/>
+                <field name="state" widget="badge"/>
+                <field name="activated_at" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_strategic_initiative_form" model="ir.ui.view">
+        <field name="name">strategic.initiative.form</field>
+        <field name="model">strategic.initiative</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_activate" string="Activate Initiative"
+                            type="object" class="btn-primary"
+                            groups="strategic_management.group_strategic_head_office_manager"
+                            invisible="state != 'draft'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,active,completed,closed,archived"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="Improvement initiative..."/></h1>
+                    </div>
+                    <group>
+                        <group string="Planning">
+                            <field name="plan_id" readonly="state != 'draft'"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="date_start" readonly="state != 'draft'"/>
+                            <field name="date_end" readonly="state != 'draft'"/>
+                        </group>
+                        <group string="Accountability">
+                            <field name="owner_id" readonly="1"/>
+                            <field name="activated_by_id" readonly="1" invisible="not activated_by_id"/>
+                            <field name="activated_at" readonly="1" invisible="not activated_at"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="description" readonly="state != 'draft'" placeholder="Describe the improvement work and intended outcome..."/>
+                    </group>
+                    <notebook>
+                        <page string="X-Matrix Alignments">
+                            <field name="alignment_ids" readonly="1">
+                                <list create="false" edit="false" delete="false">
+                                    <field name="link_type"/>
+                                    <field name="relationship_type"/>
+                                    <field name="breakthrough_objective_id" optional="hide"/>
+                                    <field name="annual_objective_id" optional="hide"/>
+                                    <field name="kpi_id" optional="hide"/>
+                                    <field name="owner_id" optional="hide"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="effective_date"/>
+                                </list>
+                            </field>
+                            <div class="text-muted">
+                                Create and revise relationships from Strategy → X-Matrix Alignments.
+                            </div>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_strategic_initiative_search" model="ir.ui.view">
+        <field name="name">strategic.initiative.search</field>
+        <field name="model">strategic.initiative</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="plan_id"/>
+                <field name="owner_id"/>
+                <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+                <filter name="active" string="Active" domain="[('state', '=', 'active')]"/>
+                <filter name="completed" string="Completed" domain="[('state', '=', 'completed')]"/>
+                <group>
+                    <filter name="group_plan" string="Strategic Plan" context="{'group_by': 'plan_id'}"/>
+                    <filter name="group_owner" string="Owner" context="{'group_by': 'owner_id'}"/>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_strategic_initiative" model="ir.actions.act_window">
+        <field name="name">Improvement Initiatives</field>
+        <field name="res_model">strategic.initiative</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_strategic_initiative_search"/>
+    </record>
+
+    <!-- X-Matrix links; one typed relationship per record. -->
+    <record id="view_strategic_xmatrix_alignment_list" model="ir.ui.view">
+        <field name="name">strategic.xmatrix.alignment.list</field>
+        <field name="model">strategic.xmatrix.alignment</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state == 'superseded'">
+                <field name="name"/>
+                <field name="link_type"/>
+                <field name="relationship_type" widget="badge"/>
+                <field name="breakthrough_objective_id" optional="hide"/>
+                <field name="annual_objective_id" optional="hide"/>
+                <field name="initiative_id" optional="hide"/>
+                <field name="kpi_id" optional="hide"/>
+                <field name="owner_id" optional="hide"/>
+                <field name="effective_date"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_strategic_xmatrix_alignment_form" model="ir.ui.view">
+        <field name="name">strategic.xmatrix.alignment.form</field>
+        <field name="model">strategic.xmatrix.alignment</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_open_revision_wizard" string="Revise Alignment"
+                            type="object" class="btn-primary"
+                            groups="strategic_management.group_strategic_head_office_manager"
+                            invisible="not id or state != 'active'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="active,superseded" invisible="not id"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group string="Relationship">
+                            <!-- New records remain editable until saved. Saved alignments are immutable;
+                                 changes must go through the audited revision wizard. -->
+                            <field name="link_type" readonly="id"/>
+                            <field name="relationship_type" readonly="id"/>
+                            <field name="effective_date" readonly="id"/>
+                            <field name="change_reason" readonly="id"/>
+                        </group>
+                        <group string="Endpoints">
+                            <field name="breakthrough_objective_id"
+                                   invisible="link_type not in ('B>A', 'B>M')"
+                                   required="link_type in ('B>A', 'B>M')"
+                                   readonly="id"/>
+                            <field name="annual_objective_id"
+                                   invisible="link_type not in ('B>A', 'I>A')"
+                                   required="link_type in ('B>A', 'I>A')"
+                                   readonly="id"/>
+                            <field name="initiative_id"
+                                   invisible="link_type not in ('I>A', 'I>M', 'I>O')"
+                                   required="link_type in ('I>A', 'I>M', 'I>O')"
+                                   readonly="id"/>
+                            <field name="kpi_id"
+                                   string="KPI / Metric"
+                                   invisible="link_type not in ('I>M', 'B>M')"
+                                   required="link_type in ('I>M', 'B>M')"
+                                   readonly="id"/>
+                            <field name="owner_id"
+                                   invisible="link_type != 'I>O'"
+                                   required="link_type == 'I>O'"
+                                   readonly="id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Revision History">
+                            <field name="revision_ids" readonly="1">
+                                <list create="false" edit="false" delete="false">
+                                    <field name="changed_at"/>
+                                    <field name="changed_by_id"/>
+                                    <field name="replacement_alignment_id"/>
+                                    <field name="reason"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_strategic_xmatrix_alignment_search" model="ir.ui.view">
+        <field name="name">strategic.xmatrix.alignment.search</field>
+        <field name="model">strategic.xmatrix.alignment</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="link_type"/>
+                <field name="breakthrough_objective_id"/>
+                <field name="annual_objective_id"/>
+                <field name="initiative_id"/>
+                <field name="kpi_id"/>
+                <filter name="active" string="Active" domain="[('state', '=', 'active')]"/>
+                <filter name="superseded" string="Superseded" domain="[('state', '=', 'superseded')]"/>
+                <group>
+                    <filter name="group_link_type" string="Relationship Type" context="{'group_by': 'link_type'}"/>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_strategic_xmatrix_alignment" model="ir.actions.act_window">
+        <field name="name">X-Matrix Alignments</field>
+        <field name="res_model">strategic.xmatrix.alignment</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_strategic_xmatrix_alignment_search"/>
+    </record>
+
+    <record id="action_strategic_xmatrix_alignment_branch_summary" model="ir.actions.act_window">
+        <field name="name">Breakthrough–Annual Alignment</field>
+        <field name="res_model">strategic.xmatrix.alignment</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_strategic_xmatrix_alignment_search"/>
+        <field name="domain">[('link_type', '=', 'B&gt;A'), ('state', '=', 'active')]</field>
+        <field name="context">{'create': False, 'edit': False, 'delete': False, 'search_default_active': 1}</field>
+    </record>
+
+    <!-- Immutable audit records: readable only to Head Office through ACL. -->
+    <record id="view_strategic_xmatrix_alignment_history_list" model="ir.ui.view">
+        <field name="name">strategic.xmatrix.alignment.history.list</field>
+        <field name="model">strategic.xmatrix.alignment.history</field>
+        <field name="arch" type="xml">
+            <list create="false" edit="false" delete="false">
+                <field name="changed_at"/>
+                <field name="changed_by_id"/>
+                <field name="source_alignment_id"/>
+                <field name="replacement_alignment_id"/>
+                <field name="reason"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_strategic_xmatrix_alignment_history_form" model="ir.ui.view">
+        <field name="name">strategic.xmatrix.alignment.history.form</field>
+        <field name="model">strategic.xmatrix.alignment.history</field>
+        <field name="arch" type="xml">
+            <form create="false" edit="false" delete="false">
+                <sheet>
+                    <group>
+                        <field name="changed_at"/>
+                        <field name="changed_by_id"/>
+                        <field name="source_alignment_id"/>
+                        <field name="replacement_alignment_id"/>
+                        <field name="reason"/>
+                    </group>
+                    <notebook>
+                        <page string="Before Revision"><field name="old_snapshot"/></page>
+                        <page string="After Revision"><field name="new_snapshot"/></page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_strategic_xmatrix_alignment_history" model="ir.actions.act_window">
+        <field name="name">X-Matrix Revision History</field>
+        <field name="res_model">strategic.xmatrix.alignment.history</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Controlled alignment revision wizard -->
+    <record id="view_strategic_xmatrix_revision_wizard_form" model="ir.ui.view">
+        <field name="name">strategic.xmatrix.alignment.revision.wizard.form</field>
+        <field name="model">strategic.xmatrix.alignment.revision.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Revise X-Matrix Alignment">
+                <group>
+                    <field name="alignment_id"/>
+                    <field name="link_type"/>
+                    <field name="relationship_type"/>
+                    <field name="effective_date"/>
+                </group>
+                <group string="Replacement Endpoints">
+                    <field name="breakthrough_objective_id"
+                           invisible="link_type not in ('B>A', 'B>M')"
+                           required="link_type in ('B>A', 'B>M')"/>
+                    <field name="annual_objective_id"
+                           invisible="link_type not in ('B>A', 'I>A')"
+                           required="link_type in ('B>A', 'I>A')"/>
+                    <field name="initiative_id"
+                           invisible="link_type not in ('I>A', 'I>M', 'I>O')"
+                           required="link_type in ('I>A', 'I>M', 'I>O')"/>
+                    <field name="kpi_id" string="KPI / Metric"
+                           invisible="link_type not in ('I>M', 'B>M')"
+                           required="link_type in ('I>M', 'B>M')"/>
+                    <field name="owner_id" string="Accountable Owner"
+                           invisible="link_type != 'I>O'"
+                           required="link_type == 'I>O'"/>
+                </group>
+                <group>
+                    <field name="reason" placeholder="Explain why this alignment must change..." required="1"/>
+                </group>
+                <footer>
+                    <button name="action_apply_revision" string="Apply Revision" type="object" class="btn-primary"/>
+                    <button string="Cancel" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Hoshin navigation is added after existing Strategy menus load. -->
+    <menuitem id="menu_strategic_hoshin_initiatives"
+              name="Improvement Initiatives"
+              parent="menu_strategic_management_strategy"
+              action="action_strategic_initiative"
+              sequence="40"
+              groups="strategic_management.group_strategic_head_office_manager"/>
+
+    <menuitem id="menu_strategic_hoshin_xmatrix"
+              name="X-Matrix Alignments"
+              parent="menu_strategic_management_strategy"
+              action="action_strategic_xmatrix_alignment"
+              sequence="50"
+              groups="strategic_management.group_strategic_head_office_manager"/>
+
+    <menuitem id="menu_strategic_hoshin_alignment_summary"
+              name="Breakthrough–Annual Alignment"
+              parent="menu_strategic_management_strategy"
+              action="action_strategic_xmatrix_alignment_branch_summary"
+              sequence="55"
+              groups="strategic_management.group_strategic_branch_manager"/>
+
+    <menuitem id="menu_strategic_hoshin_revision_history"
+              name="X-Matrix Revision History"
+              parent="menu_strategic_management_strategy"
+              action="action_strategic_xmatrix_alignment_history"
+              sequence="60"
+              groups="strategic_management.group_strategic_head_office_manager"/>
+</odoo>

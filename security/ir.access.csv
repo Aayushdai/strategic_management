@@ -18,3 +18,10 @@ access_strategic_okr_head_office,Strategic OKR Objective - Head Office,strategic
 access_strategic_okr_branch_manager,Strategic OKR Objective - Branch Manager,strategic.okr.objective,strategic_management.group_strategic_branch_manager,cru,"['|', ('scope', '=', 'organization'), ('warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
 access_strategic_kr_head_office,Strategic Key Result - Head Office,strategic.key.result,strategic_management.group_strategic_head_office_manager,crud,
 access_strategic_kr_branch_manager,Strategic Key Result - Branch Manager,strategic.key.result,strategic_management.group_strategic_branch_manager,cru,"['|', ('scope', '=', 'organization'), ('warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
+access_strategic_initiative_head_office,Strategic Improvement Initiative - Head Office,strategic.initiative,strategic_management.group_strategic_head_office_manager,crud,
+access_xmatrix_alignment_head_office,Strategic X-Matrix Alignment - Head Office,strategic.xmatrix.alignment,strategic_management.group_strategic_head_office_manager,crud,
+access_xmatrix_alignment_branch_manager,Strategic X-Matrix Alignment - Branch Manager Summary,strategic.xmatrix.alignment,strategic_management.group_strategic_branch_manager,r,"[('link_type', '=', 'B>A'), ('state', '=', 'active')]"
+access_xmatrix_alignment_history_head_office,Strategic X-Matrix Alignment History - Head Office,strategic.xmatrix.alignment.history,strategic_management.group_strategic_head_office_manager,cr,
+access_xmatrix_alignment_revision_wizard_head_office,Revise X-Matrix Alignment Wizard - Head Office,strategic.xmatrix.alignment.revision.wizard,strategic_management.group_strategic_head_office_manager,crud,
+access_strategic_objective_primary_history_head_office,Strategic Objective Primary History - Head Office,strategic.objective.primary.history,strategic_management.group_strategic_head_office_manager,r,
+access_strategic_objective_close_wizard_head_office,Close Strategic Objective Wizard - Head Office,strategic.objective.close.wizard,strategic_management.group_strategic_head_office_manager,crud,

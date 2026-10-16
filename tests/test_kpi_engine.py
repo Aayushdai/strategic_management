@@ -237,3 +237,219 @@ class TestStrategicKpiSecurity(TransactionCase):
 
         employee_evaluations = self.env["strategic.kpi.evaluation"].with_user(self.employee_user).search([])
         self.assertFalse(employee_evaluations)
+
+@tagged("post_install", "-at_install")
+class TestStrategicKpiDefinitionVersioning(TransactionCase):
+    """TDD contracts for approved, effective-dated KPI formula versions."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.company = cls.env.company
+        cls.group_user = cls.env.ref("base.group_user")
+        cls.group_head = cls.env.ref("strategic_management.group_strategic_head_office_manager")
+        cls.group_branch = cls.env.ref("strategic_management.group_strategic_branch_manager")
+        cls.head_user = cls._make_user("kpi_version_head", cls.group_head)
+        cls.branch_user = cls._make_user("kpi_version_branch", cls.group_branch)
+        cls.Kpi = cls.env["strategic.kpi.definition"]
+        cls.Target = cls.env["strategic.kpi.target"]
+        cls.Evaluation = cls.env["strategic.kpi.evaluation"]
+
+    @classmethod
+    def _make_user(cls, login, group):
+        return cls.env["res.users"].with_context(no_reset_password=True).create(
+            {
+                "name": login,
+                "login": login,
+                "email": "%s@example.com" % login,
+                "company_id": cls.company.id,
+                "company_ids": [(6, 0, [cls.company.id])],
+                "group_ids": [(6, 0, [cls.group_user.id, group.id])],
+            }
+        )
+
+    def _create_kpi(self, code="VERSIONED"):
+        return self.Kpi.with_user(self.head_user).create(
+            {
+                "name": "%s Test KPI" % code,
+                "code": code,
+                "unit": "%",
+                "direction": "higher",
+                "source_type": "manual",
+                "description": "Initial approved contract.",
+                "company_id": self.company.id,
+            }
+        )
+
+    def _require_version_model(self):
+        # During the red TDD stage, fail the explicit schema test while making
+        # dependent behavior tests skip cleanly until the production model lands.
+        if "strategic.kpi.definition.version" not in self.env.registry.models:
+            self.skipTest("KPI definition version model is not implemented yet.")
+        return self.env["strategic.kpi.definition.version"]
+
+    def _month_start(self, offset=0):
+        from datetime import date
+        from dateutil.relativedelta import relativedelta
+
+        today = date.today()
+        return (today.replace(day=1) + relativedelta(months=offset)).isoformat()
+
+    def _month_end(self, offset=0):
+        from datetime import date, timedelta
+        from dateutil.relativedelta import relativedelta
+
+        today = date.today()
+        start = today.replace(day=1) + relativedelta(months=offset + 1)
+        return (start - timedelta(days=1)).isoformat()
+
+    def _create_target(self, kpi, start, end, target_value):
+        return self.Target.with_user(self.head_user).create(
+            {
+                "kpi_id": kpi.id,
+                "date_start": start,
+                "date_end": end,
+                "scope": "organization",
+                "target_value": target_value,
+                "state": "approved",
+            }
+        )
+
+    def _create_revision(self, kpi, effective_from, **overrides):
+        values = {
+            "kpi_id": kpi.id,
+            "unit": "%",
+            "direction": "lower",
+            "source_type": "manual",
+            "description": "Revised KPI calculation contract.",
+            "effective_from": effective_from,
+            "change_reason": "Approved change to the measurement contract.",
+        }
+        values.update(overrides)
+        return self._require_version_model().with_user(self.head_user).create(values)
+
+    def test_00_definition_version_model_is_registered(self):
+        self.assertIn(
+            "strategic.kpi.definition.version",
+            self.env.registry.models,
+            "KPI contract revision history must be represented by a dedicated model.",
+        )
+
+    def test_initial_definition_has_approved_version_and_evaluations_reference_it(self):
+        Version = self._require_version_model()
+        kpi = self._create_kpi("VINIT")
+        versions = kpi.version_ids
+        self.assertEqual(len(versions), 1)
+        initial = versions[0]
+        self.assertEqual(initial.version_number, 1)
+        self.assertEqual(initial.state, "approved")
+        self.assertEqual(initial.direction, "higher")
+        self.assertEqual(initial.unit, "%")
+
+        start = self._month_start(-1)
+        end = self._month_end(-1)
+        target = self._create_target(kpi, start, end, 100.0)
+        evaluation = self.Evaluation.with_user(self.head_user).create(
+            {"target_id": target.id, "actual_value": 80.0, "has_actual_value": True}
+        )
+        self.assertEqual(evaluation.definition_version_id, initial)
+        self.assertIn(initial, Version.search([("kpi_id", "=", kpi.id)]))
+
+    def test_approved_revision_applies_by_period_and_preserves_old_evaluation(self):
+        self._require_version_model()
+        kpi = self._create_kpi("VEFFECTIVE")
+        initial = kpi.version_ids.filtered(lambda version: version.version_number == 1)
+        old_target = self._create_target(
+            kpi, self._month_start(-1), self._month_end(-1), 100.0
+        )
+        old_evaluation = self.Evaluation.with_user(self.head_user).create(
+            {"target_id": old_target.id, "actual_value": 80.0, "has_actual_value": True}
+        )
+        self.assertEqual(old_evaluation.attainment, 80.0)
+        self.assertEqual(old_evaluation.definition_version_id, initial)
+
+        revision = self._create_revision(kpi, self._month_start(1))
+        self.assertEqual(revision.state, "draft")
+        revision.with_user(self.head_user).action_approve()
+        revision.invalidate_recordset()
+        initial.invalidate_recordset()
+        self.assertEqual(revision.state, "approved")
+        self.assertEqual(initial.effective_to, self._month_end(0))
+        self.assertEqual(old_evaluation.definition_version_id, initial)
+        self.assertEqual(old_evaluation.attainment, 80.0)
+
+        new_target = self._create_target(
+            kpi, self._month_start(1), self._month_end(1), 10.0
+        )
+        new_evaluation = self.Evaluation.with_user(self.head_user).create(
+            {"target_id": new_target.id, "actual_value": 5.0, "has_actual_value": True}
+        )
+        self.assertEqual(new_evaluation.definition_version_id, revision)
+        self.assertEqual(new_evaluation.attainment, 200.0)
+        self.assertEqual(new_evaluation.attainment_status, "exceeded")
+
+    def test_revision_approval_is_head_office_only(self):
+        self._require_version_model()
+        kpi = self._create_kpi("VAUTH")
+        revision = self._create_revision(kpi, self._month_start(1))
+        with self.assertRaises(AccessError):
+            revision.with_user(self.branch_user).action_approve()
+        self.assertEqual(revision.state, "draft")
+
+    def test_versioned_definition_fields_cannot_be_changed_directly(self):
+        self._require_version_model()
+        kpi = self._create_kpi("VLOCK")
+        with self.assertRaises(ValidationError):
+            kpi.with_user(self.head_user).write({"direction": "lower"})
+        with self.assertRaises(ValidationError):
+            kpi.with_user(self.head_user).write({"unit": "items"})
+
+    def test_approved_version_is_immutable(self):
+        self._require_version_model()
+        kpi = self._create_kpi("VIMMUTABLE")
+        version = kpi.version_ids[0]
+        with self.assertRaises(ValidationError):
+            version.with_user(self.head_user).write({"direction": "lower"})
+
+    def test_approval_rejects_duplicate_or_overlapping_effective_start(self):
+        self._require_version_model()
+        kpi = self._create_kpi("VOVERLAP")
+        effective_from = self._month_start(1)
+        first_revision = self._create_revision(kpi, effective_from)
+        first_revision.with_user(self.head_user).action_approve()
+        duplicate_revision = self._create_revision(
+            kpi,
+            effective_from,
+            description="Conflicting second revision.",
+            change_reason="Attempted conflicting effective date.",
+        )
+        with self.assertRaises(ValidationError):
+            duplicate_revision.with_user(self.head_user).action_approve()
+        self.assertEqual(duplicate_revision.state, "draft")
+
+    def test_evaluation_formula_version_reference_is_immutable(self):
+        self._require_version_model()
+        kpi = self._create_kpi("VEVALLOCK")
+        initial = kpi.version_ids[0]
+        target = self._create_target(kpi, self._month_start(-1), self._month_end(-1), 100.0)
+        evaluation = self.Evaluation.with_user(self.head_user).create(
+            {"target_id": target.id, "actual_value": 75.0, "has_actual_value": True}
+        )
+        with self.assertRaises(ValidationError):
+            evaluation.write({"definition_version_id": initial.id + 100000})
+
+    def test_branch_manager_cannot_create_definition_revision(self):
+        self._require_version_model()
+        kpi = self._create_kpi("VBRANCH")
+        with self.assertRaises(AccessError):
+            self.env["strategic.kpi.definition.version"].with_user(self.branch_user).create(
+                {
+                    "kpi_id": kpi.id,
+                    "unit": "%",
+                    "direction": "lower",
+                    "source_type": "manual",
+                    "effective_from": self._month_start(1),
+                    "change_reason": "Unauthorized branch revision.",
+                }
+            )
+

@@ -84,6 +84,7 @@
                 <field name="plan_id"/>
                 <field name="perspective"/>
                 <field name="scope"/>
+                <field name="is_primary" string="Primary" optional="show"/>
                 <field name="warehouse_id" optional="hide"/>
                 <field name="owner_id"/>
                 <field name="deadline"/>
@@ -120,13 +121,20 @@
                             invisible="state != 'draft'"
                             groups="strategic_management.group_strategic_head_office_manager"/>
 
+                    <button name="action_designate_primary"
+                            string="Set as Primary Objective"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'active' or scope != 'organization' or is_primary"
+                            groups="strategic_management.group_strategic_head_office_manager"/>
+
                     <button name="action_complete"
                             string="Mark as Completed"
                             type="object"
                             invisible="state != 'active'"
                             groups="strategic_management.group_strategic_head_office_manager"/>
 
-                    <button name="action_close"
+                    <button name="action_open_close_wizard"
                             string="Close"
                             type="object"
                             invisible="state != 'completed'"
@@ -163,6 +171,7 @@
                             <field name="plan_id"/>
                             <field name="perspective"/>
                             <field name="scope"/>
+                            <field name="is_primary" readonly="1" invisible="scope != 'organization'"/>
                             <field name="warehouse_id"
                                    invisible="scope != 'branch'"/>
                             <field name="parent_objective_id"
@@ -210,6 +219,19 @@
                                     <field name="date_end"/>
                                     <field name="score" string="Score %"/>
                                     <field name="scoring_status"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <page string="Primary Designation History"
+                              groups="strategic_management.group_strategic_head_office_manager">
+                            <field name="primary_history_ids" readonly="1">
+                                <list create="0" edit="0" delete="0">
+                                    <field name="designated_at"/>
+                                    <field name="designated_by_id"/>
+                                    <field name="ended_at"/>
+                                    <field name="ended_by_id"/>
+                                    <field name="end_reason"/>
                                 </list>
                             </field>
                         </page>
@@ -514,6 +536,40 @@
                     </group>
                 </sheet>
                 <chatter/>
+            </form>
+        </field>
+    </record>
+
+
+    <record id="view_strategic_objective_close_wizard_form" model="ir.ui.view">
+        <field name="name">strategic.objective.close.wizard.form</field>
+        <field name="model">strategic.objective.close.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Close Strategic Objective">
+                <group>
+                    <field name="objective_id" readonly="1"/>
+                    <field name="company_id" invisible="1"/>
+                    <field name="replacement_required" invisible="1"/>
+                    <field name="replacement_primary_id"
+                           invisible="not replacement_required"
+                           required="replacement_required"
+                           domain="[('company_id', '=', company_id), ('scope', '=', 'organization'), ('state', '=', 'active'), ('is_primary', '=', False)]"
+                           options="{'no_create': True, 'no_open': True}"/>
+                    <div invisible="not replacement_required">
+                        The current primary objective has another active organization-wide objective available.
+                        Select the replacement before closing this objective. Both changes are committed together.
+                    </div>
+                    <div invisible="replacement_required">
+                        No replacement selection is required. The current primary designation will be cleared if no eligible active organization-wide objective remains.
+                    </div>
+                </group>
+                <footer>
+                    <button name="action_confirm"
+                            string="Confirm Close"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Cancel" special="cancel" class="btn-secondary"/>
+                </footer>
             </form>
         </field>
     </record>

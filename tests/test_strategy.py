@@ -53,13 +53,14 @@ class StrategyFixture(TransactionCase):
             }
         )
 
-    def _mk_plan(self, start="2026-01-01", end="2026-12-31"):
-        return self.env["strategic.plan"].create(
+    def _mk_plan(self, start="2026-01-01", end="2026-12-31", company=None):
+        company = company or self.company
+        return self.env["strategic.plan"].with_company(company).create(
             {
                 "name": "Test Plan",
                 "date_start": start,
                 "date_end": end,
-                "company_id": self.company.id,
+                "company_id": company.id,
             }
         )
 
@@ -67,6 +68,7 @@ class StrategyFixture(TransactionCase):
         return (
             self.env["strategic.objective"]
             .with_user(self.head_user)
+            .with_company(plan.company_id)
             .create(
                 {
                     "name": "Org Objective",
@@ -99,14 +101,15 @@ class StrategyFixture(TransactionCase):
             }
         )
 
-    def _mk_kpi(self, code, direction="higher"):
-        return self.env["strategic.kpi.definition"].create(
+    def _mk_kpi(self, code, direction="higher", company=None):
+        company = company or self.company
+        return self.env["strategic.kpi.definition"].with_company(company).create(
             {
                 "name": "KPI %s" % code,
                 "code": code,
                 "unit": "%",
                 "direction": direction,
-                "company_id": self.company.id,
+                "company_id": company.id,
             }
         )
 
@@ -121,10 +124,14 @@ class StrategyFixture(TransactionCase):
         }
         if warehouse:
             vals["warehouse_id"] = warehouse.id
-        return self.env["strategic.kpi.target"].create(vals)
+        return self.env["strategic.kpi.target"].with_company(
+            kpi.company_id
+        ).create(vals)
 
     def _mk_evaluation(self, target, actual, has_actual=True):
-        return self.env["strategic.kpi.evaluation"].create(
+        return self.env["strategic.kpi.evaluation"].with_company(
+            target.kpi_id.company_id
+        ).create(
             {
                 "target_id": target.id,
                 "actual_value": actual,
@@ -133,7 +140,9 @@ class StrategyFixture(TransactionCase):
         )
 
     def _mk_okr(self, strategic_obj, start="2026-01-01", end="2026-03-31"):
-        return self.env["strategic.okr.objective"].create(
+        return self.env["strategic.okr.objective"].with_company(
+            strategic_obj.company_id
+        ).create(
             {
                 "name": "Test OKR",
                 "strategic_objective_id": strategic_obj.id,
@@ -153,7 +162,32 @@ class StrategyFixture(TransactionCase):
         }
         if evaluation:
             vals["evaluation_id"] = evaluation.id
-        return self.env["strategic.key.result"].create(vals)
+        return self.env["strategic.key.result"].with_company(
+            kpi.company_id
+        ).create(vals)
+
+    def _add_valid_required_kr(self, objective, code):
+        """Attach one required Key Result with a valid evaluation to an objective."""
+        kpi = self._mk_kpi(
+            "COMPLETE_%s" % code,
+            company=objective.company_id,
+        )
+        target = self._mk_target(
+            kpi,
+            scope="organization",
+            start="2026-01-01",
+            end="2026-03-31",
+            value=100.0,
+        )
+        evaluation = self._mk_evaluation(target, actual=100.0, has_actual=True)
+        okr = self._mk_okr(objective, start="2026-01-01", end="2026-03-31")
+        return self._mk_kr(
+            okr,
+            kpi,
+            target,
+            evaluation=evaluation,
+            required=True,
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -167,6 +201,7 @@ class TestObjectiveLifecycle(StrategyFixture):
         """draft → pending_approval → active → completed → closed → archived"""
         plan = self._mk_plan()
         obj = self._mk_org_obj(plan)
+        self._add_valid_required_kr(obj, "LIFECYCLE")
 
         self.assertEqual(obj.state, "draft")
         obj.action_submit()
@@ -207,6 +242,7 @@ class TestObjectiveLifecycle(StrategyFixture):
     def test_closed_objective_cannot_be_reopened(self):
         plan = self._mk_plan()
         obj = self._mk_org_obj(plan)
+        self._add_valid_required_kr(obj, "CLOSED_REOPEN")
         obj.action_submit()
         obj.with_user(self.head_user).action_approve()
         obj.with_user(self.head_user).action_complete()
@@ -474,6 +510,7 @@ class TestParentClosureIndependence(StrategyFixture):
     def test_closing_parent_does_not_close_branch(self):
         plan = self._mk_plan()
         org_obj = self._mk_org_obj(plan)
+        self._add_valid_required_kr(org_obj, "PARENT_CLOSURE")
         branch_obj = self._mk_branch_obj(plan, org_obj)
 
         org_obj.action_submit()
@@ -753,3 +790,214 @@ class TestPhase1Regression(StrategyFixture):
         self.assertIn(target_wh1, visible)
         self.assertNotIn(target_wh2, visible)
 
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Test 17 — Current primary organization-wide objective designation
+# ─────────────────────────────────────────────────────────────────────────────
+
+@tagged("post_install", "-at_install")
+class TestPrimaryObjectiveDesignation(StrategyFixture):
+
+    def _active_org_obj(self, plan, name):
+        objective = self._mk_org_obj(plan)
+        objective.with_user(self.head_user).write({"name": name})
+        objective.with_user(self.head_user).action_activate()
+        return objective
+
+    def test_head_office_can_designate_active_org_objective(self):
+        plan = self._mk_plan()
+        objective = self._active_org_obj(plan, "Primary Candidate A")
+
+        objective.with_user(self.head_user).action_designate_primary()
+
+        self.assertTrue(objective.is_primary)
+        history = self.env["strategic.objective.primary.history"].with_user(
+            self.head_user
+        ).search([("objective_id", "=", objective.id)])
+        self.assertEqual(len(history), 1)
+        self.assertFalse(history.ended_at)
+        self.assertEqual(history.designated_by_id, self.head_user)
+
+    def test_designating_another_objective_switches_primary_and_keeps_history(self):
+        plan_a = self._mk_plan(start="2026-01-01", end="2026-12-31")
+        plan_b = self._mk_plan(start="2027-01-01", end="2027-12-31")
+        first = self._active_org_obj(plan_a, "Primary Candidate A")
+        second = self._active_org_obj(plan_b, "Primary Candidate B")
+
+        first.with_user(self.head_user).action_designate_primary()
+        second.with_user(self.head_user).action_designate_primary()
+
+        first.invalidate_recordset()
+        second.invalidate_recordset()
+        self.assertFalse(first.is_primary)
+        self.assertTrue(second.is_primary)
+        self.assertEqual(first.state, "active")
+        self.assertEqual(second.state, "active")
+
+        first_history = self.env["strategic.objective.primary.history"].with_user(
+            self.head_user
+        ).search([("objective_id", "=", first.id)])
+        second_history = self.env["strategic.objective.primary.history"].with_user(
+            self.head_user
+        ).search([("objective_id", "=", second.id)])
+        self.assertEqual(len(first_history), 1)
+        self.assertTrue(first_history.ended_at)
+        self.assertEqual(first_history.ended_by_id, self.head_user)
+        self.assertEqual(len(second_history), 1)
+        self.assertFalse(second_history.ended_at)
+
+    def test_draft_objective_cannot_be_designated_primary(self):
+        plan = self._mk_plan()
+        objective = self._mk_org_obj(plan)
+
+        with self.assertRaises(ValidationError):
+            objective.with_user(self.head_user).action_designate_primary()
+        self.assertFalse(objective.is_primary)
+
+    def test_branch_manager_cannot_designate_primary(self):
+        plan = self._mk_plan()
+        objective = self._active_org_obj(plan, "Primary Candidate")
+
+        with self.assertRaises(AccessError):
+            objective.with_user(self.branch_user_a).action_designate_primary()
+        self.assertFalse(objective.is_primary)
+
+    def test_branch_objective_cannot_be_designated_primary(self):
+        plan = self._mk_plan()
+        parent = self._active_org_obj(plan, "Organization Parent")
+        branch = self._mk_branch_obj(plan, parent, warehouse=self.wh1)
+        branch.with_user(self.head_user).action_activate()
+
+        with self.assertRaises(ValidationError):
+            branch.with_user(self.head_user).action_designate_primary()
+        self.assertFalse(branch.is_primary)
+
+    def test_direct_write_cannot_change_primary_designation(self):
+        plan = self._mk_plan()
+        objective = self._active_org_obj(plan, "Primary Candidate")
+
+        with self.assertRaises(ValidationError):
+            objective.with_user(self.head_user).write({"is_primary": True})
+        self.assertFalse(objective.is_primary)
+
+    def test_direct_create_cannot_bypass_primary_workflow(self):
+        plan = self._mk_plan()
+        with self.assertRaises(ValidationError):
+            self.env["strategic.objective"].with_user(self.head_user).create(
+                {
+                    "name": "Forged Primary Objective",
+                    "plan_id": plan.id,
+                    "perspective": "financial",
+                    "scope": "organization",
+                    "owner_id": self.head_user.id,
+                    "deadline": "2026-12-31",
+                    "state": "active",
+                    "is_primary": True,
+                }
+            )
+
+    def test_history_is_read_only_to_head_office_user(self):
+        plan = self._mk_plan()
+        objective = self._active_org_obj(plan, "Primary Candidate")
+        objective.with_user(self.head_user).action_designate_primary()
+        history = self.env["strategic.objective.primary.history"].with_user(
+            self.head_user
+        ).search([("objective_id", "=", objective.id)])
+
+        with self.assertRaises(AccessError):
+            history.write({"end_reason": "Tampered audit record"})
+
+    def test_completing_primary_objective_retains_designation_until_close(self):
+        plan = self._mk_plan()
+        objective = self._active_org_obj(plan, "Primary Candidate")
+        objective.with_user(self.head_user).action_designate_primary()
+        self._add_valid_required_kr(objective, "PRIMARY_COMPLETE")
+
+        objective.with_user(self.head_user).action_complete()
+
+        objective.invalidate_recordset()
+        self.assertEqual(objective.state, "completed")
+        self.assertTrue(objective.is_primary)
+        history = self.env["strategic.objective.primary.history"].with_user(
+            self.head_user
+        ).search([("objective_id", "=", objective.id)])
+        self.assertEqual(len(history), 1)
+        self.assertFalse(history.ended_at)
+
+    def test_closing_primary_requires_replacement_when_active_objective_exists(self):
+        plan_a = self._mk_plan(start="2026-01-01", end="2026-12-31")
+        plan_b = self._mk_plan(start="2027-01-01", end="2027-12-31")
+        primary = self._active_org_obj(plan_a, "Primary Candidate A")
+        replacement = self._active_org_obj(plan_b, "Primary Candidate B")
+        primary.with_user(self.head_user).action_designate_primary()
+        self._add_valid_required_kr(primary, "PRIMARY_REPLACE")
+        primary.with_user(self.head_user).action_complete()
+
+        with self.assertRaises(ValidationError):
+            primary.with_user(self.head_user).action_close()
+
+        primary.invalidate_recordset()
+        self.assertEqual(primary.state, "completed")
+        self.assertTrue(primary.is_primary)
+        self.assertFalse(replacement.is_primary)
+
+        close_action = primary.with_user(self.head_user).action_open_close_wizard()
+        self.assertEqual(close_action["type"], "ir.actions.act_window")
+        self.assertEqual(
+            close_action["res_model"], "strategic.objective.close.wizard"
+        )
+        wizard = self.env["strategic.objective.close.wizard"].with_user(
+            self.head_user
+        ).create(
+            {
+                "objective_id": primary.id,
+                "replacement_primary_id": replacement.id,
+            }
+        )
+        wizard.action_confirm()
+
+        primary.invalidate_recordset()
+        replacement.invalidate_recordset()
+        self.assertEqual(primary.state, "closed")
+        self.assertFalse(primary.is_primary)
+        self.assertTrue(replacement.is_primary)
+        old_history = self.env["strategic.objective.primary.history"].with_user(
+            self.head_user
+        ).search([("objective_id", "=", primary.id)])
+        new_history = self.env["strategic.objective.primary.history"].with_user(
+            self.head_user
+        ).search([("objective_id", "=", replacement.id)])
+        self.assertEqual(len(old_history), 1)
+        self.assertTrue(old_history.ended_at)
+        self.assertEqual(old_history.ended_by_id, self.head_user)
+        self.assertIn("Primary Candidate B", old_history.end_reason)
+        self.assertEqual(len(new_history), 1)
+        self.assertFalse(new_history.ended_at)
+        self.assertEqual(new_history.designated_by_id, self.head_user)
+
+    def test_closing_primary_clears_designation_when_no_active_replacement_exists(self):
+        # Isolate this rule from manually created/live test-database objectives.
+        # The production invariant is company-wide, so a fresh test company is
+        # required to prove that there are genuinely no eligible replacements.
+        isolated_company = self.env["res.company"].create(
+            {"name": "Primary Objective No-Replacement Test Company"}
+        )
+        self.head_user.write({"company_ids": [(4, isolated_company.id)]})
+        plan = self._mk_plan(company=isolated_company)
+        objective = self._active_org_obj(plan, "Only Primary Candidate")
+        objective.with_user(self.head_user).action_designate_primary()
+        self._add_valid_required_kr(objective, "PRIMARY_NO_REPLACEMENT")
+        objective.with_user(self.head_user).action_complete()
+
+        objective.with_user(self.head_user).action_close()
+
+        objective.invalidate_recordset()
+        self.assertEqual(objective.state, "closed")
+        self.assertFalse(objective.is_primary)
+        history = self.env["strategic.objective.primary.history"].with_user(
+            self.head_user
+        ).search([("objective_id", "=", objective.id)])
+        self.assertEqual(len(history), 1)
+        self.assertTrue(history.ended_at)
+        self.assertIn("No eligible active organization objective remained", history.end_reason)
