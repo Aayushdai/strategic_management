@@ -1,41 +1,49 @@
-
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Root menu: visible to all strategic roles -->
+
+    <!-- Root menu: available to all three strategic roles -->
     <menuitem id="menu_strategic_management_root"
               name="Strategic Management"
               sequence="45"
               groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_employee"/>
 
-    <!-- KPI section -->
+    <!-- KPI section: available to all three strategic roles -->
     <menuitem id="menu_strategic_management_kpi"
               name="KPIs"
               parent="menu_strategic_management_root"
-              sequence="10"/>
+              sequence="10"
+              groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_employee"/>
 
+    <!-- KPI Definitions: Head Office and Branch Managers only -->
     <menuitem id="menu_strategic_kpi_definition"
               name="Definitions"
               parent="menu_strategic_management_kpi"
               action="action_strategic_kpi_definition"
-              sequence="10"/>
+              sequence="10"
+              groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,-strategic_management.group_strategic_employee"/>
 
+    <!-- KPI Targets: all three roles -->
     <menuitem id="menu_strategic_kpi_target"
               name="Targets"
               parent="menu_strategic_management_kpi"
               action="action_strategic_kpi_target"
-              sequence="20"/>
+              sequence="20"
+              groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_employee"/>
 
+    <!-- KPI Evaluations: all three roles -->
     <menuitem id="menu_strategic_kpi_evaluation"
               name="Evaluations"
               parent="menu_strategic_management_kpi"
               action="action_strategic_kpi_evaluation"
-              sequence="30"/>
+              sequence="30"
+              groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_employee"/>
 
-    <!-- Strategy section -->
+    <!-- Strategy: Head Office and Branch Managers only -->
     <menuitem id="menu_strategic_management_strategy"
               name="Strategy"
               parent="menu_strategic_management_root"
               sequence="20"
-              groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_employee"/>
+              groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,-strategic_management.group_strategic_employee"/>
 
     <!-- Strategic Plans: Head Office Managers only -->
     <menuitem id="menu_strategic_plan"
@@ -43,21 +51,58 @@
               parent="menu_strategic_management_strategy"
               action="action_strategic_plan"
               sequence="10"
-              groups="strategic_management.group_strategic_head_office_manager"/>
+              groups="strategic_management.group_strategic_head_office_manager,-strategic_management.group_strategic_branch_manager,-strategic_management.group_strategic_employee"/>
 
-    <!-- Objectives: all strategic roles -->
+    <!-- Objectives: Head Office and Branch Managers only -->
     <menuitem id="menu_strategic_objective"
               name="Objectives"
               parent="menu_strategic_management_strategy"
               action="action_strategic_objective"
               sequence="20"
-              groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_employee"/>
+              groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,-strategic_management.group_strategic_employee"/>
 
-    <!-- OKRs: all strategic roles -->
+    <!-- OKR Objectives: Head Office and Branch Managers only -->
     <menuitem id="menu_strategic_okr"
               name="OKR Objectives"
               parent="menu_strategic_management_strategy"
               action="action_strategic_okr"
               sequence="30"
-              groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_employee"/>
+              groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,-strategic_management.group_strategic_employee"/>
+
+    <!-- Persist exact visibility groups on restricted menus -->
+
+    <record id="menu_strategic_management_strategy" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [
+            ref('group_strategic_head_office_manager'),
+            ref('group_strategic_branch_manager')
+        ])]"/>
+    </record>
+
+    <record id="menu_strategic_objective" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [
+            ref('group_strategic_head_office_manager'),
+            ref('group_strategic_branch_manager')
+        ])]"/>
+    </record>
+
+    <record id="menu_strategic_okr" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [
+            ref('group_strategic_head_office_manager'),
+            ref('group_strategic_branch_manager')
+        ])]"/>
+    </record>
+
+    <record id="menu_strategic_kpi_definition" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [
+            ref('group_strategic_head_office_manager'),
+            ref('group_strategic_branch_manager')
+        ])]"/>
+    </record>
+
+    <record id="menu_strategic_plan" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [
+            ref('group_strategic_head_office_manager')
+        ])]"/>
+    </record>
+
 </odoo>

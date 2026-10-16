@@ -1,25 +1,20 @@
 id,name,model_id,group_id/id,operation,domain
-access_kpi_definition_head_office,strategic.kpi.definition head office,strategic.kpi.definition,strategic_management.group_strategic_head_office_manager,crud,
-access_kpi_definition_branch_manager,strategic.kpi.definition branch manager,strategic.kpi.definition,strategic_management.group_strategic_branch_manager,r,
-access_kpi_definition_employee,strategic.kpi.definition employee,strategic.kpi.definition,strategic_management.group_strategic_employee,r,
-access_kpi_target_head_office,strategic.kpi.target head office,strategic.kpi.target,strategic_management.group_strategic_head_office_manager,crud,
-access_kpi_target_branch_manager,strategic.kpi.target branch manager,strategic.kpi.target,strategic_management.group_strategic_branch_manager,r,"['|', ('scope', '=', 'organization'), ('warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
-access_kpi_target_employee,strategic.kpi.target employee,strategic.kpi.target,strategic_management.group_strategic_employee,r,"[('user_id', '=', user.id)]"
-access_kpi_evaluation_head_office,strategic.kpi.evaluation head office,strategic.kpi.evaluation,strategic_management.group_strategic_head_office_manager,crud,
-access_kpi_evaluation_branch_manager,strategic.kpi.evaluation branch manager,strategic.kpi.evaluation,strategic_management.group_strategic_branch_manager,r,"['|', ('scope', '=', 'organization'), ('warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
-access_kpi_evaluation_employee,strategic.kpi.evaluation employee,strategic.kpi.evaluation,strategic_management.group_strategic_employee,r,"[('user_id', '=', user.id)]"
-access_strategic_plan_head_office,strategic.plan head office,strategic.plan,strategic_management.group_strategic_head_office_manager,crud,
-access_strategic_plan_branch_manager,strategic.plan branch manager,strategic.plan,strategic_management.group_strategic_branch_manager,r,
-access_strategic_plan_employee,strategic.plan employee,strategic.plan,strategic_management.group_strategic_employee,r,
-access_strategic_objective_head_office,strategic.objective head office,strategic.objective,strategic_management.group_strategic_head_office_manager,crud,
-access_strategic_objective_branch_manager,strategic.objective branch manager,strategic.objective,strategic_management.group_strategic_branch_manager,cru,"['|', ('scope', '=', 'organization'), ('warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
-access_strategic_objective_employee,strategic.objective employee,strategic.objective,strategic_management.group_strategic_employee,r,"['|', ('scope', '=', 'organization'), ('warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
-access_strategic_objective_revision_head_office,strategic.objective.revision head office,strategic.objective.revision,strategic_management.group_strategic_head_office_manager,crud,
-access_strategic_objective_revision_branch_manager,strategic.objective.revision branch manager,strategic.objective.revision,strategic_management.group_strategic_branch_manager,r,"['|', ('objective_id.scope', '=', 'organization'), ('objective_id.warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
-access_strategic_objective_revision_employee,strategic.objective.revision employee,strategic.objective.revision,strategic_management.group_strategic_employee,r,"['|', ('objective_id.scope', '=', 'organization'), ('objective_id.warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
-access_strategic_okr_head_office,strategic.okr.objective head office,strategic.okr.objective,strategic_management.group_strategic_head_office_manager,crud,
-access_strategic_okr_branch_manager,strategic.okr.objective branch manager,strategic.okr.objective,strategic_management.group_strategic_branch_manager,cru,"['|', ('scope', '=', 'organization'), ('warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
-access_strategic_okr_employee,strategic.okr.objective employee,strategic.okr.objective,strategic_management.group_strategic_employee,r,"['|', ('scope', '=', 'organization'), ('warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
-access_strategic_kr_head_office,strategic.key.result head office,strategic.key.result,strategic_management.group_strategic_head_office_manager,crud,
-access_strategic_kr_branch_manager,strategic.key.result branch manager,strategic.key.result,strategic_management.group_strategic_branch_manager,cru,"['|', ('scope', '=', 'organization'), ('warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
-access_strategic_kr_employee,strategic.key.result employee,strategic.key.result,strategic_management.group_strategic_employee,r,"['|', ('scope', '=', 'organization'), ('warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
+access_kpi_definition_head_office,Strategic KPI Definition - Head Office,strategic.kpi.definition,strategic_management.group_strategic_head_office_manager,crud,
+access_kpi_definition_branch_manager,Strategic KPI Definition - Branch Manager,strategic.kpi.definition,strategic_management.group_strategic_branch_manager,r,
+access_kpi_definition_employee,Strategic KPI Definition - Employee,strategic.kpi.definition,strategic_management.group_strategic_employee,r,"[('target_ids', 'any', [('scope', '=', 'user'), ('user_id', '=', user.id)])]"
+access_kpi_target_head_office,Strategic KPI Target - Head Office,strategic.kpi.target,strategic_management.group_strategic_head_office_manager,crud,
+access_kpi_target_branch_manager,Strategic KPI Target - Branch Manager,strategic.kpi.target,strategic_management.group_strategic_branch_manager,r,"['|', ('scope', '=', 'organization'), '|', ('warehouse_id', '=', user.strategic_branch_warehouse_id.id), '&', ('scope', '=', 'user'), ('user_id.strategic_branch_warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
+access_kpi_target_employee,Strategic KPI Target - Employee,strategic.kpi.target,strategic_management.group_strategic_employee,r,"[('scope', '=', 'user'), ('user_id', '=', user.id)]"
+access_kpi_evaluation_head_office,Strategic KPI Evaluation - Head Office,strategic.kpi.evaluation,strategic_management.group_strategic_head_office_manager,crud,
+access_kpi_evaluation_branch_manager,Strategic KPI Evaluation - Branch Manager,strategic.kpi.evaluation,strategic_management.group_strategic_branch_manager,r,"['|', ('scope', '=', 'organization'), '|', ('warehouse_id', '=', user.strategic_branch_warehouse_id.id), '&', ('scope', '=', 'user'), ('user_id.strategic_branch_warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
+access_kpi_evaluation_employee,Strategic KPI Evaluation - Employee,strategic.kpi.evaluation,strategic_management.group_strategic_employee,r,"[('user_id', '=', user.id)]"
+access_strategic_plan_head_office,Strategic Plan - Head Office,strategic.plan,strategic_management.group_strategic_head_office_manager,crud,
+access_strategic_plan_branch_manager,Strategic Plan - Branch Manager,strategic.plan,strategic_management.group_strategic_branch_manager,r,
+access_strategic_objective_head_office,Strategic Objective - Head Office,strategic.objective,strategic_management.group_strategic_head_office_manager,crud,
+access_strategic_objective_branch_manager,Strategic Objective - Branch Manager,strategic.objective,strategic_management.group_strategic_branch_manager,cru,"['|', ('scope', '=', 'organization'), ('warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
+access_strategic_objective_revision_head_office,Strategic Objective Revision - Head Office,strategic.objective.revision,strategic_management.group_strategic_head_office_manager,crud,
+access_strategic_objective_revision_branch_manager,Strategic Objective Revision - Branch Manager,strategic.objective.revision,strategic_management.group_strategic_branch_manager,r,"['|', ('objective_id.scope', '=', 'organization'), ('objective_id.warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
+access_strategic_okr_head_office,Strategic OKR Objective - Head Office,strategic.okr.objective,strategic_management.group_strategic_head_office_manager,crud,
+access_strategic_okr_branch_manager,Strategic OKR Objective - Branch Manager,strategic.okr.objective,strategic_management.group_strategic_branch_manager,cru,"['|', ('scope', '=', 'organization'), ('warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
+access_strategic_kr_head_office,Strategic Key Result - Head Office,strategic.key.result,strategic_management.group_strategic_head_office_manager,crud,
+access_strategic_kr_branch_manager,Strategic Key Result - Branch Manager,strategic.key.result,strategic_management.group_strategic_branch_manager,cru,"['|', ('scope', '=', 'organization'), ('warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
