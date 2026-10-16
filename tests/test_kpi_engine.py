@@ -374,7 +374,7 @@ class TestStrategicKpiDefinitionVersioning(TransactionCase):
         revision.invalidate_recordset()
         initial.invalidate_recordset()
         self.assertEqual(revision.state, "approved")
-        self.assertEqual(initial.effective_to, self._month_end(0))
+        self.assertEqual(str(initial.effective_to), self._month_end(0))
         self.assertEqual(old_evaluation.definition_version_id, initial)
         self.assertEqual(old_evaluation.attainment, 80.0)
 
@@ -451,5 +451,540 @@ class TestStrategicKpiDefinitionVersioning(TransactionCase):
                     "effective_from": self._month_start(1),
                     "change_reason": "Unauthorized branch revision.",
                 }
+            )
+@tagged("post_install", "-at_install")
+class TestStrategicKpiBaseline(TransactionCase):
+    """TDD contracts for approved, scoped, historically traceable KPI baselines."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.company = cls.env.company
+        cls.group_user = cls.env.ref("base.group_user")
+        cls.group_head = cls.env.ref("strategic_management.group_strategic_head_office_manager")
+        cls.group_branch = cls.env.ref("strategic_management.group_strategic_branch_manager")
+        cls.head_user = cls._make_user("kpi_baseline_head", cls.group_head)
+        cls.branch_user = cls._make_user("kpi_baseline_branch", cls.group_branch)
+        cls.Kpi = cls.env["strategic.kpi.definition"]
+        cls.Warehouse = cls.env["stock.warehouse"]
+        cls.warehouse = cls.Warehouse.search(
+            [("company_id", "=", cls.company.id)], limit=1
+        )
+        if not cls.warehouse:
+            cls.warehouse = cls.Warehouse.create(
+                {"name": "Baseline Test Branch", "code": "BTB", "company_id": cls.company.id}
+            )
+
+    @classmethod
+    def _make_user(cls, login, group):
+        return cls.env["res.users"].with_context(no_reset_password=True).create(
+            {
+                "name": login,
+                "login": login,
+                "email": "%s@example.com" % login,
+                "company_id": cls.company.id,
+                "company_ids": [(6, 0, [cls.company.id])],
+                "group_ids": [(6, 0, [cls.group_user.id, group.id])],
+            }
+        )
+
+    def _require_baseline_model(self):
+        # Red-stage behavior: fail the registration test explicitly and let
+        # dependent contract tests skip until the baseline model is implemented.
+        if "strategic.kpi.baseline" not in self.env.registry.models:
+            self.skipTest("Approved KPI baseline model is not implemented yet.")
+        return self.env["strategic.kpi.baseline"]
+
+    def _create_kpi(self, code="BASELINE_KPI"):
+        return self.Kpi.with_user(self.head_user).create(
+            {
+                "name": "%s Test KPI" % code,
+                "code": code,
+                "unit": "%",
+                "direction": "higher",
+                "source_type": "manual",
+                "description": "KPI used to test baseline management.",
+                "company_id": self.company.id,
+            }
+        )
+
+    def _baseline_values(self, kpi, **overrides):
+        from datetime import date, timedelta
+
+        today = date.today()
+        source_period_end = today.replace(day=1) - timedelta(days=1)
+        source_period_start = source_period_end.replace(day=1)
+        values = {
+            "kpi_id": kpi.id,
+            "definition_version_id": kpi.version_ids[:1].id,
+            "scope": "organization",
+            "baseline_value": 72.5,
+            "source_period_start": source_period_start.isoformat(),
+            "source_period_end": source_period_end.isoformat(),
+            "effective_from": today.isoformat(),
+            "source_note": "Reconciled prior-month finance report; approved for comparison.",
+            "change_reason": "Initial approved baseline for the KPI.",
+        }
+        values.update(overrides)
+        return values
+
+    def _create_baseline(self, code="BASELINE_KPI", **overrides):
+        kpi = self._create_kpi(code)
+        baseline = self._require_baseline_model().with_user(self.head_user).create(
+            self._baseline_values(kpi, **overrides)
+        )
+        return kpi, baseline
+
+    def test_00_baseline_model_is_registered(self):
+        self.assertIn(
+            "strategic.kpi.baseline",
+            self.env.registry.models,
+            "Approved baselines must be represented by a dedicated model, separate from KPI targets.",
+        )
+
+    def test_create_derives_readonly_definition_version_when_payload_omits_it(self):
+        Baseline = self._require_baseline_model()
+        kpi = self._create_kpi("BASELINE_DERIVE_VERSION")
+        values = self._baseline_values(kpi)
+        values.pop("definition_version_id", None)
+
+        # Mirrors the web form: readonly onchange fields may not be included
+        # in the create payload, even though the version appears on-screen.
+        baseline = Baseline.with_user(self.head_user).create(values)
+
+        self.assertEqual(baseline.definition_version_id, kpi.version_ids[:1])
+
+    def test_baseline_starts_as_draft_and_retains_provenance(self):
+        self._require_baseline_model()
+        kpi, baseline = self._create_baseline("BASELINE_DRAFT")
+        self.assertEqual(baseline.state, "draft")
+        self.assertEqual(baseline.kpi_id, kpi)
+        self.assertEqual(baseline.definition_version_id, kpi.version_ids[:1])
+        self.assertEqual(baseline.scope, "organization")
+        self.assertAlmostEqual(baseline.baseline_value, 72.5)
+        self.assertTrue(baseline.source_period_start)
+        self.assertTrue(baseline.source_period_end)
+        self.assertTrue(baseline.effective_from)
+        self.assertIn("Reconciled prior-month", baseline.source_note)
+        self.assertFalse(baseline.approved_by_id)
+        self.assertFalse(baseline.approved_at)
+
+    def test_head_office_approval_records_actor_and_timestamp(self):
+        self._require_baseline_model()
+        _kpi, baseline = self._create_baseline("BASELINE_APPROVE")
+        baseline.with_user(self.head_user).action_approve()
+        baseline.invalidate_recordset()
+        self.assertEqual(baseline.state, "approved")
+        self.assertEqual(baseline.approved_by_id, self.head_user)
+        self.assertTrue(baseline.approved_at)
+
+    def test_branch_manager_cannot_create_baseline(self):
+        Baseline = self._require_baseline_model()
+        kpi = self._create_kpi("BASELINE_BRANCH_CREATE")
+        with self.assertRaises(AccessError):
+            Baseline.with_user(self.branch_user).create(
+                self._baseline_values(kpi, change_reason="Unauthorized baseline creation.")
+            )
+
+    def test_branch_manager_cannot_approve_baseline(self):
+        self._require_baseline_model()
+        _kpi, baseline = self._create_baseline("BASELINE_BRANCH_APPROVE")
+        with self.assertRaises(AccessError):
+            baseline.with_user(self.branch_user).action_approve()
+        self.assertEqual(baseline.state, "draft")
+
+    def test_approved_baseline_is_immutable(self):
+        self._require_baseline_model()
+        _kpi, baseline = self._create_baseline("BASELINE_IMMUTABLE")
+        baseline.with_user(self.head_user).action_approve()
+        baseline.invalidate_recordset()
+        with self.assertRaises(ValidationError):
+            baseline.with_user(self.head_user).write({"baseline_value": 99.0})
+        with self.assertRaises(ValidationError):
+            baseline.with_user(self.head_user).write(
+                {"source_note": "Replace the evidence for an approved baseline."}
+            )
+
+    def test_approved_baseline_cannot_be_deleted(self):
+        self._require_baseline_model()
+        _kpi, baseline = self._create_baseline("BASELINE_NO_DELETE")
+        baseline.with_user(self.head_user).action_approve()
+        with self.assertRaises(ValidationError):
+            baseline.with_user(self.head_user).unlink()
+
+    def test_branch_baseline_requires_warehouse(self):
+        self._require_baseline_model()
+        kpi = self._create_kpi("BASELINE_BRANCH_SCOPE")
+        with self.assertRaises(ValidationError):
+            self._require_baseline_model().with_user(self.head_user).create(
+                self._baseline_values(kpi, scope="branch")
+            )
+
+    def test_employee_baseline_requires_employee(self):
+        self._require_baseline_model()
+        kpi = self._create_kpi("BASELINE_EMPLOYEE_SCOPE")
+        with self.assertRaises(ValidationError):
+            self._require_baseline_model().with_user(self.head_user).create(
+                self._baseline_values(kpi, scope="user")
+            )
+
+    def test_approved_baseline_revision_closes_prior_effective_interval(self):
+        from datetime import date, timedelta
+
+        Baseline = self._require_baseline_model()
+        kpi = self._create_kpi("BASELINE_REVISION_INTERVAL")
+        today = date.today()
+        first = Baseline.with_user(self.head_user).create(
+            self._baseline_values(kpi, effective_from=today.isoformat())
+        )
+        first.with_user(self.head_user).action_approve()
+
+        next_start = today + timedelta(days=30)
+        revised = Baseline.with_user(self.head_user).create(
+            self._baseline_values(
+                kpi,
+                baseline_value=75.0,
+                effective_from=next_start.isoformat(),
+                change_reason="Approved replacement baseline for the next period.",
+            )
+        )
+        revised.with_user(self.head_user).action_approve()
+        first.invalidate_recordset()
+        self.assertEqual(first.effective_to, next_start - timedelta(days=1))
+        self.assertFalse(revised.effective_to)
+
+    def test_baseline_relative_target_requires_explicit_approved_baseline(self):
+        from datetime import date, timedelta
+
+        kpi = self._create_kpi("BASELINE_TARGET_REQUIRED")
+        today = date.today()
+        month_end = (today.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+        with self.assertRaises(ValidationError):
+            self.env["strategic.kpi.target"].with_user(self.head_user).create({
+                "kpi_id": kpi.id,
+                "date_start": today.isoformat(),
+                "date_end": month_end.isoformat(),
+                "scope": "organization",
+                "target_basis": "baseline_relative",
+                "target_value": 80.0,
+                "state": "approved",
+            })
+
+    def test_absolute_target_cannot_reference_baseline(self):
+        from datetime import date, timedelta
+
+        Baseline = self._require_baseline_model()
+        kpi, baseline = self._create_baseline("BASELINE_ABSOLUTE_TARGET")
+        baseline.with_user(self.head_user).action_approve()
+        today = date.today()
+        month_end = (today.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+        with self.assertRaises(ValidationError):
+            self.env["strategic.kpi.target"].with_user(self.head_user).create({
+                "kpi_id": kpi.id,
+                "date_start": today.isoformat(),
+                "date_end": month_end.isoformat(),
+                "scope": "organization",
+                "target_basis": "absolute",
+                "baseline_id": baseline.id,
+                "target_value": 80.0,
+                "state": "approved",
+            })
+
+    def test_baseline_relative_target_requires_matching_scope(self):
+        from datetime import date, timedelta
+
+        kpi, baseline = self._create_baseline("BASELINE_TARGET_SCOPE")
+        baseline.with_user(self.head_user).action_approve()
+        today = date.today()
+        month_end = (today.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+        with self.assertRaises(ValidationError):
+            self.env["strategic.kpi.target"].with_user(self.head_user).create({
+                "kpi_id": kpi.id,
+                "date_start": today.isoformat(),
+                "date_end": month_end.isoformat(),
+                "scope": "branch",
+                "warehouse_id": self.warehouse.id,
+                "target_basis": "baseline_relative",
+                "baseline_id": baseline.id,
+                "target_value": 80.0,
+                "state": "approved",
+            })
+
+    def test_baseline_relative_target_snapshots_baseline_on_evaluation(self):
+        from datetime import date, timedelta
+
+        kpi, baseline = self._create_baseline("BASELINE_TARGET_SNAPSHOT")
+        baseline.with_user(self.head_user).action_approve()
+        today = date.today()
+        month_end = (today.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+        target = self.env["strategic.kpi.target"].with_user(self.head_user).create({
+            "kpi_id": kpi.id,
+            "date_start": today.isoformat(),
+            "date_end": month_end.isoformat(),
+            "scope": "organization",
+            "target_basis": "baseline_relative",
+            "baseline_id": baseline.id,
+            "target_value": 80.0,
+            "state": "approved",
+        })
+        evaluation = self.env["strategic.kpi.evaluation"].with_user(self.head_user).create({
+            "target_id": target.id,
+            "actual_value": 82.0,
+            "has_actual_value": True,
+        })
+        self.assertEqual(evaluation.target_basis, "baseline_relative")
+        self.assertEqual(evaluation.baseline_id, baseline)
+        self.assertAlmostEqual(evaluation.baseline_value, baseline.baseline_value)
+        with self.assertRaises(ValidationError):
+            evaluation.with_user(self.head_user).write({"baseline_value": 99.0})
+
+    def test_baseline_source_period_must_be_valid(self):
+        self._require_baseline_model()
+        kpi = self._create_kpi("BASELINE_INVALID_PERIOD")
+        with self.assertRaises(ValidationError):
+            self._require_baseline_model().with_user(self.head_user).create(
+                self._baseline_values(
+                    kpi,
+                    source_period_start="2026-10-31",
+                    source_period_end="2026-10-01",
+                )
+            )
+
+
+    # Target-resolution contracts. The production resolver is intentionally
+    # checked before exercising the cases so the initial TDD run reports one
+    # clear missing-capability failure rather than a cascade of AttributeErrors.
+    def _require_target_resolver(self):
+        Target = self.env["strategic.kpi.target"]
+        if not hasattr(Target, "_resolve_for_period"):
+            self.skipTest("Deterministic KPI target resolver is not implemented yet.")
+        return Target.with_user(self.head_user)
+
+    def _create_resolution_target(self, kpi, **overrides):
+        values = {
+            "kpi_id": kpi.id,
+            "date_start": "2026-01-01",
+            "date_end": "2026-01-31",
+            "scope": "organization",
+            "target_value": 10.0,
+            "state": "approved",
+        }
+        values.update(overrides)
+        return self.env["strategic.kpi.target"].with_user(self.head_user).create(values)
+
+    def test_00_target_resolver_is_registered(self):
+        Target = self.env["strategic.kpi.target"]
+        self.assertTrue(
+            hasattr(Target, "_resolve_for_period"),
+            "KPI target selection must use a deterministic resolver that fails closed when the match is missing or ambiguous.",
+        )
+
+    def test_resolver_returns_the_unique_approved_target_covering_full_period(self):
+        Target = self._require_target_resolver()
+        kpi = self._create_kpi("TARGET_RESOLVE_UNIQUE")
+        target = self._create_resolution_target(kpi)
+
+        resolved = Target._resolve_for_period(
+            kpi,
+            "2026-01-01",
+            "2026-01-31",
+            scope="organization",
+            required=True,
+        )
+        self.assertEqual(resolved, target)
+
+    def test_resolver_fails_closed_when_no_target_matches(self):
+        Target = self._require_target_resolver()
+        kpi = self._create_kpi("TARGET_RESOLVE_MISSING")
+
+        with self.assertRaises(ValidationError):
+            Target._resolve_for_period(
+                kpi,
+                "2026-01-01",
+                "2026-01-31",
+                scope="organization",
+                required=True,
+            )
+
+    def test_resolver_allows_no_target_for_optional_generic_monitoring(self):
+        Target = self._require_target_resolver()
+        kpi = self._create_kpi("TARGET_RESOLVE_OPTIONAL")
+
+        resolved = Target._resolve_for_period(
+            kpi,
+            "2026-01-01",
+            "2026-01-31",
+            scope="organization",
+            required=False,
+        )
+        self.assertFalse(resolved)
+
+    def test_resolver_fails_closed_when_multiple_approved_targets_match(self):
+        Target = self._require_target_resolver()
+        kpi = self._create_kpi("TARGET_RESOLVE_AMBIGUOUS")
+        self._create_resolution_target(kpi, target_value=10.0)
+        self._create_resolution_target(kpi, target_value=12.0)
+
+        with self.assertRaises(ValidationError):
+            Target._resolve_for_period(
+                kpi,
+                "2026-01-01",
+                "2026-01-31",
+                scope="organization",
+                required=True,
+            )
+
+    def test_resolver_does_not_use_a_draft_target(self):
+        Target = self._require_target_resolver()
+        kpi = self._create_kpi("TARGET_RESOLVE_DRAFT")
+        self._create_resolution_target(kpi, state="draft")
+
+        with self.assertRaises(ValidationError):
+            Target._resolve_for_period(
+                kpi,
+                "2026-01-01",
+                "2026-01-31",
+                scope="organization",
+                required=True,
+            )
+
+    def test_resolver_does_not_fallback_across_scope(self):
+        Target = self._require_target_resolver()
+        kpi = self._create_kpi("TARGET_RESOLVE_SCOPE")
+        self._create_resolution_target(
+            kpi,
+            scope="branch",
+            warehouse_id=self.warehouse.id,
+        )
+
+        with self.assertRaises(ValidationError):
+            Target._resolve_for_period(
+                kpi,
+                "2026-01-01",
+                "2026-01-31",
+                scope="organization",
+                required=True,
+            )
+
+    def test_resolver_rejects_target_that_covers_only_part_of_period(self):
+        Target = self._require_target_resolver()
+        kpi = self._create_kpi("TARGET_RESOLVE_PARTIAL_PERIOD")
+        self._create_resolution_target(
+            kpi,
+            date_start="2026-01-10",
+            date_end="2026-01-31",
+        )
+
+        with self.assertRaises(ValidationError):
+            Target._resolve_for_period(
+                kpi,
+                "2026-01-01",
+                "2026-01-31",
+                scope="organization",
+                required=True,
+            )
+
+    def _create_resolution_key_result(self, kpi, target, code):
+        """Create an organization-scoped KR with an explicit approved target."""
+        Plan = self.env["strategic.plan"].with_user(self.head_user)
+        plan = Plan.create(
+            {
+                "name": "Target Resolution Plan %s" % code,
+                "company_id": self.company.id,
+                "date_start": "2026-01-01",
+                "date_end": "2026-12-31",
+            }
+        )
+        objective = self.env["strategic.objective"].with_user(self.head_user).create(
+            {
+                "name": "Target Resolution Objective %s" % code,
+                "plan_id": plan.id,
+                "perspective": "financial",
+                "scope": "organization",
+                "owner_id": self.head_user.id,
+                "deadline": "2026-12-31",
+                "state": "draft",
+            }
+        )
+        okr = self.env["strategic.okr.objective"].with_user(self.head_user).create(
+            {
+                "name": "Target Resolution OKR %s" % code,
+                "strategic_objective_id": objective.id,
+                "owner_id": self.head_user.id,
+                "date_start": target.date_start.isoformat(),
+                "date_end": target.date_end.isoformat(),
+            }
+        )
+        return self.env["strategic.key.result"].with_user(self.head_user).create(
+            {
+                "name": "Target Resolution KR %s" % code,
+                "okr_objective_id": okr.id,
+                "primary_kpi_id": kpi.id,
+                "target_id": target.id,
+                "required": True,
+            }
+        )
+
+    def test_key_result_resolver_returns_its_explicit_target_even_if_another_matches(self):
+        """KR resolution must use its own target, not a generic search result."""
+        Target = self._require_target_resolver()
+        kpi = self._create_kpi("TARGET_RESOLVE_KR_EXPLICIT")
+        explicit_target = self._create_resolution_target(kpi, target_value=10.0)
+        # A second matching record makes generic lookup ambiguous, but must not
+        # override or invalidate the target explicitly linked to this KR.
+        self._create_resolution_target(kpi, target_value=12.0)
+        key_result = self._create_resolution_key_result(
+            kpi, explicit_target, "EXPLICIT_TARGET"
+        )
+
+        resolved = Target._resolve_for_period(
+            kpi,
+            "2026-01-01",
+            "2026-01-31",
+            scope="organization",
+            required=True,
+            key_result=key_result,
+        )
+        self.assertEqual(resolved, explicit_target)
+
+    def test_evaluation_creation_uses_kr_explicit_target_instead_of_generic_fallback(self):
+        """A second generic match must not make an explicit KR target unusable."""
+        kpi = self._create_kpi("TARGET_RESOLVE_KR_EVALUATION")
+        explicit_target = self._create_resolution_target(kpi, target_value=10.0)
+        self._create_resolution_target(kpi, target_value=12.0)
+        key_result = self._create_resolution_key_result(
+            kpi, explicit_target, "EVALUATION_TARGET"
+        )
+
+        # Evaluation creation should recognize that the selected target is
+        # explicitly assigned to a KR and resolve in that KR context, rather
+        # than running an ambiguous generic-monitoring lookup.
+        evaluation = self.env["strategic.kpi.evaluation"].with_user(self.head_user).create(
+            {
+                "target_id": explicit_target.id,
+                "actual_value": 8.0,
+                "has_actual_value": True,
+            }
+        )
+        key_result.with_user(self.head_user).write({"evaluation_id": evaluation.id})
+        self.assertEqual(evaluation.target_id, explicit_target)
+        self.assertEqual(key_result.evaluation_id, evaluation)
+        self.assertEqual(key_result.scoring_status, "valid")
+        self.assertAlmostEqual(key_result.attainment, 80.0)
+
+    def test_key_result_resolver_rejects_a_different_reporting_period(self):
+        Target = self._require_target_resolver()
+        kpi = self._create_kpi("TARGET_RESOLVE_KR_PERIOD")
+        target = self._create_resolution_target(kpi)
+        key_result = self._create_resolution_key_result(kpi, target, "PERIOD_MISMATCH")
+
+        with self.assertRaises(ValidationError):
+            Target._resolve_for_period(
+                kpi,
+                "2026-01-02",
+                "2026-01-31",
+                scope="organization",
+                required=True,
+                key_result=key_result,
             )
 

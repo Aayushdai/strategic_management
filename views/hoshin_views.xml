@@ -88,6 +88,7 @@
                                     <field name="breakthrough_objective_id" optional="hide"/>
                                     <field name="annual_objective_id" optional="hide"/>
                                     <field name="kpi_id" optional="hide"/>
+                                    <field name="target_id" optional="hide"/>
                                     <field name="owner_id" optional="hide"/>
                                     <field name="state" widget="badge"/>
                                     <field name="effective_date"/>
@@ -144,6 +145,7 @@
                 <field name="annual_objective_id" optional="hide"/>
                 <field name="initiative_id" optional="hide"/>
                 <field name="kpi_id" optional="hide"/>
+                <field name="target_id" optional="hide"/>
                 <field name="owner_id" optional="hide"/>
                 <field name="effective_date"/>
                 <field name="state" widget="badge"/>
@@ -192,6 +194,12 @@
                                    readonly="id"/>
                             <field name="kpi_id"
                                    string="KPI / Metric"
+                                   invisible="link_type not in ('I>M', 'B>M')"
+                                   required="link_type in ('I>M', 'B>M')"
+                                   readonly="id"/>
+                            <field name="target_id"
+                                   string="Approved KPI Target"
+                                   domain="[('kpi_id', '=', kpi_id), ('state', '=', 'approved'), ('scope', '=', 'organization'), ('date_start', '&lt;=', effective_date), ('date_end', '&gt;=', effective_date)]"
                                    invisible="link_type not in ('I>M', 'B>M')"
                                    required="link_type in ('I>M', 'B>M')"
                                    readonly="id"/>
@@ -322,6 +330,10 @@
                            invisible="link_type not in ('I>A', 'I>M', 'I>O')"
                            required="link_type in ('I>A', 'I>M', 'I>O')"/>
                     <field name="kpi_id" string="KPI / Metric"
+                           invisible="link_type not in ('I>M', 'B>M')"
+                           required="link_type in ('I>M', 'B>M')"/>
+                    <field name="target_id" string="Approved KPI Target"
+                           domain="[('kpi_id', '=', kpi_id), ('state', '=', 'approved'), ('scope', '=', 'organization'), ('date_start', '&lt;=', effective_date), ('date_end', '&gt;=', effective_date)]"
                            invisible="link_type not in ('I>M', 'B>M')"
                            required="link_type in ('I>M', 'B>M')"/>
                     <field name="owner_id" string="Accountable Owner"

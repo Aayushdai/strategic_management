@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_strategic_kpi_measurement_list" model="ir.ui.view">
+        <field name="name">strategic.kpi.measurement.list</field>
+        <field name="model">strategic.kpi.measurement</field>
+        <field name="arch" type="xml">
+            <list create="1" edit="0" delete="0"
+                  decoration-success="state == 'approved'"
+                  decoration-warning="state in ('submitted', 'returned')"
+                  decoration-danger="state == 'rejected'">
+                <field name="name"/>
+                <field name="kpi_id"/>
+                <field name="target_id"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
+                <field name="scope"/>
+                <field name="warehouse_id" optional="hide"/>
+                <field name="user_id" optional="hide"/>
+                <field name="actual_value"/>
+                <field name="unit"/>
+                <field name="state" widget="badge"/>
+                <field name="submitted_by_id" optional="hide"/>
+                <field name="reviewed_by_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_strategic_kpi_measurement_form" model="ir.ui.view">
+        <field name="name">strategic.kpi.measurement.form</field>
+        <field name="model">strategic.kpi.measurement</field>
+        <field name="arch" type="xml">
+            <form delete="0">
+                <header>
+                    <button name="action_submit" string="Submit for Review" type="object"
+                            class="btn-primary" invisible="state not in ('draft', 'returned')"/>
+                    <button name="action_approve" string="Approve" type="object"
+                            class="btn-primary"
+                            groups="strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_head_office_manager"
+                            invisible="state != 'submitted'"/>
+                    <button name="action_return_for_correction" string="Return for Correction" type="object"
+                            groups="strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_head_office_manager"
+                            invisible="state != 'submitted'"/>
+                    <button name="action_reject" string="Reject" type="object"
+                            groups="strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_head_office_manager"
+                            invisible="state != 'submitted'"/>
+                    <button name="action_create_correction" string="Create Correction" type="object"
+                            groups="strategic_management.group_strategic_employee,strategic_management.group_strategic_branch_manager"
+                            invisible="state != 'approved'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,returned,approved,rejected"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group string="Measurement Contract">
+                            <field name="target_id" readonly="1"/>
+                            <field name="kpi_id" readonly="1"/>
+                            <field name="definition_version_id" readonly="1"/>
+                            <field name="date_start" readonly="1"/>
+                            <field name="date_end" readonly="1"/>
+                            <field name="scope" readonly="1"/>
+                            <field name="warehouse_id" readonly="1" invisible="scope != 'branch'"/>
+                            <field name="user_id" readonly="1" invisible="scope != 'user'"/>
+                            <field name="unit" readonly="1"/>
+                        </group>
+                        <group string="Submitted Value">
+                            <field name="actual_value" readonly="state not in ('draft', 'returned')"/>
+                            <field name="has_actual_value" readonly="state not in ('draft', 'returned')"/>
+                            <field name="source_reference" readonly="state not in ('draft', 'returned')"/>
+                            <field name="evidence_attachment_ids" widget="many2many_binary"
+                                   readonly="state not in ('draft', 'returned')"/>
+                            <field name="submitter_note" readonly="state not in ('draft', 'returned')"/>
+                            <field name="correction_note" readonly="state not in ('draft', 'returned')"
+                                   invisible="state not in ('returned', 'draft') and not correction_note"/>
+                            <field name="correction_reason" readonly="state != 'draft' or not corrects_measurement_id" invisible="not corrects_measurement_id"/>
+                            <field name="corrects_measurement_id" readonly="1" invisible="not corrects_measurement_id"/>
+                        </group>
+                    </group>
+                    <group string="Review" groups="strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_head_office_manager">
+                        <field name="review_note" readonly="state != 'submitted'"/>
+                        <field name="reviewed_by_id" readonly="1"/>
+                        <field name="reviewed_at" readonly="1"/>
+                    </group>
+                    <group string="Submission Audit">
+                        <field name="submitted_by_id" readonly="1"/>
+                        <field name="submitted_at" readonly="1"/>
+                        <field name="submission_version" readonly="1"/>
+                        <field name="evaluation_ids" readonly="1">
+                            <list create="0" edit="0" delete="0">
+                                <field name="name"/>
+                                <field name="attainment"/>
+                                <field name="attainment_status"/>
+                                <field name="evaluated_at"/>
+                                <field name="superseded_by_id"/>
+                            </list>
+                        </field>
+                    </group>
+                    <notebook>
+                        <page string="Submission Versions">
+                            <field name="revision_ids" readonly="1">
+                                <list create="0" edit="0" delete="0">
+                                    <field name="submission_version"/>
+                                    <field name="actual_value"/>
+                                    <field name="source_reference"/>
+                                    <field name="submitted_by_id"/>
+                                    <field name="submitted_at"/>
+                                    <field name="correction_note"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Review History">
+                            <field name="review_history_ids" readonly="1">
+                                <list create="0" edit="0" delete="0">
+                                    <field name="submission_version"/>
+                                    <field name="decision" widget="badge"/>
+                                    <field name="reason"/>
+                                    <field name="reviewed_by_id"/>
+                                    <field name="reviewed_at"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Corrections" invisible="not correction_ids">
+                            <field name="correction_ids" readonly="1">
+                                <list create="0" edit="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="correction_reason"/>
+                                    <field name="actual_value"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_strategic_kpi_measurement_search" model="ir.ui.view">
+        <field name="name">strategic.kpi.measurement.search</field>
+        <field name="model">strategic.kpi.measurement</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="kpi_id"/>
+                <field name="target_id"/>
+                <field name="state"/>
+                <filter name="awaiting_review" string="Awaiting Review" domain="[('state', '=', 'submitted')]"/>
+                <filter name="returned" string="Returned for Correction" domain="[('state', '=', 'returned')]"/>
+                <filter name="approved" string="Approved" domain="[('state', '=', 'approved')]"/>
+                <filter name="rejected" string="Rejected" domain="[('state', '=', 'rejected')]"/>
+                <group>
+                    <filter name="group_kpi" string="KPI" context="{'group_by': 'kpi_id'}"/>
+                    <filter name="group_state" string="Review State" context="{'group_by': 'state'}"/>
+                    <filter name="group_period" string="Period Start" context="{'group_by': 'date_start'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_strategic_kpi_measurement" model="ir.actions.act_window">
+        <field name="name">Manual KPI Measurements</field>
+        <field name="res_model">strategic.kpi.measurement</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_strategic_kpi_measurement_search"/>
+    </record>
+
+    <record id="view_strategic_kpi_target_form_measurement_button" model="ir.ui.view">
+        <field name="name">strategic.kpi.target.form.measurement.button</field>
+        <field name="model">strategic.kpi.target</field>
+        <field name="inherit_id" ref="view_strategic_kpi_target_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_open_measurements" string="Manual Measurements" type="object"
+                        class="btn-secondary"
+                        groups="strategic_management.group_strategic_employee,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_head_office_manager"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

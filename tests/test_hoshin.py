@@ -98,6 +98,19 @@ class TestHoshinXMatrix(StrategyFixture):
         )
         return self.env["strategic.xmatrix.alignment"]
 
+    def _mk_metric_target(self, kpi, start="2026-01-01", end="2026-12-31", state="approved", scope="organization", warehouse=None):
+        values = {
+            "kpi_id": kpi.id,
+            "date_start": start,
+            "date_end": end,
+            "scope": scope,
+            "target_value": 100.0,
+            "state": state,
+        }
+        if warehouse:
+            values["warehouse_id"] = warehouse.id
+        return self.env["strategic.kpi.target"].with_user(self.head_user).create(values)
+
     def _hoshin_objective(self, plan, name, horizon):
         obj = self._mk_org_obj(plan)
         obj.write({"name": name, "hoshin_level": horizon})
@@ -234,12 +247,15 @@ class TestHoshinXMatrix(StrategyFixture):
                 "annual_objective_id": annual.id,
             }
         )
+        target = self._mk_metric_target(kpi)
         Alignment.with_user(self.head_user).create(
             {
                 "link_type": "I>M",
                 "relationship_type": "primary",
                 "initiative_id": initiative.id,
                 "kpi_id": kpi.id,
+                "target_id": target.id,
+                "effective_date": "2026-06-15",
             }
         )
         Alignment.with_user(self.head_user).create(
@@ -256,9 +272,214 @@ class TestHoshinXMatrix(StrategyFixture):
         self.assertEqual(initiative.owner_id, self.head_user)
 
 
+    def test_breakthrough_metric_link_uses_explicit_approved_target(self):
+        Alignment = self._require_alignment_model()
+        plan = self._mk_plan()
+        breakthrough = self._hoshin_objective(plan, "Breakthrough Metric", "breakthrough")
+        kpi = self._mk_kpi("XMAT-BREAKTHROUGH-METRIC")
+        target = self._mk_metric_target(kpi)
+        link = Alignment.with_user(self.head_user).create({
+            "link_type": "B>M",
+            "relationship_type": "primary",
+            "breakthrough_objective_id": breakthrough.id,
+            "kpi_id": kpi.id,
+            "target_id": target.id,
+            "effective_date": "2026-06-15",
+        })
+        self.assertEqual(link.kpi_id, kpi)
+        self.assertEqual(link.target_id, target)
+
+    def test_metric_alignment_requires_explicit_approved_target(self):
+        Alignment = self._require_alignment_model()
+        plan = self._mk_plan()
+        kpi = self._mk_kpi("XMAT-TARGET-REQUIRED")
+        initiative = self.env["strategic.initiative"].with_user(self.head_user).create({
+            "name": "Metric Target Required Initiative",
+            "plan_id": plan.id,
+            "date_start": "2026-01-01",
+            "date_end": "2026-12-31",
+        })
+        with self.assertRaisesRegex(ValidationError, "explicit approved KPI target"):
+            Alignment.with_user(self.head_user).create({
+                "link_type": "I>M",
+                "relationship_type": "primary",
+                "initiative_id": initiative.id,
+                "kpi_id": kpi.id,
+                "effective_date": "2026-06-15",
+            })
+
+    def test_metric_alignment_rejects_mismatched_unapproved_or_out_of_period_target(self):
+        Alignment = self._require_alignment_model()
+        plan = self._mk_plan()
+        kpi = self._mk_kpi("XMAT-TARGET-KPI")
+        other_kpi = self._mk_kpi("XMAT-TARGET-OTHER")
+        initiative = self.env["strategic.initiative"].with_user(self.head_user).create({
+            "name": "Metric Target Contract Initiative",
+            "plan_id": plan.id,
+            "date_start": "2026-01-01",
+            "date_end": "2026-12-31",
+        })
+        wrong_kpi_target = self._mk_metric_target(other_kpi)
+        draft_target = self._mk_metric_target(kpi, state="draft")
+        out_of_period_target = self._mk_metric_target(
+            kpi, start="2026-01-01", end="2026-03-31"
+        )
+        with self.assertRaisesRegex(ValidationError, "belong to the linked KPI"):
+            Alignment.with_user(self.head_user).create({
+                "link_type": "I>M", "relationship_type": "primary",
+                "initiative_id": initiative.id, "kpi_id": kpi.id,
+                "target_id": wrong_kpi_target.id,
+                "effective_date": "2026-06-15",
+            })
+        with self.assertRaisesRegex(ValidationError, "only approved"):
+            Alignment.with_user(self.head_user).create({
+                "link_type": "I>M", "relationship_type": "primary",
+                "initiative_id": initiative.id, "kpi_id": kpi.id,
+                "target_id": draft_target.id,
+                "effective_date": "2026-06-15",
+            })
+        with self.assertRaisesRegex(ValidationError, "effective date"):
+            Alignment.with_user(self.head_user).create({
+                "link_type": "I>M", "relationship_type": "primary",
+                "initiative_id": initiative.id, "kpi_id": kpi.id,
+                "target_id": out_of_period_target.id,
+                "effective_date": "2026-06-15",
+            })
+
+    def test_metric_alignment_requires_organization_target(self):
+        Alignment = self._require_alignment_model()
+        plan = self._mk_plan()
+        kpi = self._mk_kpi("XMAT-BRANCH-TARGET")
+        initiative = self.env["strategic.initiative"].with_user(self.head_user).create({
+            "name": "Metric Branch Target Initiative",
+            "plan_id": plan.id,
+            "date_start": "2026-01-01",
+            "date_end": "2026-12-31",
+        })
+        branch_target = self._mk_metric_target(
+            kpi, scope="branch", warehouse=self.wh1
+        )
+        with self.assertRaisesRegex(ValidationError, "organization-wide"):
+            Alignment.with_user(self.head_user).create({
+                "link_type": "I>M", "relationship_type": "primary",
+                "initiative_id": initiative.id, "kpi_id": kpi.id,
+                "target_id": branch_target.id, "effective_date": "2026-06-15",
+            })
+
+    def test_metric_target_is_preserved_by_controlled_revision(self):
+        Alignment = self._require_alignment_model()
+        plan = self._mk_plan()
+        kpi = self._mk_kpi("XMAT-TARGET-REVISION")
+        initiative = self.env["strategic.initiative"].with_user(self.head_user).create({
+            "name": "Metric Target Revision Initiative",
+            "plan_id": plan.id,
+            "date_start": "2026-01-01",
+            "date_end": "2026-12-31",
+        })
+        target = self._mk_metric_target(kpi)
+        link = Alignment.with_user(self.head_user).create({
+            "link_type": "I>M", "relationship_type": "primary",
+            "initiative_id": initiative.id, "kpi_id": kpi.id,
+            "target_id": target.id, "effective_date": "2026-06-15",
+        })
+        action = link.with_user(self.head_user).action_open_revision_wizard()
+        self.assertEqual(action["context"]["default_target_id"], target.id)
+        replacement = link.with_user(self.head_user).action_revise(
+            {"target_id": target.id}, "Keep this approved metric target explicitly linked."
+        )
+        self.assertEqual(replacement.target_id, target)
+        history = self.env["strategic.xmatrix.alignment.history"].search([
+            ("source_alignment_id", "=", link.id)
+        ], limit=1)
+        self.assertIn('"target_id": %s' % target.id, history.old_snapshot)
+        self.assertIn('"target_id": %s' % target.id, history.new_snapshot)
+
+
 @tagged("post_install", "-at_install")
 class TestHoshinSecurityAndHistory(StrategyFixture):
     """Hoshin permissions and controlled changes are enforced server-side."""
+
+    def test_context_cannot_bypass_active_hoshin_horizon_lock(self):
+        plan = self._mk_plan()
+        objective = self._mk_org_obj(plan)
+        objective.write({"hoshin_level": "breakthrough"})
+        objective.with_user(self.head_user).action_activate()
+        with self.assertRaisesRegex(ValidationError, "controlled revision"):
+            objective.with_user(self.head_user).with_context(
+                allow_hoshin_revision=True
+            ).write({"hoshin_level": "none"})
+
+    def test_context_cannot_bypass_alignment_state_guard(self):
+        Alignment = self.env["strategic.xmatrix.alignment"]
+        plan = self._mk_plan()
+        breakthrough = self._mk_org_obj(plan)
+        breakthrough.write({"hoshin_level": "breakthrough"})
+        annual = self._mk_org_obj(plan)
+        annual.write({"hoshin_level": "annual"})
+        link = Alignment.with_user(self.head_user).create({
+            "link_type": "B>A", "relationship_type": "primary",
+            "breakthrough_objective_id": breakthrough.id,
+            "annual_objective_id": annual.id,
+        })
+        with self.assertRaisesRegex(ValidationError, "controlled revision workflow"):
+            link.with_user(self.head_user).with_context(
+                allow_hoshin_revision=True
+            ).write({"state": "superseded"})
+
+    def test_target_cannot_be_archived_while_an_active_xmatrix_link_uses_it(self):
+        Alignment = self.env["strategic.xmatrix.alignment"]
+        plan = self._mk_plan()
+        kpi = self._mk_kpi("XMAT-TARGET-ARCHIVE")
+        initiative = self.env["strategic.initiative"].with_user(self.head_user).create({
+            "name": "Metric Target Archive Initiative",
+            "plan_id": plan.id,
+            "date_start": "2026-01-01",
+            "date_end": "2026-12-31",
+        })
+        target = self.env["strategic.kpi.target"].with_user(self.head_user).create({
+            "kpi_id": kpi.id,
+            "date_start": "2026-01-01",
+            "date_end": "2026-12-31",
+            "scope": "organization",
+            "target_value": 100.0,
+            "state": "approved",
+        })
+        Alignment.with_user(self.head_user).create({
+            "link_type": "I>M", "relationship_type": "primary",
+            "initiative_id": initiative.id, "kpi_id": kpi.id,
+            "target_id": target.id, "effective_date": "2026-06-15",
+        })
+        with self.assertRaisesRegex(ValidationError, "active X-Matrix alignment"):
+            target.with_user(self.head_user).action_archive()
+
+    def test_saved_alignment_change_reason_cannot_be_rewritten(self):
+        Alignment = self.env["strategic.xmatrix.alignment"]
+        plan = self._mk_plan()
+        breakthrough = self._mk_org_obj(plan)
+        breakthrough.write({"hoshin_level": "breakthrough"})
+        annual = self._mk_org_obj(plan)
+        annual.write({"hoshin_level": "annual"})
+        link = Alignment.with_user(self.head_user).create({
+            "link_type": "B>A", "relationship_type": "primary",
+            "breakthrough_objective_id": breakthrough.id,
+            "annual_objective_id": annual.id,
+            "change_reason": "Initial approved alignment rationale.",
+        })
+        with self.assertRaisesRegex(ValidationError, "reason .*immutable"):
+            link.with_user(self.head_user).write({"change_reason": "Tampered history"})
+
+    def test_context_cannot_forge_xmatrix_revision_history(self):
+        History = self.env["strategic.xmatrix.alignment.history"]
+        with self.assertRaises(AccessError):
+            History.with_user(self.head_user).with_context(
+                allow_hoshin_history_create=True
+            ).create({
+                "source_alignment_id": 1,
+                "replacement_alignment_id": 1,
+                "old_snapshot": "{}",
+                "new_snapshot": "{}",
+                "reason": "Forged revision",
+            })
 
     def test_branch_and_employee_cannot_access_hoshin_management_models(self):
         Initiative = self.env["strategic.initiative"]

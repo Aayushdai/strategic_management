@@ -60,7 +60,7 @@ class StrategicObjectiveHoshin(models.Model):
                 )
 
     def write(self, vals):
-        if "hoshin_level" in vals and not self.env.context.get("allow_hoshin_revision"):
+        if "hoshin_level" in vals:
             protected = self.filtered(
                 lambda objective: objective.state
                 in {"active", "completed", "closed", "archived"}
@@ -307,6 +307,17 @@ class StrategicXMatrixAlignment(models.Model):
         index=True,
         tracking=True,
     )
+    target_id = fields.Many2one(
+        "strategic.kpi.target",
+        string="Approved KPI Target",
+        ondelete="restrict",
+        index=True,
+        tracking=True,
+        help=(
+            "Metric links in the X-Matrix must identify the approved organization-wide "
+            "target that applies on the alignment's effective date."
+        ),
+    )
     owner_id = fields.Many2one(
         "res.users", string="Accountable Owner", ondelete="restrict", index=True, tracking=True
     )
@@ -338,6 +349,7 @@ class StrategicXMatrixAlignment(models.Model):
         "annual_objective_id.name",
         "initiative_id.name",
         "kpi_id.name",
+        "target_id.name",
         "owner_id.name",
     )
     def _compute_name(self):
@@ -349,6 +361,7 @@ class StrategicXMatrixAlignment(models.Model):
             )
             right = (
                 alignment.annual_objective_id.display_name
+                or alignment.target_id.display_name
                 or alignment.kpi_id.display_name
                 or alignment.owner_id.display_name
                 or "Destination"
@@ -366,6 +379,7 @@ class StrategicXMatrixAlignment(models.Model):
         "annual_objective_id",
         "initiative_id",
         "kpi_id",
+        "target_id",
         "owner_id",
         "effective_date",
         "state",
@@ -400,6 +414,36 @@ class StrategicXMatrixAlignment(models.Model):
 
             if alignment.effective_date is False:
                 raise ValidationError("An X-Matrix alignment requires an effective date.")
+
+            metric_link = alignment.link_type in {"I>M", "B>M"}
+            if not metric_link and alignment.target_id:
+                raise ValidationError(
+                    "Only KPI/metric X-Matrix links may reference an approved KPI target."
+                )
+            if metric_link:
+                target = alignment.target_id
+                if not target:
+                    raise ValidationError(
+                        "KPI/metric X-Matrix links require an explicit approved KPI target."
+                    )
+                if target.state != "approved":
+                    raise ValidationError(
+                        "KPI/metric X-Matrix links may reference only approved, non-archived targets."
+                    )
+                if target.kpi_id != alignment.kpi_id:
+                    raise ValidationError(
+                        "The selected X-Matrix target must belong to the linked KPI/metric."
+                    )
+                if target.scope != "organization":
+                    raise ValidationError(
+                        "X-Matrix strategy metrics must use an organization-wide KPI target."
+                    )
+                if not (
+                    target.date_start <= alignment.effective_date <= target.date_end
+                ):
+                    raise ValidationError(
+                        "The approved KPI target must cover the X-Matrix alignment's effective date."
+                    )
 
             if alignment.link_type == "B>A":
                 breakthrough = alignment.breakthrough_objective_id
@@ -493,8 +537,6 @@ class StrategicXMatrixAlignment(models.Model):
             )
 
     def write(self, vals):
-        if "state" in vals and not self.env.context.get("allow_hoshin_revision"):
-            raise ValidationError("Alignment state can only be changed through the controlled revision workflow.")
         core_fields = {
             "link_type",
             "relationship_type",
@@ -502,9 +544,18 @@ class StrategicXMatrixAlignment(models.Model):
             "annual_objective_id",
             "initiative_id",
             "kpi_id",
+            "target_id",
             "owner_id",
             "effective_date",
         }
+        if "state" in vals:
+            raise ValidationError(
+                "Alignment state can only be changed through the controlled revision workflow."
+            )
+        if "change_reason" in vals and any(alignment.state != "draft" for alignment in self):
+            raise ValidationError(
+                "The reason on a saved X-Matrix alignment is immutable; use the controlled revision workflow."
+            )
         if core_fields.intersection(vals):
             objective_endpoints = self.mapped("breakthrough_objective_id") | self.mapped("annual_objective_id")
             protected = objective_endpoints.filtered(
@@ -540,7 +591,7 @@ class StrategicXMatrixAlignment(models.Model):
 
         allowed_fields = {
             "link_type", "relationship_type", "breakthrough_objective_id",
-            "annual_objective_id", "initiative_id", "kpi_id", "owner_id",
+            "annual_objective_id", "initiative_id", "kpi_id", "target_id", "owner_id",
             "effective_date", "change_reason",
         }
         if set(replacement_values) - allowed_fields:
@@ -553,20 +604,13 @@ class StrategicXMatrixAlignment(models.Model):
         new_values.update(replacement_values)
         new_values.setdefault("effective_date", fields.Date.context_today(self))
         new_values["change_reason"] = reason.strip()
-        replacing_context = {
-            "allow_hoshin_revision": True,
-            "replacing_alignment_id": self.id,
-        }
+        replacing_context = {"replacing_alignment_id": self.id}
         # The newly-created active row is checked against other active primary
         # links, while the record being replaced is excluded from that check.
         new_alignment = self.with_context(**replacing_context).create(new_values)
         # Bypass public write guard only after the replacement itself validates.
-        super(StrategicXMatrixAlignment, self.with_context(allow_hoshin_revision=True)).write(
-            {"state": "superseded"}
-        )
-        self.env["strategic.xmatrix.alignment.history"].with_context(
-            allow_hoshin_history_create=True
-        ).create(
+        super(StrategicXMatrixAlignment, self).write({"state": "superseded"})
+        self.env["strategic.xmatrix.alignment.history"]._create_from_alignment_revision(
             {
                 "source_alignment_id": self.id,
                 "replacement_alignment_id": new_alignment.id,
@@ -604,6 +648,7 @@ class StrategicXMatrixAlignment(models.Model):
                 "default_annual_objective_id": self.annual_objective_id.id or False,
                 "default_initiative_id": self.initiative_id.id or False,
                 "default_kpi_id": self.kpi_id.id or False,
+                "default_target_id": self.target_id.id or False,
                 "default_owner_id": self.owner_id.id or False,
                 "default_effective_date": fields.Date.to_string(self.effective_date)
                 if self.effective_date else False,
@@ -614,12 +659,12 @@ class StrategicXMatrixAlignment(models.Model):
         self.ensure_one()
         relational_fields = {
             "breakthrough_objective_id", "annual_objective_id", "initiative_id",
-            "kpi_id", "owner_id",
+            "kpi_id", "target_id", "owner_id",
         }
         values = {}
         for field_name in (
             "link_type", "relationship_type", "breakthrough_objective_id",
-            "annual_objective_id", "initiative_id", "kpi_id", "owner_id",
+            "annual_objective_id", "initiative_id", "kpi_id", "target_id", "owner_id",
             "effective_date", "change_reason", "state",
         ):
             value = self[field_name]
@@ -669,9 +714,31 @@ class StrategicXMatrixAlignmentHistory(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        if not self.env.context.get("allow_hoshin_history_create"):
-            raise AccessError("X-Matrix revision history can only be recorded by the controlled revision workflow.")
-        return super().create(vals_list)
+        raise AccessError(
+            "X-Matrix revision history can only be recorded by the controlled revision workflow."
+        )
+
+    @api.model
+    def _create_from_alignment_revision(self, vals):
+        """Create immutable history from the private, validated revision path only."""
+        if not self.env.user.has_group(
+            "strategic_management.group_strategic_head_office_manager"
+        ):
+            raise AccessError("Only Head Office Managers can revise X-Matrix alignments.")
+        source = self.env["strategic.xmatrix.alignment"].browse(
+            vals.get("source_alignment_id")
+        ).exists()
+        replacement = self.env["strategic.xmatrix.alignment"].browse(
+            vals.get("replacement_alignment_id")
+        ).exists()
+        if (
+            len(source) != 1 or len(replacement) != 1
+            or source.state != "superseded" or replacement.state != "active"
+        ):
+            raise ValidationError(
+                "Revision history requires a superseded source and its active replacement."
+            )
+        return super(StrategicXMatrixAlignmentHistory, self.sudo()).create([vals])
 
     def write(self, vals):
         raise ValidationError("X-Matrix revision history is immutable.")
@@ -707,6 +774,7 @@ class StrategicXMatrixAlignmentRevisionWizard(models.TransientModel):
     annual_objective_id = fields.Many2one("strategic.objective")
     initiative_id = fields.Many2one("strategic.initiative")
     kpi_id = fields.Many2one("strategic.kpi.definition", string="KPI / Metric")
+    target_id = fields.Many2one("strategic.kpi.target", string="Approved KPI Target")
     owner_id = fields.Many2one("res.users", string="Accountable Owner")
     effective_date = fields.Date(required=True, default=fields.Date.context_today)
     reason = fields.Text(required=True, string="Reason for Revision")
@@ -727,6 +795,7 @@ class StrategicXMatrixAlignmentRevisionWizard(models.TransientModel):
                     "annual_objective_id": snapshot["annual_objective_id"],
                     "initiative_id": snapshot["initiative_id"],
                     "kpi_id": snapshot["kpi_id"],
+                    "target_id": snapshot["target_id"],
                     "owner_id": snapshot["owner_id"],
                     "effective_date": snapshot["effective_date"],
                 })
@@ -758,6 +827,7 @@ class StrategicXMatrixAlignmentRevisionWizard(models.TransientModel):
             "annual_objective_id": self.annual_objective_id.id or False,
             "initiative_id": self.initiative_id.id or False,
             "kpi_id": self.kpi_id.id or False,
+            "target_id": self.target_id.id or False,
             "owner_id": self.owner_id.id or False,
             "effective_date": self.effective_date,
         }
