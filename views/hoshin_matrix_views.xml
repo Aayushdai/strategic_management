@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- The supervisor-requested Hoshin Kanri planning experience needs a visual
+         cross-matrix rather than only separate record lists. This stays inside Odoo
+         and reads/writes through existing ORM models; no parallel strategy data model
+         or standalone frontend is introduced. Existing ACLs and model constraints remain authoritative. -->
+    <record id="action_strategic_hoshin_xmatrix_workspace" model="ir.actions.client">
+        <field name="name">Hoshin Kanri X-Matrix</field>
+        <field name="tag">strategic_management.hoshin_xmatrix</field>
+    </record>
+
+    <menuitem id="menu_strategic_hoshin_xmatrix_workspace"
+              name="Hoshin Kanri Workspace"
+              parent="menu_strategic_management_strategy"
+              action="action_strategic_hoshin_xmatrix_workspace"
+              sequence="5"
+              groups="strategic_management.group_strategic_head_office_manager"/>
+</odoo>

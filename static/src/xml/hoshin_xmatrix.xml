@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="strategic_management.HoshinXMatrix" owl="1">
+        <div class="o_hoshin_xmatrix_action">
+            <div class="o_hoshin_xmatrix_header">
+                <div>
+                    <div class="o_hoshin_eyebrow">STRATEGIC MANAGEMENT / PHASE 7</div>
+                    <h1>Hoshin Kanri X-Matrix</h1>
+                    <p>Translate breakthrough intent into annual objectives, improvement initiatives, accountable owners, and measurable targets.</p>
+                </div>
+                <div class="o_hoshin_header_actions">
+                    <button type="button" class="btn btn-secondary" t-on-click="this.refresh" t-att-disabled="this.state.loading">
+                        <i class="fa fa-refresh me-1"/> Refresh
+                    </button>
+                    <button type="button" class="btn btn-primary" t-on-click="this.openCreatePlan">
+                        <i class="fa fa-plus me-1"/> New plan
+                    </button>
+                </div>
+            </div>
+
+            <div class="o_hoshin_plan_bar">
+                <label for="o_hoshin_plan_select">Strategic plan</label>
+                <select id="o_hoshin_plan_select" class="form-select" t-att-value="this.state.selectedPlanId ? this.state.selectedPlanId : ''" t-on-change="this.onPlanChanged" t-att-disabled="this.state.loading || !this.state.plans.length">
+                    <option value="">Select a plan…</option>
+                    <t t-foreach="this.state.plans" t-as="plan" t-key="plan.id">
+                        <option t-att-value="plan.id"><t t-esc="plan.name"/> (<t t-esc="plan.date_start"/> – <t t-esc="plan.date_end"/>)</option>
+                    </t>
+                </select>
+                <div t-if="this.state.selectedPlan" class="o_hoshin_plan_meta">
+                    <span><i class="fa fa-building-o me-1"/><t t-esc="this.relationName(this.state.selectedPlan.company_id)"/></span>
+                    <span><i class="fa fa-calendar me-1"/><t t-esc="this.state.selectedPlan.date_start"/> – <t t-esc="this.state.selectedPlan.date_end"/></span>
+                </div>
+            </div>
+
+            <div t-if="this.state.error" class="alert alert-danger" role="alert">
+                <strong>Workspace could not be loaded.</strong>
+                <div><t t-esc="this.state.error"/></div>
+                <button type="button" class="btn btn-secondary btn-sm mt-2" t-on-click="this.refresh">Try again</button>
+            </div>
+
+            <div t-if="this.state.loading" class="o_hoshin_loading">
+                <i class="fa fa-spinner fa-spin me-2"/> Loading plan and active alignments…
+            </div>
+
+            <div t-elif="!this.state.plans.length" class="o_hoshin_empty_plan">
+                <div class="o_hoshin_empty_icon"><i class="fa fa-bullseye"/></div>
+                <h2>Start with a strategic plan</h2>
+                <p>Create a plan first. The objective and initiative forms will then open with that plan preselected.</p>
+                <button type="button" class="btn btn-primary" t-on-click="this.openCreatePlan">Create strategic plan</button>
+            </div>
+
+            <t t-elif="this.state.selectedPlan">
+                <div class="o_hoshin_summary">
+                    <div class="o_hoshin_stat">
+                        <span class="o_hoshin_stat_label">Breakthrough objectives</span>
+                        <strong><t t-esc="this.state.breakthroughs.length"/></strong>
+                        <span class="o_hoshin_stat_hint">Long-term direction</span>
+                    </div>
+                    <div class="o_hoshin_stat">
+                        <span class="o_hoshin_stat_label">Annual objectives</span>
+                        <strong><t t-esc="this.state.annualObjectives.length"/></strong>
+                        <span class="o_hoshin_stat_hint">This plan's deployment goals</span>
+                    </div>
+                    <div class="o_hoshin_stat">
+                        <span class="o_hoshin_stat_label">Improvement initiatives</span>
+                        <strong><t t-esc="this.state.initiatives.length"/></strong>
+                        <span class="o_hoshin_stat_hint">Accountable improvement work</span>
+                    </div>
+                    <div class="o_hoshin_stat">
+                        <span class="o_hoshin_stat_label">Active alignments</span>
+                        <strong><t t-esc="this.state.alignments.length"/></strong>
+                        <span class="o_hoshin_stat_hint">Current relationships; history preserved separately</span>
+                    </div>
+                </div>
+
+                <div class="o_hoshin_matrix_intro">
+                    <div>
+                        <h2>Strategy deployment matrix</h2>
+                        <p>Use the four corners to review the link types; use the four planning panels to open existing records or create new ones.</p>
+                    </div>
+                    <span class="o_hoshin_live_legend"><span class="o_hoshin_legend_dot"/> Active relationships only</span>
+                </div>
+
+                <div class="o_hoshin_matrix_grid">
+                    <section class="o_hoshin_link_panel o_hoshin_link_ba">
+                        <div class="o_hoshin_link_head">
+                            <span class="o_hoshin_link_code">B → A</span>
+                            <span>Breakthrough to Annual</span>
+                            <span class="o_hoshin_count"><t t-esc="this.linksFor('B&gt;A').length"/></span>
+                        </div>
+                        <div t-if="this.linksFor('B&gt;A').length" class="o_hoshin_link_list">
+                            <t t-foreach="this.linksFor('B&gt;A')" t-as="link" t-key="link.id">
+                                <button type="button" class="o_hoshin_alignment" t-on-click="() => this.openRecord('strategic.xmatrix.alignment', link.id)">
+                                    <span class="o_hoshin_alignment_route"><t t-esc="this.alignmentOriginLabel(link)"/> <i class="fa fa-long-arrow-right"/> <t t-esc="this.alignmentDestinationLabel(link)"/></span>
+                                    <span t-att-class="link.relationship_type === 'primary' ? 'o_hoshin_relation_badge is-primary' : 'o_hoshin_relation_badge is-supporting'"><t t-esc="link.relationship_type === 'primary' ? 'Primary' : 'Supporting'"/></span>
+                                </button>
+                            </t>
+                        </div>
+                        <div t-else="" class="o_hoshin_no_links">No active breakthrough-to-annual links.</div>
+                        <button type="button" class="btn btn-sm btn-outline-primary o_hoshin_add_link" t-on-click="() => this.openCreateAlignment('B&gt;A')"><i class="fa fa-plus me-1"/> Add B → A link</button>
+                    </section>
+
+                    <section class="o_hoshin_domain_panel o_hoshin_annual_panel">
+                        <div class="o_hoshin_domain_header">
+                            <div><span class="o_hoshin_domain_index">01</span><h3>Annual objectives</h3></div>
+                            <button type="button" class="btn btn-sm btn-primary" t-on-click="() => this.openCreateObjective('annual')"><i class="fa fa-plus me-1"/> New annual</button>
+                        </div>
+                        <div t-if="this.state.annualObjectives.length" class="o_hoshin_record_list">
+                            <t t-foreach="this.state.annualObjectives" t-as="objective" t-key="objective.id">
+                                <button type="button" class="o_hoshin_record_card" t-on-click="() => this.openRecord('strategic.objective', objective.id)">
+                                    <span class="o_hoshin_record_name"><t t-esc="objective.name"/></span>
+                                    <span class="o_hoshin_record_meta"><t t-esc="this.perspectiveLabel(objective.perspective)"/> · Due <t t-esc="objective.deadline"/></span>
+                                    <span t-att-class="'o_hoshin_state is-' + objective.state"><t t-esc="this.stateLabel(objective.state)"/></span>
+                                </button>
+                            </t>
+                        </div>
+                        <div t-else="" class="o_hoshin_empty_list">No annual objectives in this plan yet.</div>
+                    </section>
+
+                    <section class="o_hoshin_link_panel o_hoshin_link_ia">
+                        <div class="o_hoshin_link_head">
+                            <span class="o_hoshin_link_code">I → A</span>
+                            <span>Initiative to Annual</span>
+                            <span class="o_hoshin_count"><t t-esc="this.linksFor('I&gt;A').length"/></span>
+                        </div>
+                        <div t-if="this.linksFor('I&gt;A').length" class="o_hoshin_link_list">
+                            <t t-foreach="this.linksFor('I&gt;A')" t-as="link" t-key="link.id">
+                                <button type="button" class="o_hoshin_alignment" t-on-click="() => this.openRecord('strategic.xmatrix.alignment', link.id)">
+                                    <span class="o_hoshin_alignment_route"><t t-esc="this.alignmentOriginLabel(link)"/> <i class="fa fa-long-arrow-right"/> <t t-esc="this.alignmentDestinationLabel(link)"/></span>
+                                    <span t-att-class="link.relationship_type === 'primary' ? 'o_hoshin_relation_badge is-primary' : 'o_hoshin_relation_badge is-supporting'"><t t-esc="link.relationship_type === 'primary' ? 'Primary' : 'Supporting'"/></span>
+                                </button>
+                            </t>
+                        </div>
+                        <div t-else="" class="o_hoshin_no_links">No active initiative-to-annual links.</div>
+                        <button type="button" class="btn btn-sm btn-outline-primary o_hoshin_add_link" t-on-click="() => this.openCreateAlignment('I&gt;A')"><i class="fa fa-plus me-1"/> Add I → A link</button>
+                    </section>
+
+                    <section class="o_hoshin_domain_panel o_hoshin_breakthrough_panel">
+                        <div class="o_hoshin_domain_header">
+                            <div><span class="o_hoshin_domain_index">02</span><h3>Breakthrough objectives</h3></div>
+                            <button type="button" class="btn btn-sm btn-primary" t-on-click="() => this.openCreateObjective('breakthrough')"><i class="fa fa-plus me-1"/> New breakthrough</button>
+                        </div>
+                        <div t-if="this.state.breakthroughs.length" class="o_hoshin_record_list">
+                            <t t-foreach="this.state.breakthroughs" t-as="objective" t-key="objective.id">
+                                <button type="button" class="o_hoshin_record_card" t-on-click="() => this.openRecord('strategic.objective', objective.id)">
+                                    <span class="o_hoshin_record_name"><t t-esc="objective.name"/></span>
+                                    <span class="o_hoshin_record_meta"><t t-esc="this.perspectiveLabel(objective.perspective)"/> · Due <t t-esc="objective.deadline"/></span>
+                                    <span t-att-class="'o_hoshin_state is-' + objective.state"><t t-esc="this.stateLabel(objective.state)"/></span>
+                                </button>
+                            </t>
+                        </div>
+                        <div t-else="" class="o_hoshin_empty_list">No breakthrough objectives in this plan yet.</div>
+                    </section>
+
+                    <section class="o_hoshin_matrix_center">
+                        <div class="o_hoshin_center_mark"><span>H</span><i class="fa fa-arrows"/></div>
+                        <h3>Align · Execute · Measure</h3>
+                        <p>Each relationship uses the governed X-Matrix record. Primary links define the intended path; supporting links record additional contributions.</p>
+                        <div class="o_hoshin_center_checks">
+                            <div><span class="o_hoshin_check_key">B → A</span><span>Long-term to annual goals</span></div>
+                            <div><span class="o_hoshin_check_key">I → A</span><span>Initiative to annual goal</span></div>
+                            <div><span class="o_hoshin_check_key">I → M</span><span>Initiative to KPI target</span></div>
+                            <div><span class="o_hoshin_check_key">B → M</span><span>Breakthrough to KPI target</span></div>
+                            <div><span class="o_hoshin_check_key">I → O</span><span>Initiative to accountable owner</span></div>
+                        </div>
+                    </section>
+
+                    <section class="o_hoshin_domain_panel o_hoshin_initiative_panel">
+                        <div class="o_hoshin_domain_header">
+                            <div><span class="o_hoshin_domain_index">03</span><h3>Improvement initiatives</h3></div>
+                            <button type="button" class="btn btn-sm btn-primary" t-on-click="this.openCreateInitiative"><i class="fa fa-plus me-1"/> New initiative</button>
+                        </div>
+                        <div t-if="this.state.initiatives.length" class="o_hoshin_record_list">
+                            <t t-foreach="this.state.initiatives" t-as="initiative" t-key="initiative.id">
+                                <button type="button" class="o_hoshin_record_card" t-on-click="() => this.openRecord('strategic.initiative', initiative.id)">
+                                    <span class="o_hoshin_record_name"><t t-esc="initiative.name"/></span>
+                                    <span class="o_hoshin_record_meta"><t t-esc="initiative.date_start"/> – <t t-esc="initiative.date_end"/></span>
+                                    <span class="o_hoshin_owner"><i class="fa fa-user-circle-o me-1"/><t t-esc="this.ownerFor(initiative.id)"/></span>
+                                    <span t-att-class="'o_hoshin_state is-' + initiative.state"><t t-esc="this.stateLabel(initiative.state)"/></span>
+                                </button>
+                            </t>
+                        </div>
+                        <div t-else="" class="o_hoshin_empty_list">No improvement initiatives in this plan yet.</div>
+                    </section>
+
+                    <section class="o_hoshin_link_panel o_hoshin_link_bm">
+                        <div class="o_hoshin_link_head">
+                            <span class="o_hoshin_link_code">B → M</span>
+                            <span>Breakthrough to KPI / target</span>
+                            <span class="o_hoshin_count"><t t-esc="this.linksFor('B&gt;M').length"/></span>
+                        </div>
+                        <div t-if="this.linksFor('B&gt;M').length" class="o_hoshin_link_list">
+                            <t t-foreach="this.linksFor('B&gt;M')" t-as="link" t-key="link.id">
+                                <button type="button" class="o_hoshin_alignment" t-on-click="() => this.openRecord('strategic.xmatrix.alignment', link.id)">
+                                    <span class="o_hoshin_alignment_route"><t t-esc="this.alignmentOriginLabel(link)"/> <i class="fa fa-long-arrow-right"/> <t t-esc="this.alignmentDestinationLabel(link)"/></span>
+                                    <span t-att-class="link.relationship_type === 'primary' ? 'o_hoshin_relation_badge is-primary' : 'o_hoshin_relation_badge is-supporting'"><t t-esc="link.relationship_type === 'primary' ? 'Primary' : 'Supporting'"/></span>
+                                </button>
+                            </t>
+                        </div>
+                        <div t-else="" class="o_hoshin_no_links">No active breakthrough-to-metric links.</div>
+                        <button type="button" class="btn btn-sm btn-outline-primary o_hoshin_add_link" t-on-click="() => this.openCreateAlignment('B&gt;M')"><i class="fa fa-plus me-1"/> Add B → M link</button>
+                    </section>
+
+                    <section class="o_hoshin_domain_panel o_hoshin_metric_panel">
+                        <div class="o_hoshin_domain_header">
+                            <div><span class="o_hoshin_domain_index">04</span><h3>KPI targets</h3></div>
+                            <button type="button" class="btn btn-sm btn-secondary" t-on-click="this.openTargets">Manage targets</button>
+                        </div>
+                        <div t-if="this.state.targets.length" class="o_hoshin_record_list">
+                            <t t-foreach="this.state.targets" t-as="target" t-key="target.id">
+                                <button type="button" class="o_hoshin_record_card" t-on-click="() => this.openRecord('strategic.kpi.target', target.id)">
+                                    <span class="o_hoshin_record_name"><t t-esc="this.relationName(target.kpi_id)"/></span>
+                                    <span class="o_hoshin_target_value"><t t-esc="target.target_value"/> <t t-esc="target.unit"/></span>
+                                    <span class="o_hoshin_record_meta"><t t-esc="target.date_start"/> – <t t-esc="target.date_end"/></span>
+                                    <span t-att-class="'o_hoshin_state is-' + target.state"><t t-esc="this.stateLabel(target.state)"/></span>
+                                </button>
+                            </t>
+                        </div>
+                        <div t-else="" class="o_hoshin_empty_list">No KPI targets are linked to this plan's active matrix relationships.</div>
+                    </section>
+
+                    <section class="o_hoshin_link_panel o_hoshin_link_im">
+                        <div class="o_hoshin_link_head">
+                            <span class="o_hoshin_link_code">I → M</span>
+                            <span>Initiative to KPI / target</span>
+                            <span class="o_hoshin_count"><t t-esc="this.linksFor('I&gt;M').length"/></span>
+                        </div>
+                        <div t-if="this.linksFor('I&gt;M').length" class="o_hoshin_link_list">
+                            <t t-foreach="this.linksFor('I&gt;M')" t-as="link" t-key="link.id">
+                                <button type="button" class="o_hoshin_alignment" t-on-click="() => this.openRecord('strategic.xmatrix.alignment', link.id)">
+                                    <span class="o_hoshin_alignment_route"><t t-esc="this.alignmentOriginLabel(link)"/> <i class="fa fa-long-arrow-right"/> <t t-esc="this.alignmentDestinationLabel(link)"/></span>
+                                    <span t-att-class="link.relationship_type === 'primary' ? 'o_hoshin_relation_badge is-primary' : 'o_hoshin_relation_badge is-supporting'"><t t-esc="link.relationship_type === 'primary' ? 'Primary' : 'Supporting'"/></span>
+                                </button>
+                            </t>
+                        </div>
+                        <div t-else="" class="o_hoshin_no_links">No active initiative-to-metric links.</div>
+                        <button type="button" class="btn btn-sm btn-outline-primary o_hoshin_add_link" t-on-click="() => this.openCreateAlignment('I&gt;M')"><i class="fa fa-plus me-1"/> Add I → M link</button>
+                    </section>
+                </div>
+                <div class="o_hoshin_workspace_footer">
+                    <span><i class="fa fa-lock me-1"/> Server-side model constraints and role permissions remain authoritative.</span>
+                    <button type="button" class="btn btn-link btn-sm" t-on-click="this.openAlignmentRegister">Open alignment register <i class="fa fa-arrow-right ms-1"/></button>
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>

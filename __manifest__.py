@@ -1,6 +1,6 @@
 {
     "name": "Strategic Performance Management",
-    "version": "20.0.1.6.0",
+    "version": "20.0.1.7.0",
     "category": "Productivity",
     "summary": "Strategic objectives, OKRs, KPIs, and performance management",
     "author": "Strategic Management Team",
@@ -26,7 +26,15 @@
         "views/hoshin_views.xml",
         "views/kpi_measurement_views.xml",
         "data/strategic_kpi_scheduled_actions.xml",
+        "views/hoshin_matrix_views.xml",
     ],
+    "assets": {
+        "web.assets_backend": [
+            "strategic_management/static/src/js/hoshin_xmatrix.js",
+            "strategic_management/static/src/xml/hoshin_xmatrix.xml",
+            "strategic_management/static/src/scss/hoshin_xmatrix.scss",
+        ],
+    },
     "installable": True,
     "application": True,
 }

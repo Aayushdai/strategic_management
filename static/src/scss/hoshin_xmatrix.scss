@@ -1,0 +1,539 @@
+.o_hoshin_xmatrix_action {
+    min-height: 100%;
+    padding: 24px clamp(16px, 2vw, 32px) 32px;
+    color: #202b3c;
+    background: #f5f7fb;
+
+    .o_hoshin_xmatrix_header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 20px;
+        margin-bottom: 22px;
+
+        h1 {
+            margin: 5px 0 8px;
+            color: #182338;
+            font-size: clamp(24px, 2.2vw, 32px);
+            font-weight: 750;
+            letter-spacing: -0.035em;
+        }
+
+        p {
+            max-width: 760px;
+            margin: 0;
+            color: #68758a;
+            font-size: 14px;
+            line-height: 1.55;
+        }
+    }
+
+    .o_hoshin_eyebrow {
+        color: #5969a7;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.13em;
+    }
+
+    .o_hoshin_header_actions {
+        display: flex;
+        flex: 0 0 auto;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .o_hoshin_plan_bar {
+        display: grid;
+        grid-template-columns: auto minmax(240px, 480px) minmax(200px, 1fr);
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+        margin-bottom: 18px;
+        background: #fff;
+        border: 1px solid #e2e8f1;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(30, 49, 82, 0.025);
+
+        label {
+            margin: 0;
+            color: #526078;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        select { min-width: 0; }
+    }
+
+    .o_hoshin_plan_meta {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 6px 16px;
+        color: #68758a;
+        font-size: 12px;
+    }
+
+    .o_hoshin_summary {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 24px;
+    }
+
+    .o_hoshin_stat {
+        display: flex;
+        min-height: 116px;
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 17px 18px 15px;
+        background: #fff;
+        border: 1px solid #e3e8f1;
+        border-radius: 12px;
+        box-shadow: 0 3px 12px rgba(34, 52, 82, 0.035);
+
+        strong {
+            margin: 8px 0 3px;
+            color: #17233a;
+            font-size: 30px;
+            font-weight: 750;
+            line-height: 1;
+        }
+    }
+
+    .o_hoshin_stat_label {
+        color: #57647a;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .o_hoshin_stat_hint {
+        color: #8a95a7;
+        font-size: 11px;
+        line-height: 1.35;
+    }
+
+    .o_hoshin_matrix_intro {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        margin: 2px 0 13px;
+
+        h2 {
+            margin: 0 0 5px;
+            color: #1d2b42;
+            font-size: 19px;
+            font-weight: 750;
+        }
+
+        p {
+            margin: 0;
+            color: #758197;
+            font-size: 12px;
+        }
+    }
+
+    .o_hoshin_live_legend {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 7px;
+        color: #65728a;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+
+    .o_hoshin_legend_dot {
+        width: 7px;
+        height: 7px;
+        background: #1c9a78;
+        border-radius: 50%;
+    }
+
+    .o_hoshin_matrix_grid {
+        display: grid;
+        grid-template-columns: minmax(220px, 0.86fr) minmax(270px, 1.15fr) minmax(220px, 0.86fr);
+        grid-template-rows: minmax(170px, auto) minmax(250px, auto) minmax(170px, auto);
+        gap: 13px;
+        align-items: stretch;
+    }
+
+    .o_hoshin_domain_panel,
+    .o_hoshin_link_panel,
+    .o_hoshin_matrix_center {
+        min-width: 0;
+        padding: 16px;
+        background: #fff;
+        border: 1px solid #e1e7f0;
+        border-radius: 13px;
+        box-shadow: 0 3px 14px rgba(34, 52, 82, 0.035);
+    }
+
+    .o_hoshin_domain_panel {
+        display: flex;
+        flex-direction: column;
+        gap: 13px;
+    }
+
+    .o_hoshin_domain_header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+
+        > div {
+            display: flex;
+            min-width: 0;
+            align-items: center;
+            gap: 9px;
+        }
+
+        h3 {
+            margin: 0;
+            color: #22304a;
+            font-size: 14px;
+            font-weight: 750;
+            line-height: 1.25;
+        }
+
+        .btn { flex: 0 0 auto; }
+    }
+
+    .o_hoshin_domain_index {
+        display: inline-flex;
+        width: 27px;
+        height: 27px;
+        align-items: center;
+        justify-content: center;
+        color: #4357a2;
+        background: #edf0ff;
+        border-radius: 8px;
+        font-size: 10px;
+        font-weight: 800;
+    }
+
+    .o_hoshin_record_list,
+    .o_hoshin_link_list {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .o_hoshin_record_card {
+        display: flex;
+        width: 100%;
+        min-width: 0;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+        padding: 10px 11px;
+        color: inherit;
+        text-align: left;
+        background: #fbfcfe;
+        border: 1px solid #e7ebf3;
+        border-radius: 9px;
+        transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
+
+        &:hover {
+            background: #f7f9ff;
+            border-color: #b9c5ef;
+            transform: translateY(-1px);
+        }
+
+        &:focus-visible { outline: 2px solid #687ed1; outline-offset: 2px; }
+    }
+
+    .o_hoshin_record_name {
+        color: #26344b;
+        font-size: 12px;
+        font-weight: 750;
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+    }
+
+    .o_hoshin_record_meta,
+    .o_hoshin_owner {
+        color: #78849a;
+        font-size: 10px;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+    }
+
+    .o_hoshin_target_value {
+        color: #176d5b;
+        font-size: 13px;
+        font-weight: 800;
+    }
+
+    .o_hoshin_state,
+    .o_hoshin_relation_badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 7px;
+        color: #566277;
+        background: #edf0f5;
+        border-radius: 99px;
+        font-size: 9px;
+        font-weight: 800;
+        line-height: 1.2;
+    }
+
+    .o_hoshin_state {
+        &.is-active { color: #116b54; background: #e3f5ee; }
+        &.is-draft { color: #6c5a24; background: #fff4cf; }
+        &.is-pending_approval { color: #8a591b; background: #fff0dc; }
+        &.is-completed { color: #285ea8; background: #e7f0ff; }
+        &.is-closed,
+        &.is-archived { color: #6c7483; background: #edf0f4; }
+        &.is-approved { color: #116b54; background: #e3f5ee; }
+    }
+
+    .o_hoshin_empty_list {
+        display: flex;
+        min-height: 72px;
+        flex: 1;
+        align-items: center;
+        justify-content: center;
+        padding: 14px;
+        color: #8994a6;
+        background: #fafbfe;
+        border: 1px dashed #dce3ed;
+        border-radius: 9px;
+        font-size: 11px;
+        text-align: center;
+    }
+
+    .o_hoshin_link_panel {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 10px;
+        background: #fdfdff;
+    }
+
+    .o_hoshin_link_head {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: #58657c;
+        font-size: 10px;
+        font-weight: 750;
+
+        > span:nth-child(2) { min-width: 0; flex: 1; }
+    }
+
+    .o_hoshin_link_code {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        padding: 4px 6px;
+        color: #3c4f9b;
+        background: #e9edff;
+        border-radius: 5px;
+        font-size: 10px;
+        font-weight: 900;
+    }
+
+    .o_hoshin_count {
+        display: inline-flex;
+        min-width: 22px;
+        height: 22px;
+        align-items: center;
+        justify-content: center;
+        color: #4d5b72;
+        background: #edf0f5;
+        border-radius: 50%;
+        font-size: 10px;
+        font-weight: 800;
+    }
+
+    .o_hoshin_alignment {
+        display: flex;
+        width: 100%;
+        min-width: 0;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 9px 10px;
+        color: #344158;
+        text-align: left;
+        background: #fff;
+        border: 1px solid #e4e8f1;
+        border-radius: 8px;
+
+        &:hover { background: #f6f8ff; border-color: #c6ceee; }
+    }
+
+    .o_hoshin_alignment_route {
+        min-width: 0;
+        font-size: 10px;
+        font-weight: 650;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+
+        .fa { margin: 0 4px; color: #7889c6; }
+    }
+
+    .o_hoshin_relation_badge {
+        flex: 0 0 auto;
+        &.is-primary { color: #225d50; background: #e3f5ee; }
+        &.is-supporting { color: #645a87; background: #f0edfc; }
+    }
+
+    .o_hoshin_no_links {
+        padding: 12px 8px;
+        color: #8a94a6;
+        font-size: 10px;
+        line-height: 1.45;
+    }
+
+    .o_hoshin_add_link { align-self: flex-start; margin-top: auto; }
+
+    .o_hoshin_matrix_center {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        text-align: center;
+        background: radial-gradient(circle at 50% 0%, #f0f3ff 0%, #fff 68%);
+        border-color: #d8dff4;
+    }
+
+    .o_hoshin_center_mark {
+        position: relative;
+        display: flex;
+        width: 62px;
+        height: 62px;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 13px;
+        color: #fff;
+        background: linear-gradient(145deg, #546bc1, #343e78);
+        border: 5px solid #e7eafe;
+        border-radius: 18px;
+        box-shadow: 0 7px 18px rgba(58, 73, 141, 0.18);
+
+        span { font-size: 25px; font-weight: 900; }
+        .fa { position: absolute; right: -9px; bottom: -8px; display: flex; width: 25px; height: 25px; align-items: center; justify-content: center; color: #31447f; background: #fff; border: 1px solid #d7def7; border-radius: 50%; font-size: 11px; }
+    }
+
+    .o_hoshin_matrix_center h3 {
+        margin: 0 0 7px;
+        color: #273555;
+        font-size: 15px;
+        font-weight: 800;
+    }
+
+    .o_hoshin_matrix_center p {
+        max-width: 300px;
+        margin: 0 auto 15px;
+        color: #768198;
+        font-size: 11px;
+        line-height: 1.5;
+    }
+
+    .o_hoshin_center_checks {
+        display: grid;
+        width: 100%;
+        gap: 6px;
+        text-align: left;
+
+        > div { display: flex; align-items: center; gap: 9px; color: #7a8599; font-size: 10px; }
+    }
+
+    .o_hoshin_check_key {
+        display: inline-flex;
+        min-width: 37px;
+        justify-content: center;
+        padding: 3px 5px;
+        color: #4b5aa0;
+        background: #eaedff;
+        border-radius: 4px;
+        font-size: 9px;
+        font-weight: 900;
+    }
+
+    .o_hoshin_workspace_footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 14px 4px 0;
+        color: #7e899c;
+        font-size: 11px;
+
+        .btn { white-space: nowrap; }
+    }
+
+    .o_hoshin_loading,
+    .o_hoshin_empty_plan {
+        display: flex;
+        min-height: 260px;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 32px;
+        color: #6e7b91;
+        background: #fff;
+        border: 1px solid #e2e8f1;
+        border-radius: 12px;
+        text-align: center;
+    }
+
+    .o_hoshin_empty_icon {
+        display: flex;
+        width: 52px;
+        height: 52px;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 12px;
+        color: #5366b1;
+        background: #edf0ff;
+        border-radius: 16px;
+        font-size: 22px;
+    }
+
+    .o_hoshin_empty_plan h2 { margin: 0 0 8px; color: #25324a; font-size: 20px; font-weight: 750; }
+    .o_hoshin_empty_plan p { max-width: 500px; margin: 0 0 16px; color: #79859a; font-size: 12px; }
+
+    @media (max-width: 1280px) {
+        .o_hoshin_matrix_grid {
+            grid-template-columns: minmax(200px, 1fr) minmax(250px, 1.1fr);
+            grid-template-rows: auto;
+        }
+        .o_hoshin_link_ba { grid-column: 1; grid-row: 1; }
+        .o_hoshin_annual_panel { grid-column: 2; grid-row: 1; }
+        .o_hoshin_link_ia { grid-column: 1; grid-row: 2; }
+        .o_hoshin_breakthrough_panel { grid-column: 2; grid-row: 2; }
+        .o_hoshin_matrix_center { grid-column: 1; grid-row: 3; }
+        .o_hoshin_initiative_panel { grid-column: 2; grid-row: 3; }
+        .o_hoshin_link_bm { grid-column: 1; grid-row: 4; }
+        .o_hoshin_metric_panel { grid-column: 2; grid-row: 4; }
+        .o_hoshin_link_im { grid-column: 1 / -1; grid-row: 5; }
+    }
+
+    @media (max-width: 780px) {
+        padding: 16px 12px 24px;
+        .o_hoshin_xmatrix_header { flex-direction: column; }
+        .o_hoshin_plan_bar { grid-template-columns: 1fr; }
+        .o_hoshin_plan_meta { justify-content: flex-start; }
+        .o_hoshin_summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+        .o_hoshin_stat { min-height: 100px; padding: 12px; }
+        .o_hoshin_matrix_intro { flex-direction: column; align-items: flex-start; }
+        .o_hoshin_matrix_grid { grid-template-columns: minmax(0, 1fr); }
+        .o_hoshin_link_ba,
+        .o_hoshin_annual_panel,
+        .o_hoshin_link_ia,
+        .o_hoshin_breakthrough_panel,
+        .o_hoshin_matrix_center,
+        .o_hoshin_initiative_panel,
+        .o_hoshin_link_bm,
+        .o_hoshin_metric_panel,
+        .o_hoshin_link_im { grid-column: 1; grid-row: auto; }
+        .o_hoshin_workspace_footer { align-items: flex-start; flex-direction: column; }
+    }
+}
