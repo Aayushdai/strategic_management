@@ -4,6 +4,7 @@ from odoo import models, _
 from odoo.exceptions import AccessError, ValidationError
 
 from ..services.kpi_sources import (
+    collect_accounting_result,
     collect_inventory_result,
     collect_pos_result,
     collect_purchase_result,
@@ -14,6 +15,10 @@ from ..services.kpi_sources import (
 _GROUP_HEAD = "strategic_management.group_strategic_head_office_manager"
 _GROUP_BRANCH = "strategic_management.group_strategic_branch_manager"
 _SOURCE_ADAPTERS = {
+    "accounting": {
+        "accounting_net_profit",
+        "accounting_net_profit_margin_pct",
+    },
     "pos": {
         "pos_sold_quantity",
         "pos_recipe_consumption_estimate",
@@ -36,6 +41,7 @@ _SOURCE_ADAPTERS = {
     },
 }
 _SOURCE_COLLECTORS = {
+    "accounting": collect_accounting_result,
     "pos": collect_pos_result,
     "purchase": collect_purchase_result,
     "inventory": collect_inventory_result,

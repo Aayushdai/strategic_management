@@ -6,7 +6,14 @@ from odoo.exceptions import AccessError, ValidationError
 from odoo.tools import float_is_zero
 
 
+_ACCOUNTING_CALCULATIONS = {
+    "accounting_net_profit",
+    "accounting_net_profit_margin_pct",
+}
+
 _SOURCE_CALCULATIONS = {
+    "accounting_net_profit": "accounting",
+    "accounting_net_profit_margin_pct": "accounting",
     "pos_sold_quantity": "pos",
     "pos_recipe_consumption_estimate": "pos",
     "purchase_ordered_quantity": "purchase",
@@ -25,7 +32,7 @@ _SOURCE_CALCULATIONS = {
 
 
 def _validate_calculation_contract(env, source_type, calculation_type, product_id, unit, company_id):
-    """Enforce the source type, product and unit contract for automatic quantity KPIs."""
+    """Enforce the source type, tracked-product, and unit contract for automatic KPIs."""
     expected_source = _SOURCE_CALCULATIONS.get(calculation_type)
     if not expected_source:
         return
@@ -38,6 +45,26 @@ def _validate_calculation_contract(env, source_type, calculation_type, product_i
             raise ValidationError("Supplier On-Time Delivery must use the % unit.")
         if product_id:
             raise ValidationError("Supplier On-Time Delivery is calculated across eligible purchase lines and must not select one tracked product.")
+        return
+    if calculation_type in _ACCOUNTING_CALCULATIONS:
+        if product_id:
+            raise ValidationError("Accounting financial KPIs must not select a tracked source product.")
+        if calculation_type == "accounting_net_profit_margin_pct":
+            if (unit or "").strip() != "%":
+                raise ValidationError("Net Profit Margin must use the % unit.")
+        else:
+            company = env["res.company"].browse(company_id or env.company.id).exists()
+            currency = company.currency_id if company else False
+            accepted_units = {
+                (currency.symbol or "").strip(),
+                (currency.name or "").strip(),
+            } if currency else set()
+            accepted_units.discard("")
+            if (unit or "").strip() not in accepted_units:
+                expected = currency.symbol or currency.name if currency else "the company currency"
+                raise ValidationError(
+                    "Net Profit must use the company currency unit (%s)." % expected
+                )
         return
     product = env["product.product"].browse(product_id).exists() if product_id else env["product.product"]
     if not product:
@@ -95,6 +122,8 @@ class StrategicKpiDefinition(models.Model):
     calculation_type = fields.Selection(
         [
             ("manual_value", "Manual Value"),
+            ("accounting_net_profit", "Net Profit (Posted Accounting)"),
+            ("accounting_net_profit_margin_pct", "Net Profit Margin (Posted Accounting)"),
             ("pos_sold_quantity", "POS Sold Quantity"),
             ("pos_recipe_consumption_estimate", "POS Recipe-Based Estimated Consumption"),
             ("purchase_ordered_quantity", "Confirmed Purchase Order Quantity"),
@@ -120,7 +149,10 @@ class StrategicKpiDefinition(models.Model):
         string="Tracked Source Product / Ingredient",
         ondelete="restrict",
         tracking=True,
-        help="Product tracked by an operational POS, Purchase, or Inventory quantity calculation; recipe estimates use this as the ingredient.",
+        help=(
+            "Product tracked by POS, Purchase, or Inventory quantity calculations. "
+            "Leave empty for accounting financial calculations."
+        ),
     )
     target_ids = fields.One2many("strategic.kpi.target", "kpi_id")
     evaluation_ids = fields.One2many("strategic.kpi.evaluation", "kpi_id")
@@ -269,6 +301,8 @@ class StrategicKpiDefinitionVersion(models.Model):
     calculation_type = fields.Selection(
         [
             ("manual_value", "Manual Value"),
+            ("accounting_net_profit", "Net Profit (Posted Accounting)"),
+            ("accounting_net_profit_margin_pct", "Net Profit Margin (Posted Accounting)"),
             ("pos_sold_quantity", "POS Sold Quantity"),
             ("pos_recipe_consumption_estimate", "POS Recipe-Based Estimated Consumption"),
             ("purchase_ordered_quantity", "Confirmed Purchase Order Quantity"),
@@ -292,7 +326,10 @@ class StrategicKpiDefinitionVersion(models.Model):
         "product.product",
         string="Tracked Source Product / Ingredient",
         ondelete="restrict",
-        help="Product tracked by an operational POS, Purchase, or Inventory quantity calculation; recipe estimates use this as the ingredient.",
+        help=(
+            "Product tracked by POS, Purchase, or Inventory quantity calculations. "
+            "Leave empty for accounting financial calculations."
+        ),
     )
     description = fields.Text()
     effective_from = fields.Date(required=True, index=True)
