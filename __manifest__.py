@@ -1,6 +1,6 @@
 {
     "name": "Strategic Performance Management",
-    "version": "20.0.1.2.0",
+    "version": "20.0.1.5.0",
     "category": "Productivity",
     "summary": "Strategic objectives, OKRs, KPIs, and performance management",
     "author": "Strategic Management Team",
@@ -9,6 +9,11 @@
         "base",
         "mail",
         "stock",
+        "purchase",
+        "purchase_stock",
+        "point_of_sale",
+        "pos_stock",
+        "mrp",
     ],
     "data": [
         "security/strategic_management_security.xml",
@@ -19,6 +24,7 @@
         "views/menus.xml",
         "views/hoshin_views.xml",
         "views/kpi_measurement_views.xml",
+        "data/strategic_kpi_scheduled_actions.xml",
     ],
     "installable": True,
     "application": True,

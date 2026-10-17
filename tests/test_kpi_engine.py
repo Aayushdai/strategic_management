@@ -20,6 +20,28 @@ class TestStrategicKpiEngine(TransactionCase):
             {"name": "Strategic Branch 2", "code": "SB2", "company_id": cls.company.id}
         )
 
+    def test_target_form_exposes_source_calculation_type_for_button_visibility(self):
+        product = self.env["product.product"].search([("uom_id", "!=", False)], limit=1)
+        self.assertTrue(product, "The test database must contain a product with a unit of measure.")
+        kpi = self.Kpi.create({
+            "name": "POS View Modifier Test KPI",
+            "code": "POS_VIEW_MODIFIER",
+            "unit": product.uom_id.name,
+            "direction": "higher",
+            "source_type": "pos",
+            "calculation_type": "pos_sold_quantity",
+            "source_product_id": product.id,
+            "company_id": self.company.id,
+        })
+        target = self._create_target(kpi, target_value=4.0)
+        self.assertEqual(target.calculation_type, "pos_sold_quantity")
+
+        view = self.env.ref("strategic_management.view_strategic_kpi_target_form")
+        architecture = view.arch_db
+        self.assertIn('field name="calculation_type" invisible="1"', architecture)
+        self.assertIn("calculation_type not in", architecture)
+        self.assertNotIn("kpi_id.calculation_type not in", architecture)
+
     def _create_kpi(self, direction="higher", code="KPI"):
         return self.Kpi.create(
             {
@@ -186,6 +208,10 @@ class TestStrategicKpiSecurity(TransactionCase):
                 "code": "SEC",
                 "unit": "%",
                 "direction": "higher",
+                # This test exercises target/evaluation access boundaries, not
+                # manual-submission governance. Manual KPIs must use the
+                # approval workflow tested in test_kpi_measurement.py.
+                "source_type": "other",
                 "company_id": self.company.id,
             }
         )
@@ -275,7 +301,10 @@ class TestStrategicKpiDefinitionVersioning(TransactionCase):
                 "code": code,
                 "unit": "%",
                 "direction": "higher",
-                "source_type": "manual",
+                # These versioning tests create evaluations directly to test
+                # version/target snapshots. Manual-source evaluations are
+                # intentionally restricted to the approved measurement flow.
+                "source_type": "other",
                 "description": "Initial approved contract.",
                 "company_id": self.company.id,
             }
@@ -320,7 +349,7 @@ class TestStrategicKpiDefinitionVersioning(TransactionCase):
             "kpi_id": kpi.id,
             "unit": "%",
             "direction": "lower",
-            "source_type": "manual",
+            "source_type": "other",
             "description": "Revised KPI calculation contract.",
             "effective_from": effective_from,
             "change_reason": "Approved change to the measurement contract.",
@@ -334,6 +363,26 @@ class TestStrategicKpiDefinitionVersioning(TransactionCase):
             self.env.registry.models,
             "KPI contract revision history must be represented by a dedicated model.",
         )
+
+    def test_revision_creation_recovers_readonly_kpi_from_context(self):
+        Version = self._require_version_model()
+        kpi = self._create_kpi("VCONTEXT")
+
+        # Mirrors the web form: kpi_id is readonly and can be omitted from
+        # the create payload even though default_kpi_id populated the form.
+        revision = Version.with_user(self.head_user).with_context(
+            default_kpi_id=kpi.id
+        ).create({
+            "unit": "Units",
+            "direction": "higher",
+            "source_type": "pos",
+            "effective_from": self._month_start(1),
+            "change_reason": "Regression test for readonly KPI context default.",
+        })
+
+        self.assertEqual(revision.kpi_id, kpi)
+        self.assertEqual(revision.version_number, 2)
+        self.assertEqual(revision.state, "draft")
 
     def test_initial_definition_has_approved_version_and_evaluations_reference_it(self):
         Version = self._require_version_model()
@@ -502,7 +551,9 @@ class TestStrategicKpiBaseline(TransactionCase):
                 "code": code,
                 "unit": "%",
                 "direction": "higher",
-                "source_type": "manual",
+                # Baseline/target-resolution tests create evaluations
+                # directly; manual submission behavior has its own tests.
+                "source_type": "other",
                 "description": "KPI used to test baseline management.",
                 "company_id": self.company.id,
             }
@@ -988,3 +1039,98 @@ class TestStrategicKpiBaseline(TransactionCase):
                 key_result=key_result,
             )
 
+@tagged("post_install", "-at_install")
+class TestStrategicKpiReportingViews(TransactionCase):
+    """Phase 7 native reporting actions keep valid results separate from exceptions."""
+
+    def test_kpi_analysis_uses_valid_evaluations_and_native_pivot_graph_views(self):
+        action = self.env.ref("strategic_management.action_strategic_kpi_analysis")
+        self.assertEqual(action.res_model, "strategic.kpi.evaluation")
+        self.assertIn("pivot", action.view_mode)
+        self.assertIn("graph", action.view_mode)
+        self.assertIn("valid", action.domain)
+        self.assertEqual(
+            self.env["strategic.kpi.evaluation"]._fields["attainment"].aggregator,
+            "avg",
+        )
+        self.assertTrue(self.env.ref("strategic_management.view_strategic_kpi_evaluation_graph"))
+        self.assertTrue(self.env.ref("strategic_management.view_strategic_kpi_evaluation_pivot"))
+        self.assertTrue(self.env.ref("strategic_management.view_strategic_kpi_evaluation_search"))
+
+    def test_kpi_exceptions_action_only_shows_nonvalid_evaluation_statuses(self):
+        action = self.env.ref("strategic_management.action_strategic_kpi_exceptions")
+        self.assertEqual(action.res_model, "strategic.kpi.evaluation")
+        self.assertIn("not_evaluated", action.domain)
+        self.assertIn("data_quality_issue", action.domain)
+        self.assertIn("pending_review", action.domain)
+        self.assertTrue(self.env.ref("strategic_management.view_strategic_kpi_evaluation_exception_list"))
+
+@tagged("post_install", "-at_install")
+class TestStrategicKpiRoleDashboards(TransactionCase):
+    """Phase 7 dashboards open valid KPI attainment using role-scoped access."""
+
+    def test_role_dashboard_actions_use_valid_evaluations_and_role_pivots(self):
+        cases = (
+            ("head_office", "view_strategic_kpi_dashboard_head_office_pivot"),
+            ("branch", "view_strategic_kpi_dashboard_branch_pivot"),
+            ("employee", "view_strategic_kpi_dashboard_employee_pivot"),
+        )
+        for role, view_xmlid in cases:
+            with self.subTest(role=role):
+                action = self.env.ref(
+                    "strategic_management.action_strategic_kpi_dashboard_%s" % role
+                )
+                self.assertEqual(action.res_model, "strategic.kpi.evaluation")
+                self.assertIn("pivot", action.view_mode)
+                self.assertIn("graph", action.view_mode)
+                self.assertIn("valid", action.domain)
+                self.assertEqual(
+                    action.view_id,
+                    self.env.ref("strategic_management.%s" % view_xmlid),
+                )
+                self.assertEqual(
+                    action.search_view_id,
+                    self.env.ref("strategic_management.view_strategic_kpi_evaluation_search"),
+                )
+
+    def test_role_dashboard_defaults_show_relevant_kpi_and_scope_breakdowns(self):
+        head_office = self.env.ref(
+            "strategic_management.action_strategic_kpi_dashboard_head_office"
+        )
+        branch = self.env.ref(
+            "strategic_management.action_strategic_kpi_dashboard_branch"
+        )
+        employee = self.env.ref(
+            "strategic_management.action_strategic_kpi_dashboard_employee"
+        )
+
+        self.assertIn("search_default_group_by_kpi", head_office.context)
+        self.assertIn("search_default_group_by_scope", head_office.context)
+        self.assertIn("search_default_group_by_warehouse", head_office.context)
+
+        self.assertIn("search_default_group_by_kpi", branch.context)
+        self.assertIn("search_default_group_by_scope", branch.context)
+        self.assertIn("search_default_group_by_warehouse", branch.context)
+        self.assertIn("search_default_group_by_period", branch.context)
+        self.assertIn(
+            'name="warehouse_id"',
+            branch.view_id.arch_db,
+            "Branch analysis must expose the assigned warehouse dimension; record rules still restrict rows.",
+        )
+
+        self.assertIn("search_default_group_by_kpi", employee.context)
+        self.assertIn("search_default_group_by_period", employee.context)
+
+    def test_dashboard_menus_are_restricted_to_the_matching_role(self):
+        role_menu_pairs = (
+            ("head_office", "group_strategic_head_office_manager"),
+            ("branch", "group_strategic_branch_manager"),
+            ("employee", "group_strategic_employee"),
+        )
+        for role, group_name in role_menu_pairs:
+            with self.subTest(role=role):
+                menu = self.env.ref(
+                    "strategic_management.menu_strategic_kpi_dashboard_%s" % role
+                )
+                group = self.env.ref("strategic_management.%s" % group_name)
+                self.assertEqual(menu.group_ids, group)

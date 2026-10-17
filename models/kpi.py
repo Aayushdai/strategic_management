@@ -5,6 +5,54 @@ from odoo import api, fields, models
 from odoo.exceptions import AccessError, ValidationError
 from odoo.tools import float_is_zero
 
+
+_SOURCE_CALCULATIONS = {
+    "pos_sold_quantity": "pos",
+    "pos_recipe_consumption_estimate": "pos",
+    "purchase_ordered_quantity": "purchase",
+    "purchase_received_quantity": "purchase",
+    "supplier_on_time_delivery_pct": "purchase",
+    "inventory_recorded_waste_quantity": "inventory",
+    "inventory_validated_waste_quantity": "inventory",
+    "inventory_opening_stock_quantity": "inventory",
+    "inventory_closing_stock_quantity": "inventory",
+    "inventory_actual_consumption_quantity": "inventory",
+    "inventory_transfer_in_quantity": "inventory",
+    "inventory_transfer_out_quantity": "inventory",
+    "inventory_adjustment_quantity": "inventory",
+    "inventory_unexplained_variance_quantity": "inventory",
+}
+
+
+def _validate_calculation_contract(env, source_type, calculation_type, product_id, unit, company_id):
+    """Enforce the source type, product and unit contract for automatic quantity KPIs."""
+    expected_source = _SOURCE_CALCULATIONS.get(calculation_type)
+    if not expected_source:
+        return
+    if source_type != expected_source:
+        raise ValidationError(
+            "Calculation type %s requires source type %s." % (calculation_type, expected_source)
+        )
+    if calculation_type == "supplier_on_time_delivery_pct":
+        if (unit or "").strip() != "%":
+            raise ValidationError("Supplier On-Time Delivery must use the % unit.")
+        if product_id:
+            raise ValidationError("Supplier On-Time Delivery is calculated across eligible purchase lines and must not select one tracked product.")
+        return
+    product = env["product.product"].browse(product_id).exists() if product_id else env["product.product"]
+    if not product:
+        raise ValidationError("Select the tracked source product or ingredient for this calculation.")
+    company = env["res.company"].browse(company_id or env.company.id).exists()
+    product_company = getattr(product, "company_id", False)
+    if company and product_company and product_company != company:
+        raise ValidationError("The tracked product must belong to the KPI company or be shared across companies.")
+    base_unit = product.uom_id.name if product.uom_id else ""
+    if (unit or "").strip().casefold() != (base_unit or "").strip().casefold():
+        raise ValidationError(
+            "For quantity-based source calculations, the KPI unit must match the tracked product's base unit (%s)."
+            % (base_unit or "missing")
+        )
+
 class StrategicKpiDefinition(models.Model):
     _name = "strategic.kpi.definition"
     _description = "Strategic KPI Definition"
@@ -44,6 +92,36 @@ class StrategicKpiDefinition(models.Model):
         tracking=True,
     )
     description = fields.Text()
+    calculation_type = fields.Selection(
+        [
+            ("manual_value", "Manual Value"),
+            ("pos_sold_quantity", "POS Sold Quantity"),
+            ("pos_recipe_consumption_estimate", "POS Recipe-Based Estimated Consumption"),
+            ("purchase_ordered_quantity", "Confirmed Purchase Order Quantity"),
+            ("purchase_received_quantity", "Completed Supplier Receipt Quantity"),
+            ("supplier_on_time_delivery_pct", "Supplier On-Time Delivery Percentage"),
+            ("inventory_recorded_waste_quantity", "Recorded Waste Quantity"),
+            ("inventory_validated_waste_quantity", "Validated Waste Quantity"),
+            ("inventory_opening_stock_quantity", "Opening Stock Quantity"),
+            ("inventory_closing_stock_quantity", "Closing Stock Quantity"),
+            ("inventory_actual_consumption_quantity", "Actual Production Consumption Quantity"),
+            ("inventory_transfer_in_quantity", "Inter-Warehouse Transfer In Quantity"),
+            ("inventory_transfer_out_quantity", "Inter-Warehouse Transfer Out Quantity"),
+            ("inventory_adjustment_quantity", "Net Inventory Adjustment Quantity"),
+            ("inventory_unexplained_variance_quantity", "Unexplained Stock-Flow Variance Quantity"),
+        ],
+        required=True,
+        default="manual_value",
+        tracking=True,
+        help="Controlled calculation method. Formula/source changes require a new approved KPI definition version.",
+    )
+    source_product_id = fields.Many2one(
+        "product.product",
+        string="Tracked Source Product / Ingredient",
+        ondelete="restrict",
+        tracking=True,
+        help="Product tracked by an operational POS, Purchase, or Inventory quantity calculation; recipe estimates use this as the ingredient.",
+    )
     target_ids = fields.One2many("strategic.kpi.target", "kpi_id")
     evaluation_ids = fields.One2many("strategic.kpi.evaluation", "kpi_id")
     version_ids = fields.One2many(
@@ -56,6 +134,18 @@ class StrategicKpiDefinition(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            calculation_type = vals.get("calculation_type", "manual_value")
+            source_type = vals.get("source_type", "manual")
+            if calculation_type in _SOURCE_CALCULATIONS:
+                _validate_calculation_contract(
+                    self.env,
+                    source_type,
+                    calculation_type,
+                    vals.get("source_product_id"),
+                    vals.get("unit", "Unit"),
+                    vals.get("company_id") or self.env.company.id,
+                )
         kpis = super().create(vals_list)
         version_model = self.env["strategic.kpi.definition.version"].sudo().with_context(
             _create_initial_kpi_version=True
@@ -68,6 +158,8 @@ class StrategicKpiDefinition(models.Model):
                     "unit": kpi.unit,
                     "direction": kpi.direction,
                     "source_type": kpi.source_type,
+                    "calculation_type": kpi.calculation_type,
+                    "source_product_id": kpi.source_product_id.id or False,
                     "description": kpi.description,
                     # The initial contract is the legacy contract for any
                     # backfilled historical reporting period. Subsequent
@@ -81,7 +173,10 @@ class StrategicKpiDefinition(models.Model):
         return kpis
 
     def write(self, vals):
-        versioned_fields = {"unit", "direction", "source_type", "description"}
+        versioned_fields = {
+            "unit", "direction", "source_type", "calculation_type",
+            "source_product_id", "description",
+        }
         if versioned_fields.intersection(vals):
             raise ValidationError(
                 "KPI calculation-contract fields are versioned. Create and approve a new definition version instead."
@@ -95,6 +190,8 @@ class StrategicKpiDefinition(models.Model):
             "unit": version.unit,
             "direction": version.direction,
             "source_type": version.source_type,
+            "calculation_type": version.calculation_type,
+            "source_product_id": version.source_product_id.id or False,
             "description": version.description,
         })
 
@@ -116,6 +213,8 @@ class StrategicKpiDefinition(models.Model):
                 "unit": self.unit,
                 "direction": self.direction,
                 "source_type": self.source_type,
+                "calculation_type": self.calculation_type,
+                "source_product_id": self.source_product_id.id or False,
                 "description": self.description,
                 "effective_from": "1970-01-01",
                 "change_reason": "Initial KPI definition contract migrated from legacy definition.",
@@ -167,6 +266,34 @@ class StrategicKpiDefinitionVersion(models.Model):
         ],
         required=True,
     )
+    calculation_type = fields.Selection(
+        [
+            ("manual_value", "Manual Value"),
+            ("pos_sold_quantity", "POS Sold Quantity"),
+            ("pos_recipe_consumption_estimate", "POS Recipe-Based Estimated Consumption"),
+            ("purchase_ordered_quantity", "Confirmed Purchase Order Quantity"),
+            ("purchase_received_quantity", "Completed Supplier Receipt Quantity"),
+            ("supplier_on_time_delivery_pct", "Supplier On-Time Delivery Percentage"),
+            ("inventory_recorded_waste_quantity", "Recorded Waste Quantity"),
+            ("inventory_validated_waste_quantity", "Validated Waste Quantity"),
+            ("inventory_opening_stock_quantity", "Opening Stock Quantity"),
+            ("inventory_closing_stock_quantity", "Closing Stock Quantity"),
+            ("inventory_actual_consumption_quantity", "Actual Production Consumption Quantity"),
+            ("inventory_transfer_in_quantity", "Inter-Warehouse Transfer In Quantity"),
+            ("inventory_transfer_out_quantity", "Inter-Warehouse Transfer Out Quantity"),
+            ("inventory_adjustment_quantity", "Net Inventory Adjustment Quantity"),
+            ("inventory_unexplained_variance_quantity", "Unexplained Stock-Flow Variance Quantity"),
+        ],
+        required=True,
+        default="manual_value",
+        help="Controlled calculation method frozen as part of this KPI definition version.",
+    )
+    source_product_id = fields.Many2one(
+        "product.product",
+        string="Tracked Source Product / Ingredient",
+        ondelete="restrict",
+        help="Product tracked by an operational POS, Purchase, or Inventory quantity calculation; recipe estimates use this as the ingredient.",
+    )
     description = fields.Text()
     effective_from = fields.Date(required=True, index=True)
     effective_to = fields.Date(readonly=True, index=True)
@@ -203,10 +330,20 @@ class StrategicKpiDefinitionVersion(models.Model):
         vals_list = [dict(vals) for vals in vals_list]
         initial_creation = self.env.su and self.env.context.get("_create_initial_kpi_version")
         next_number_by_kpi = {}
+
+        # This form's KPI field is readonly. The web client may omit it from
+        # the create payload even though default_kpi_id populated the form.
+        context_defaults = self.default_get(["kpi_id"])
         for vals in vals_list:
-            kpi_id = vals.get("kpi_id")
+            kpi_id = vals.get("kpi_id") or context_defaults.get("kpi_id")
             if not kpi_id:
                 raise ValidationError("A KPI definition version must reference a KPI.")
+            kpi = self.env["strategic.kpi.definition"].browse(kpi_id).exists()
+            if not kpi:
+                raise ValidationError("Select a valid KPI before creating its definition version.")
+            kpi_id = kpi.id
+            vals["kpi_id"] = kpi_id
+
             if vals.get("state") == "approved" and not initial_creation:
                 raise ValidationError("KPI definition versions must be approved through the approval workflow.")
             if not initial_creation and not vals.get("change_reason"):
@@ -249,6 +386,19 @@ class StrategicKpiDefinitionVersion(models.Model):
                 raise ValidationError("Only draft KPI definition versions can be approved.")
             if not version.effective_from:
                 raise ValidationError("Set an effective date before approving the KPI definition version.")
+            if version.calculation_type in _SOURCE_CALCULATIONS:
+                _validate_calculation_contract(
+                    self.env,
+                    version.source_type,
+                    version.calculation_type,
+                    version.source_product_id.id or False,
+                    version.unit,
+                    version.kpi_id.company_id.id,
+                )
+            elif version.calculation_type == "manual_value" and version.source_type == "pos":
+                # Existing POS definitions remain readable but cannot be used as an automatic source
+                # until their calculation contract is explicitly versioned and approved.
+                pass
 
             approved = self.sudo().search(
                 [("kpi_id", "=", version.kpi_id.id), ("state", "=", "approved")],
@@ -288,6 +438,7 @@ class StrategicKpiTarget(models.Model):
     _order = "date_start desc, kpi_id"
     name = fields.Char(compute="_compute_name", store=True)
     kpi_id = fields.Many2one("strategic.kpi.definition", required=True, ondelete="restrict", index=True)
+    calculation_type = fields.Selection(related="kpi_id.calculation_type", readonly=True)
     company_id = fields.Many2one(related="kpi_id.company_id", store=True, readonly=True)
     date_start = fields.Date(required=True, index=True)
     date_end = fields.Date(required=True, index=True)
@@ -700,7 +851,11 @@ class StrategicKpiEvaluation(models.Model):
     has_actual_value = fields.Boolean(default=False)
     unit = fields.Char()
     gap = fields.Float(readonly=True)
-    attainment = fields.Float(readonly=True, help="Attainment percentage.")
+    attainment = fields.Float(
+        readonly=True,
+        aggregator="avg",
+        help="Attainment percentage; reporting groups average evaluated attainment rather than summing percentages.",
+    )
     status = fields.Selection(
         [
             ("valid", "Valid / Evaluated"),
@@ -729,6 +884,14 @@ class StrategicKpiEvaluation(models.Model):
     reason = fields.Text(readonly=True)
     source_model = fields.Char()
     source_record_ref = fields.Char(string="Source Record References")
+    source_note = fields.Text(
+        string="Source Calculation Notes", readonly=True, copy=False,
+        help="Explanation or qualification returned by the operational source adapter.",
+    )
+    source_key = fields.Char(
+        string="Source Snapshot Key", index=True, readonly=True, copy=False,
+        help="Deterministic fingerprint preventing duplicate evaluations from an unchanged operational source snapshot.",
+    )
     evaluated_at = fields.Datetime(default=fields.Datetime.now, required=True, readonly=True)
     evaluated_by_id = fields.Many2one(
         "res.users",
@@ -737,6 +900,11 @@ class StrategicKpiEvaluation(models.Model):
         readonly=True,
     )
     superseded_by_id = fields.Many2one("strategic.kpi.evaluation", readonly=True, copy=False)
+
+    _source_key_unique = models.Constraint(
+        "UNIQUE(source_key)",
+        "An operational source snapshot can only create one KPI evaluation.",
+    )
 
     @api.depends("kpi_id.name", "date_start", "date_end")
     def _compute_name(self):
@@ -809,6 +977,8 @@ class StrategicKpiEvaluation(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        if any("source_key" in vals or "source_note" in vals for vals in vals_list):
+            raise AccessError("Operational source provenance is assigned only by the controlled source adapter workflow.")
         return super().create([self._prepare_evaluation_values(vals) for vals in vals_list])
 
     def write(self, vals):
@@ -838,10 +1008,70 @@ class StrategicKpiEvaluation(models.Model):
             "reason",
             "source_model",
             "source_record_ref",
+            "source_note",
+            "source_key",
         }
         if immutable.intersection(vals):
             raise ValidationError("KPI evaluations are historical records. Create a new evaluation or correction instead of editing results.")
         return super().write(vals)
+
+    @api.model
+    def _create_from_source_adapter(self, target, version, result):
+        """Create an immutable evaluation for one normalized source result.
+
+        This private method is called only after the target action has checked the
+        business role and scope. It deliberately bypasses the public create guard
+        only for the internal source_key/provenance payload.
+        """
+        target.ensure_one()
+        version.ensure_one()
+        source_key = result.get("source_key")
+        if not source_key:
+            raise ValidationError("The source adapter did not provide an idempotency key.")
+        Evaluation = self.sudo()
+        existing = Evaluation.search([("source_key", "=", source_key)], limit=1)
+        if existing:
+            return existing
+
+        is_valid = result.get("status") == "valid" and result.get("has_value", False)
+        vals = {
+            "target_id": target.id,
+            "actual_value": result.get("value") if is_valid else 0.0,
+            "has_actual_value": bool(is_valid),
+            "source_model": result.get("source_model") or False,
+            "source_record_ref": result.get("source_record_ref") or False,
+        }
+        prepared = Evaluation._prepare_evaluation_values(vals)
+        prepared.update({
+            "source_key": source_key,
+            "source_model": result.get("source_model") or False,
+            "source_record_ref": result.get("source_record_ref") or False,
+            "source_note": result.get("reason") or False,
+        })
+        if not is_valid:
+            reason = result.get("reason") or "The operational source did not produce a valid measurement."
+            status = result.get("status") if result.get("status") in ("not_evaluated", "data_quality_issue") else "data_quality_issue"
+            prepared.update({
+                "actual_value": 0.0,
+                "has_actual_value": False,
+                "gap": 0.0,
+                "attainment": 0.0,
+                "status": status,
+                "attainment_status": status,
+                "reason": reason,
+            })
+        # Call the inherited ORM create directly: the public override intentionally
+        # rejects a caller-supplied source_key. This method is private (RPC-inaccessible).
+        evaluation = super(StrategicKpiEvaluation, Evaluation).create([prepared])
+        previous = Evaluation.search([
+            ("target_id", "=", target.id),
+            ("source_key", "!=", False),
+            ("id", "!=", evaluation.id),
+            ("superseded_by_id", "=", False),
+        ], order="evaluated_at desc, id desc")
+        if previous:
+            previous[:1].write({"superseded_by_id": evaluation.id})
+        return evaluation
 
     @api.constrains("date_start", "date_end", "scope", "warehouse_id", "user_id")
     def _check_evaluation_scope_and_dates(self):

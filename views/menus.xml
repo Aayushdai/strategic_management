@@ -38,6 +38,59 @@
               sequence="30"
               groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_employee"/>
 
+    <!-- Reporting uses the existing evaluation record rules for role scope. -->
+    <menuitem id="menu_strategic_kpi_analysis"
+              name="Analysis"
+              parent="menu_strategic_management_kpi"
+              action="action_strategic_kpi_analysis"
+              sequence="40"
+              groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_employee"/>
+
+    <menuitem id="menu_strategic_kpi_exceptions"
+              name="Exceptions"
+              parent="menu_strategic_management_kpi"
+              action="action_strategic_kpi_exceptions"
+              sequence="50"
+              groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_employee"/>
+
+    <!-- Role-specific KPI dashboards; underlying evaluation record rules remain authoritative. -->
+    <menuitem id="menu_strategic_kpi_dashboards"
+              name="Dashboards"
+              parent="menu_strategic_management_root"
+              sequence="30"
+              groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_employee"/>
+
+    <menuitem id="menu_strategic_kpi_dashboard_head_office"
+              name="Head Office Dashboard"
+              parent="menu_strategic_kpi_dashboards"
+              action="action_strategic_kpi_dashboard_head_office"
+              sequence="10"
+              groups="strategic_management.group_strategic_head_office_manager"/>
+
+    <menuitem id="menu_strategic_kpi_dashboard_branch"
+              name="Branch Performance"
+              parent="menu_strategic_kpi_dashboards"
+              action="action_strategic_kpi_dashboard_branch"
+              sequence="20"
+              groups="strategic_management.group_strategic_branch_manager"/>
+
+    <menuitem id="menu_strategic_kpi_dashboard_employee"
+              name="My KPI Dashboard"
+              parent="menu_strategic_kpi_dashboards"
+              action="action_strategic_kpi_dashboard_employee"
+              sequence="30"
+              groups="strategic_management.group_strategic_employee"/>
+
+    <record id="menu_strategic_kpi_dashboard_head_office" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [ref('group_strategic_head_office_manager')])]"/>
+    </record>
+    <record id="menu_strategic_kpi_dashboard_branch" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [ref('group_strategic_branch_manager')])]"/>
+    </record>
+    <record id="menu_strategic_kpi_dashboard_employee" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [ref('group_strategic_employee')])]"/>
+    </record>
+
     <!-- Strategy: Head Office and Branch Managers only -->
     <menuitem id="menu_strategic_management_strategy"
               name="Strategy"
