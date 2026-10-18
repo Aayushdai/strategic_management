@@ -4,6 +4,9 @@ These tests intentionally define the expected model contract before the
 Hoshin models are implemented. Run on the isolated strategic_management_test
  database only.
 """
+import ast
+
+from lxml import etree
 from odoo.exceptions import AccessError, ValidationError
 from odoo.tests.common import tagged
 
@@ -394,6 +397,48 @@ class TestHoshinXMatrix(StrategyFixture):
         self.assertIn('"target_id": %s' % target.id, history.old_snapshot)
         self.assertIn('"target_id": %s' % target.id, history.new_snapshot)
 
+
+    def test_alignment_forms_filter_breakthrough_and_annual_horizons(self):
+        """Endpoint selectors must not offer objectives with the wrong Hoshin horizon."""
+        cases = (
+            (
+                "strategic_management.view_strategic_xmatrix_alignment_form",
+                "breakthrough_objective_id",
+                "breakthrough",
+            ),
+            (
+                "strategic_management.view_strategic_xmatrix_alignment_form",
+                "annual_objective_id",
+                "annual",
+            ),
+            (
+                "strategic_management.view_strategic_xmatrix_revision_wizard_form",
+                "breakthrough_objective_id",
+                "breakthrough",
+            ),
+            (
+                "strategic_management.view_strategic_xmatrix_revision_wizard_form",
+                "annual_objective_id",
+                "annual",
+            ),
+        )
+        for view_xml_id, field_name, horizon in cases:
+            with self.subTest(view=view_xml_id, field=field_name):
+                view = self.env.ref(view_xml_id)
+                arch = etree.fromstring(view.arch_db.encode("utf-8"))
+                fields_found = arch.xpath(".//field[@name=$field_name]", field_name=field_name)
+                self.assertTrue(fields_found, "%s must include %s" % (view_xml_id, field_name))
+                domain = ast.literal_eval(fields_found[0].get("domain") or "[]")
+                self.assertIn(
+                    ("scope", "=", "organization"),
+                    domain,
+                    "%s must exclude branch-scoped objectives" % field_name,
+                )
+                self.assertIn(
+                    ("hoshin_level", "=", horizon),
+                    domain,
+                    "%s must only offer %s objectives" % (field_name, horizon),
+                )
 
 @tagged("post_install", "-at_install")
 class TestHoshinSecurityAndHistory(StrategyFixture):
