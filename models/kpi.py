@@ -1056,9 +1056,11 @@ class StrategicKpiEvaluation(models.Model):
     def _create_from_source_adapter(self, target, version, result):
         """Create an immutable evaluation for one normalized source result.
 
-        This private method is called only after the target action has checked the
-        business role and scope. It deliberately bypasses the public create guard
-        only for the internal source_key/provenance payload.
+        User-triggered callers must perform role and scope checks before reaching
+        this RPC-inaccessible method. Trusted internal event hooks must likewise
+        restrict company, target state, source calculation, period and branch scope.
+        It deliberately bypasses the public create guard only for the internal
+        source_key/provenance payload.
         """
         target.ensure_one()
         version.ensure_one()
@@ -1068,6 +1070,7 @@ class StrategicKpiEvaluation(models.Model):
         Evaluation = self.sudo()
         existing = Evaluation.search([("source_key", "=", source_key)], limit=1)
         if existing:
+            Evaluation._sync_linked_key_result_evaluation(target, existing)
             return existing
 
         is_valid = result.get("status") == "valid" and result.get("has_value", False)
@@ -1108,7 +1111,28 @@ class StrategicKpiEvaluation(models.Model):
         ], order="evaluated_at desc, id desc")
         if previous:
             previous[:1].write({"superseded_by_id": evaluation.id})
+        Evaluation._sync_linked_key_result_evaluation(target, evaluation)
         return evaluation
+
+    @api.model
+    def _sync_linked_key_result_evaluation(self, target, evaluation):
+        """Link the current source snapshot to the Key Result explicitly assigned to this target."""
+        target.ensure_one()
+        evaluation.ensure_one()
+        if evaluation.target_id != target or evaluation.superseded_by_id:
+            return
+
+        key_results = self.env["strategic.key.result"].sudo().search([
+            ("target_id", "=", target.id),
+            ("primary_kpi_id", "=", target.kpi_id.id),
+        ])
+        if len(key_results) > 1:
+            raise ValidationError(
+                "This KPI target is linked to more than one Key Result; "
+                "the current evaluation cannot be assigned unambiguously."
+            )
+        if key_results and key_results.evaluation_id != evaluation:
+            key_results.write({"evaluation_id": evaluation.id})
 
     @api.constrains("date_start", "date_end", "scope", "warehouse_id", "user_id")
     def _check_evaluation_scope_and_dates(self):

@@ -332,6 +332,7 @@ class StrategicKpiMeasurement(models.Model):
                 if old_evaluations:
                     old_eval = old_evaluations.sudo()
                     old_eval.write({"superseded_by_id": evaluation.id})
+            self.env['strategic.kpi.evaluation']._sync_linked_key_result_evaluation(rec.target_id, evaluation)
         return True
 
     def action_return_for_correction(self):

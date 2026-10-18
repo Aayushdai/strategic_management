@@ -1,5 +1,7 @@
 """Regression tests for POS calculation contracts and source evaluation governance."""
 
+from unittest.mock import patch
+
 from odoo.exceptions import AccessError, ValidationError
 from odoo.tests.common import TransactionCase, tagged
 
@@ -126,3 +128,125 @@ class TestStrategicKpiPosSourceAdapter(TransactionCase):
         _kpi, target = self._make_target("P5_POS_BRANCH_SCOPE_BLOCK")
         with self.assertRaises(AccessError):
             target.with_user(self.manager).action_evaluate_source()
+
+    def test_source_evaluation_propagates_to_linked_key_result_and_okr(self):
+        """A source evaluation should update the KR and downstream scores automatically."""
+        kpi, target = self._make_target("P5_POS_KR_PROPAGATION")
+
+        Plan = self.env["strategic.plan"].with_user(self.head)
+        plan = Plan.create({
+            "name": "POS KR Propagation Test Plan",
+            "company_id": self.company.id,
+            "date_start": "2098-01-01",
+            "date_end": "2098-12-31",
+        })
+        objective = self.env["strategic.objective"].with_user(self.head).create({
+            "name": "POS KR Propagation Test Objective",
+            "plan_id": plan.id,
+            "perspective": "financial",
+            "scope": "organization",
+            "owner_id": self.head.id,
+            "deadline": "2098-12-31",
+            "state": "draft",
+        })
+        okr = self.env["strategic.okr.objective"].with_user(self.head).create({
+            "name": "POS KR Propagation Test OKR",
+            "strategic_objective_id": objective.id,
+            "owner_id": self.head.id,
+            "date_start": target.date_start.isoformat(),
+            "date_end": target.date_end.isoformat(),
+        })
+        key_result = self.env["strategic.key.result"].with_user(self.head).create({
+            "name": "POS KR Propagation Test Key Result",
+            "okr_objective_id": okr.id,
+            "primary_kpi_id": kpi.id,
+            "target_id": target.id,
+            "required": True,
+        })
+
+        version = kpi._get_definition_version_for_period(
+            target.date_start, target.date_end
+        )
+
+        def fake_pos_collector(actual_target, actual_version):
+            self.assertEqual(actual_target, target)
+            self.assertEqual(actual_version, version)
+            return {
+                "status": "valid",
+                "has_value": True,
+                "value": 2.0,
+                "unit": version.unit,
+                "reason": "Controlled POS adapter fixture for propagation acceptance.",
+                "source_model": "pos.order.line",
+                "source_record_ref": "pos.order:9001; pos.order.line:9002",
+                "source_key": "phase5-kr-propagation-target-%s" % target.id,
+            }
+
+        # Exercise the real target action and evaluation creation path while
+        # replacing only the native POS read with a deterministic fixture.
+        with patch.dict(
+            "odoo.addons.strategic_management.models.kpi_source_adapter._SOURCE_COLLECTORS",
+            {"pos": fake_pos_collector},
+        ):
+            action = target.with_user(self.head).action_evaluate_source()
+
+        evaluation = self.Evaluation.browse(action["res_id"])
+        key_result.invalidate_recordset()
+        okr.invalidate_recordset()
+        objective.invalidate_recordset()
+
+        self.assertEqual(evaluation.status, "valid")
+        self.assertAlmostEqual(evaluation.actual_value, 2.0)
+
+        # Keep checks independent so one missing link does not hide the state
+        # of the other downstream computations in the failing acceptance run.
+        checks = [
+            ("Key Result evaluation link", key_result.evaluation_id.id, evaluation.id),
+            ("Key Result scoring status", key_result.scoring_status, "valid"),
+            ("Key Result attainment", key_result.attainment, evaluation.attainment),
+            ("OKR score", okr.score, evaluation.attainment),
+            ("OKR scoring status", okr.scoring_status, evaluation.attainment_status),
+            ("Strategic objective score", objective.score, evaluation.attainment),
+            ("Strategic objective scoring status", objective.scoring_status, evaluation.attainment_status),
+        ]
+        for label, actual, expected in checks:
+            with self.subTest(check=label):
+                if isinstance(expected, float):
+                    self.assertAlmostEqual(actual, expected, msg=label)
+                else:
+                    self.assertEqual(actual, expected, msg=label)
+
+        # An unchanged operational snapshot must repair a missing KR link
+        # without creating a duplicate KPI evaluation.
+        key_result.write({"evaluation_id": False})
+        with patch.dict(
+            "odoo.addons.strategic_management.models.kpi_source_adapter._SOURCE_COLLECTORS",
+            {"pos": fake_pos_collector},
+        ):
+            retry_action = target.with_user(self.head).action_evaluate_source()
+        retried_evaluation = self.Evaluation.browse(retry_action["res_id"])
+        self.assertEqual(retried_evaluation, evaluation)
+        key_result.invalidate_recordset()
+        self.assertEqual(key_result.evaluation_id, evaluation)
+
+        # A newer source snapshot supersedes the original and becomes the KR's
+        # current evaluation. An old snapshot must never relink over the newer one.
+        replacement_result = {
+            "status": "valid",
+            "has_value": True,
+            "value": 3.0,
+            "unit": version.unit,
+            "reason": "Replacement fixture snapshot.",
+            "source_model": "pos.order.line",
+            "source_record_ref": "pos.order:9003; pos.order.line:9004",
+            "source_key": "phase5-kr-propagation-replacement-%s" % target.id,
+        }
+        replacement = self.Evaluation.sudo()._create_from_source_adapter(
+            target, version, replacement_result
+        )
+        self.assertEqual(evaluation.superseded_by_id, replacement)
+        key_result.invalidate_recordset()
+        self.assertEqual(key_result.evaluation_id, replacement)
+        self.Evaluation.sudo()._sync_linked_key_result_evaluation(target, evaluation)
+        key_result.invalidate_recordset()
+        self.assertEqual(key_result.evaluation_id, replacement)

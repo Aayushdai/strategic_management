@@ -107,6 +107,97 @@ class TestStrategicKpiManualMeasurement(TransactionCase):
         with self.assertRaises(ValidationError):
             measurement.with_user(self.manager).action_approve()
 
+    def test_branch_manual_measurement_approval_propagates_to_key_result_and_okr(self):
+        """An approved branch manual measurement updates its explicitly linked KR and scores."""
+        kpi, target = self._make_target("MAN_BRANCH_KR_PROPAGATION", scope="branch")
+
+        plan = self.env["strategic.plan"].with_user(self.head).create({
+            "name": "Manual KPI Propagation Test Plan",
+            "company_id": self.company.id,
+            "date_start": "2026-01-01",
+            "date_end": "2026-12-31",
+        })
+        parent_objective = self.env["strategic.objective"].with_user(self.head).create({
+            "name": "Manual KPI Propagation Parent Objective",
+            "plan_id": plan.id,
+            "perspective": "financial",
+            "scope": "organization",
+            "owner_id": self.head.id,
+            "deadline": "2026-12-31",
+            "state": "draft",
+        })
+        branch_objective = self.env["strategic.objective"].with_user(self.head).create({
+            "name": "Manual KPI Propagation Branch Objective",
+            "plan_id": plan.id,
+            "perspective": "financial",
+            "scope": "branch",
+            "warehouse_id": self.warehouse.id,
+            "parent_objective_id": parent_objective.id,
+            "owner_id": self.manager.id,
+            "deadline": "2026-12-31",
+            "state": "draft",
+        })
+        okr = self.env["strategic.okr.objective"].with_user(self.head).create({
+            "name": "Manual KPI Propagation Branch OKR",
+            "strategic_objective_id": branch_objective.id,
+            "owner_id": self.manager.id,
+            "date_start": target.date_start.isoformat(),
+            "date_end": target.date_end.isoformat(),
+        })
+        key_result = self.env["strategic.key.result"].with_user(self.head).create({
+            "name": "Manual KPI Propagation Branch Key Result",
+            "okr_objective_id": okr.id,
+            "primary_kpi_id": kpi.id,
+            "target_id": target.id,
+            "required": True,
+        })
+
+        measurement = self._make_measurement(target, submitter=self.manager, actual=80.0)
+        measurement.with_user(self.manager).action_submit()
+        measurement.with_user(self.head).action_approve()
+
+        evaluation = measurement.evaluation_ids
+        key_result.invalidate_recordset()
+        okr.invalidate_recordset()
+        branch_objective.invalidate_recordset()
+        self.assertTrue(evaluation)
+        self.assertEqual(evaluation.status, "valid")
+        self.assertEqual(key_result.evaluation_id, evaluation)
+        self.assertEqual(key_result.scoring_status, "valid")
+        self.assertAlmostEqual(key_result.attainment, evaluation.attainment)
+        self.assertAlmostEqual(okr.score, evaluation.attainment)
+        self.assertEqual(okr.scoring_status, evaluation.attainment_status)
+        self.assertAlmostEqual(branch_objective.score, evaluation.attainment)
+        self.assertEqual(branch_objective.scoring_status, evaluation.attainment_status)
+
+        # PHASE5_MANUAL_CORRECTION_PROPAGATION
+        # A correction must supersede the original evaluation and become the
+        # linked Key Result's current evaluation, updating downstream scores.
+        correction = self.Measurement.with_user(self.manager).create({
+            "target_id": target.id,
+            "actual_value": 88.0,
+            "has_actual_value": True,
+            "source_reference": "Corrected branch KPI source, revision 2.",
+            "correction_reason": "Corrected the original branch report value.",
+            "corrects_measurement_id": measurement.id,
+        })
+        correction.with_user(self.manager).action_submit()
+        correction.with_user(self.head).action_approve()
+        replacement = correction.evaluation_ids
+
+        self.assertEqual(correction.state, "approved")
+        self.assertEqual(replacement.actual_value, 88.0)
+        self.assertEqual(evaluation.superseded_by_id, replacement)
+        key_result.invalidate_recordset()
+        okr.invalidate_recordset()
+        branch_objective.invalidate_recordset()
+        self.assertEqual(key_result.evaluation_id, replacement)
+        self.assertEqual(key_result.scoring_status, "valid")
+        self.assertAlmostEqual(key_result.attainment, replacement.attainment)
+        self.assertAlmostEqual(okr.score, replacement.attainment)
+        self.assertEqual(okr.scoring_status, replacement.attainment_status)
+        self.assertAlmostEqual(branch_objective.score, replacement.attainment)
+        self.assertEqual(branch_objective.scoring_status, replacement.attainment_status)
     def test_submitter_cannot_approve_own_measurement(self):
         _kpi, target = self._make_target("MAN_NO_SELF_APPROVE")
         measurement = self._make_measurement(target)
