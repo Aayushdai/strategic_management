@@ -373,7 +373,9 @@ class TestHoshinXMatrix(StrategyFixture):
         Alignment = self._require_alignment_model()
         plan = self._mk_plan()
         kpi = self._mk_kpi("XMAT-TARGET-REVISION")
-        initiative = self.env["strategic.initiative"].with_user(self.head_user).create({
+        initiative = self.env["strategic.initiative"].with_user(
+            self.head_user
+        ).create({
             "name": "Metric Target Revision Initiative",
             "plan_id": plan.id,
             "date_start": "2026-01-01",
@@ -381,22 +383,89 @@ class TestHoshinXMatrix(StrategyFixture):
         })
         target = self._mk_metric_target(kpi)
         link = Alignment.with_user(self.head_user).create({
-            "link_type": "I>M", "relationship_type": "primary",
-            "initiative_id": initiative.id, "kpi_id": kpi.id,
-            "target_id": target.id, "effective_date": "2026-06-15",
+            "link_type": "I>M",
+            "relationship_type": "primary",
+            "initiative_id": initiative.id,
+            "kpi_id": kpi.id,
+            "target_id": target.id,
+            "effective_date": "2026-06-15",
         })
+
         action = link.with_user(self.head_user).action_open_revision_wizard()
         self.assertEqual(action["context"]["default_target_id"], target.id)
+
         replacement = link.with_user(self.head_user).action_revise(
-            {"target_id": target.id}, "Keep this approved metric target explicitly linked."
+            {"target_id": target.id},
+            "Keep this approved metric target explicitly linked.",
         )
         self.assertEqual(replacement.target_id, target)
+
         history = self.env["strategic.xmatrix.alignment.history"].search([
             ("source_alignment_id", "=", link.id)
         ], limit=1)
         self.assertIn('"target_id": %s' % target.id, history.old_snapshot)
         self.assertIn('"target_id": %s' % target.id, history.new_snapshot)
 
+    def test_revision_of_legacy_metric_alignment_with_missing_target(self):
+        """A legacy metric link without a target can be revised safely."""
+        Alignment = self._require_alignment_model()
+        plan = self._mk_plan()
+        kpi = self._mk_kpi("XMAT-LEGACY-MISSING-TARGET")
+
+        initiative = self.env["strategic.initiative"].with_user(
+            self.head_user
+        ).create({
+            "name": "Legacy Metric Revision Initiative",
+            "plan_id": plan.id,
+            "date_start": "2026-01-01",
+            "date_end": "2026-12-31",
+        })
+
+        target = self._mk_metric_target(kpi)
+
+        link = Alignment.with_user(self.head_user).create({
+            "link_type": "I>M",
+            "relationship_type": "primary",
+            "initiative_id": initiative.id,
+            "kpi_id": kpi.id,
+            "target_id": target.id,
+            "effective_date": "2026-06-15",
+        })
+
+        # Simulate a legacy database record with no KPI target.
+        self.env.cr.execute(
+            """
+            UPDATE strategic_xmatrix_alignment
+               SET target_id = NULL
+             WHERE id = %s
+            """,
+            (link.id,),
+        )
+        link.invalidate_recordset(["target_id"])
+        self.assertFalse(link.target_id)
+
+        replacement = link.with_user(self.head_user).action_revise(
+            {"target_id": target.id},
+            "Restore the approved KPI target on this legacy alignment.",
+        )
+
+        link.invalidate_recordset(["state", "target_id"])
+        self.assertEqual(link.state, "superseded")
+        self.assertFalse(link.target_id)
+
+        self.assertEqual(replacement.state, "active")
+        self.assertEqual(replacement.target_id, target)
+
+        history = self.env["strategic.xmatrix.alignment.history"].search([
+            ("source_alignment_id", "=", link.id),
+            ("replacement_alignment_id", "=", replacement.id),
+        ], limit=1)
+
+        self.assertTrue(history)
+        self.assertEqual(
+            history.reason,
+            "Restore the approved KPI target on this legacy alignment.",
+        )
 
     def test_saved_metric_alignment_can_open_revision_when_target_missing(self):
         """The saved form must let broken legacy metric links enter controlled revision."""

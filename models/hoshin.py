@@ -420,7 +420,7 @@ class StrategicXMatrixAlignment(models.Model):
                 raise ValidationError(
                     "Only KPI/metric X-Matrix links may reference an approved KPI target."
                 )
-            if metric_link:
+            if metric_link and alignment.state == "active":
                 target = alignment.target_id
                 if not target:
                     raise ValidationError(
