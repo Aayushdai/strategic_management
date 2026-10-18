@@ -11,3 +11,4 @@ from . import test_kpi_supplier_delivery_adapter
 from . import test_kpi_scheduled_actions
 
 from . import test_kpi_accounting_source_adapter
+from . import test_purchase_dashboard_acceptance
