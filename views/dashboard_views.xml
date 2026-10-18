@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_strategic_head_office_dashboard" model="ir.actions.client">
+        <field name="name">Head Office Dashboard</field>
+        <field name="tag">strategic_management.head_office_dashboard</field>
+    </record>
+</odoo>

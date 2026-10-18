@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="strategic_management.HeadOfficeDashboard" owl="1">
+        <div class="o_spm_head_office_dashboard">
+            <header class="o_spm_dashboard_header">
+                <div class="o_spm_dashboard_intro">
+                    <div class="o_spm_dashboard_eyebrow">STRATEGIC PERFORMANCE / EXECUTIVE OVERVIEW</div>
+                    <h1>Head Office Dashboard</h1>
+                    <p>Track the organization’s objectives, KPI attainment, branch performance, and items that need attention.</p>
+                    <div class="o_spm_dashboard_period_caption" t-if="this.state.data" t-esc="this.periodCaption"/>
+                </div>
+                <div class="o_spm_dashboard_filters">
+                    <label>
+                        <span>From</span>
+                        <input type="date" t-att-value="this.state.dateStart" t-on-change="this.onStartDateChanged"/>
+                    </label>
+                    <label>
+                        <span>To</span>
+                        <input type="date" t-att-value="this.state.dateEnd" t-on-change="this.onEndDateChanged"/>
+                    </label>
+                    <button type="button" class="o_spm_refresh_button" t-on-click="this.loadDashboard" t-att-disabled="this.state.loading">
+                        <i class="fa fa-refresh" aria-hidden="true"/>
+                        Refresh
+                    </button>
+                </div>
+            </header>
+
+            <t t-if="this.state.loading">
+                <div class="o_spm_dashboard_loading">
+                    <span class="o_spm_loading_spinner"/>
+                    <span>Loading performance data…</span>
+                </div>
+            </t>
+            <t t-elif="this.state.error">
+                <section class="o_spm_dashboard_error" role="alert">
+                    <i class="fa fa-exclamation-circle" aria-hidden="true"/>
+                    <div>
+                        <strong>Dashboard could not be loaded</strong>
+                        <p t-esc="this.state.error"/>
+                    </div>
+                    <button type="button" t-on-click="this.loadDashboard">Try again</button>
+                </section>
+            </t>
+            <t t-elif="this.state.data">
+                <div class="o_spm_dashboard_metrics">
+                    <article class="o_spm_metric_card o_spm_metric_card--purple">
+                        <div class="o_spm_metric_topline">
+                            <span>Average KPI attainment</span>
+                            <span class="o_spm_metric_icon"><i class="fa fa-line-chart" aria-hidden="true"/></span>
+                        </div>
+                        <div class="o_spm_metric_value" t-esc="this.formatPercent(this.state.data.kpi_summary.average_attainment)"/>
+                        <div class="o_spm_metric_note">
+                            <t t-esc="this.state.data.kpi_summary.valid_evaluation_count"/> valid evaluation(s) in the selected period
+                        </div>
+                    </article>
+                    <article class="o_spm_metric_card o_spm_metric_card--blue">
+                        <div class="o_spm_metric_topline">
+                            <span>Active objectives</span>
+                            <span class="o_spm_metric_icon"><i class="fa fa-bullseye" aria-hidden="true"/></span>
+                        </div>
+                        <div class="o_spm_metric_value" t-esc="this.state.data.objective_summary.active_count"/>
+                        <div class="o_spm_metric_note">
+                            <t t-esc="this.state.data.objective_summary.pending_approval_count"/> awaiting approval
+                        </div>
+                    </article>
+                    <article class="o_spm_metric_card o_spm_metric_card--amber">
+                        <div class="o_spm_metric_topline">
+                            <span>Overdue objectives</span>
+                            <span class="o_spm_metric_icon"><i class="fa fa-clock-o" aria-hidden="true"/></span>
+                        </div>
+                        <div class="o_spm_metric_value" t-esc="this.state.data.objective_summary.overdue_count"/>
+                        <div class="o_spm_metric_note">Active objectives past their deadline</div>
+                    </article>
+                    <article class="o_spm_metric_card o_spm_metric_card--rose">
+                        <div class="o_spm_metric_topline">
+                            <span>KPI exceptions</span>
+                            <span class="o_spm_metric_icon"><i class="fa fa-flag-o" aria-hidden="true"/></span>
+                        </div>
+                        <div class="o_spm_metric_value" t-esc="this.state.data.kpi_summary.exception_count"/>
+                        <div class="o_spm_metric_note">Missing, pending, or data-quality results</div>
+                    </article>
+                </div>
+
+                <div class="o_spm_dashboard_grid o_spm_dashboard_grid--top">
+                    <section class="o_spm_dashboard_panel o_spm_dashboard_panel--trend">
+                        <div class="o_spm_panel_heading">
+                            <div>
+                                <span class="o_spm_panel_eyebrow">PERFORMANCE OVER TIME</span>
+                                <h2>Monthly KPI attainment</h2>
+                                <p>Mean attainment across valid evaluations. Missing months are not plotted as zero.</p>
+                            </div>
+                            <button type="button" class="o_spm_text_button" t-on-click="this.openKpiAnalysis">Explore analysis <i class="fa fa-arrow-right" aria-hidden="true"/></button>
+                        </div>
+                        <t t-if="this.state.data.monthly_trend.length">
+                            <div class="o_spm_trend_chart">
+                                <div class="o_spm_trend_axis_labels"><span>100%+ target</span><span>0%</span></div>
+                                <div class="o_spm_trend_columns">
+                                    <t t-foreach="this.state.data.monthly_trend" t-as="point" t-key="point.month">
+                                        <div class="o_spm_trend_column">
+                                            <span class="o_spm_trend_value" t-esc="this.formatPercent(point.average_attainment)"/>
+                                            <div class="o_spm_trend_bar_slot">
+                                                <div class="o_spm_trend_bar" t-att-style="'height: ' + this.trendHeight(point.average_attainment) + '%'"/>
+                                            </div>
+                                            <span class="o_spm_trend_month" t-esc="point.label"/>
+                                            <span class="o_spm_trend_count"><t t-esc="point.evaluation_count"/> KPI(s)</span>
+                                        </div>
+                                    </t>
+                                </div>
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <div class="o_spm_empty_state">
+                                <span class="o_spm_empty_icon"><i class="fa fa-area-chart" aria-hidden="true"/></span>
+                                <strong>No valid KPI trend for this period</strong>
+                                <span>Trend points appear when the selected period contains valid evaluations.</span>
+                            </div>
+                        </t>
+                    </section>
+
+                    <section class="o_spm_dashboard_panel o_spm_dashboard_panel--branches">
+                        <div class="o_spm_panel_heading">
+                            <div>
+                                <span class="o_spm_panel_eyebrow">BRANCH COMPARISON</span>
+                                <h2>Performance by branch</h2>
+                                <p>Mean attainment across valid branch-level KPI evaluations.</p>
+                            </div>
+                        </div>
+                        <t t-if="this.state.data.branch_comparison.length">
+                            <div class="o_spm_branch_list">
+                                <t t-foreach="this.state.data.branch_comparison" t-as="branch" t-key="branch.warehouse_id">
+                                    <button type="button" class="o_spm_branch_row" t-on-click="() => this.openBranchEvaluations(branch)">
+                                        <span class="o_spm_branch_row_top">
+                                            <span class="o_spm_branch_name" t-esc="branch.branch_name"/>
+                                            <strong t-esc="this.formatPercent(branch.average_attainment)"/>
+                                        </span>
+                                        <span class="o_spm_progress_track">
+                                            <span class="o_spm_progress_fill o_spm_progress_fill--branch" t-att-style="'width: ' + this.progressWidth(branch.average_attainment) + '%'"/>
+                                        </span>
+                                        <span class="o_spm_branch_meta"><t t-esc="branch.evaluation_count"/> valid evaluation(s) <i class="fa fa-chevron-right" aria-hidden="true"/></span>
+                                    </button>
+                                </t>
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <div class="o_spm_empty_state o_spm_empty_state--compact">
+                                <span class="o_spm_empty_icon"><i class="fa fa-building-o" aria-hidden="true"/></span>
+                                <strong>No branch comparison yet</strong>
+                                <span>Valid branch KPI evaluations will appear here.</span>
+                            </div>
+                        </t>
+                    </section>
+                </div>
+
+                <section class="o_spm_dashboard_panel o_spm_dashboard_panel--employee-results">
+                    <div class="o_spm_panel_heading">
+                        <div>
+                            <span class="o_spm_panel_eyebrow">EMPLOYEE PERFORMANCE</span>
+                            <h2>Employee KPI outcomes</h2>
+                            <p>Employee-scoped KPI evaluations, mapped to each employee’s assigned branch. These results are shown separately from branch-level KPIs.</p>
+                        </div>
+                        <div class="o_spm_panel_heading_meta" t-if="this.state.data.employee_kpi_summary">
+                            <span><t t-esc="this.state.data.employee_kpi_summary.employee_count"/> employee(s)</span>
+                            <span><t t-esc="this.state.data.employee_kpi_summary.valid_evaluation_count"/> valid result(s)</span>
+                            <span><t t-esc="this.formatPercent(this.state.data.employee_kpi_summary.average_attainment)"/> average attainment</span>
+                        </div>
+                    </div>
+                    <t t-if="this.state.data.employee_kpi_results.length">
+                        <div class="o_spm_employee_results_table_wrap">
+                            <table class="o_spm_employee_results_table">
+                                <thead>
+                                    <tr>
+                                        <th>Branch</th>
+                                        <th>Employee</th>
+                                        <th>KPI</th>
+                                        <th>Period</th>
+                                        <th>Actual</th>
+                                        <th>Target</th>
+                                        <th>Attainment</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="this.state.data.employee_kpi_results" t-as="result" t-key="result.id">
+                                        <td><span class="o_spm_employee_branch" t-esc="result.branch_name"/></td>
+                                        <td><span class="o_spm_employee_name" t-esc="result.employee_name"/></td>
+                                        <td>
+                                            <strong t-esc="result.kpi_name"/>
+                                            <div class="o_spm_employee_muted"><t t-esc="result.unit"/></div>
+                                        </td>
+                                        <td><span class="o_spm_employee_muted"><t t-esc="this.prettyDate(result.period_start)"/> – <t t-esc="this.prettyDate(result.period_end)"/></span></td>
+                                        <td><t t-esc="result.has_actual_value ? result.actual_value : '—'"/> <t t-esc="result.has_actual_value ? result.unit : ''"/></td>
+                                        <td><t t-esc="result.target_value"/> <t t-esc="result.unit"/></td>
+                                        <td class="o_spm_employee_attainment">
+                                            <strong t-esc="this.formatPercent(result.attainment)"/>
+                                            <span class="o_spm_progress_track">
+                                                <span t-att-class="'o_spm_progress_fill o_spm_progress_fill--' + this.statusClass(result.attainment_status)" t-att-style="'width: ' + this.progressWidth(result.attainment) + '%'"/>
+                                            </span>
+                                        </td>
+                                        <td><span t-att-class="'o_spm_status_badge o_spm_status_badge--' + this.statusClass(result.attainment_status)" t-esc="result.attainment_status_label"/></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="o_spm_employee_muted" t-if="this.state.data.limits.employee_kpi_results_truncated">
+                            Showing the first 250 employee KPI results. Narrow the reporting period to view a smaller set.
+                        </div>
+                    </t>
+                    <t t-else="">
+                        <div class="o_spm_empty_state o_spm_empty_state--compact">
+                            <span class="o_spm_empty_icon"><i class="fa fa-users" aria-hidden="true"/></span>
+                            <strong>No employee KPI outcomes in this period</strong>
+                            <span>Employee results will appear here once evaluations exist for the selected reporting period.</span>
+                        </div>
+                    </t>
+                </section>
+
+                <div class="o_spm_dashboard_grid o_spm_dashboard_grid--bottom">
+                    <section class="o_spm_dashboard_panel o_spm_dashboard_panel--objectives">
+                        <div class="o_spm_panel_heading">
+                            <div>
+                                <span class="o_spm_panel_eyebrow">STRATEGY EXECUTION</span>
+                                <h2>Objective progress</h2>
+                                <p>Active objectives ordered by urgency and deadline.</p>
+                            </div>
+                            <button type="button" class="o_spm_text_button" t-on-click="() => this.action.doAction('strategic_management.action_strategic_objective')">All objectives <i class="fa fa-arrow-right" aria-hidden="true"/></button>
+                        </div>
+                        <t t-if="this.state.data.objectives.length">
+                            <div class="o_spm_objective_list">
+                                <t t-foreach="this.state.data.objectives" t-as="objective" t-key="objective.id">
+                                    <button type="button" class="o_spm_objective_row" t-on-click="() => this.openObjective(objective.id)">
+                                        <span class="o_spm_objective_heading">
+                                            <span class="o_spm_objective_name" t-esc="objective.name"/>
+                                            <t t-if="objective.is_primary"><span class="o_spm_primary_tag">Primary</span></t>
+                                            <t t-if="objective.overdue"><span class="o_spm_status_badge o_spm_status_badge--overdue">Overdue</span></t>
+                                        </span>
+                                        <span class="o_spm_objective_meta"><t t-esc="objective.perspective_label"/> · Due <t t-esc="this.prettyDate(objective.deadline)"/></span>
+                                        <span class="o_spm_progress_track">
+                                            <span class="o_spm_progress_fill" t-att-class="'o_spm_progress_fill o_spm_progress_fill--' + this.statusClass(objective.scoring_status)" t-att-style="'width: ' + this.progressWidth(objective.progress_pct) + '%'"/>
+                                        </span>
+                                        <span class="o_spm_objective_footer">
+                                            <span t-att-class="'o_spm_status_badge o_spm_status_badge--' + this.statusClass(objective.scoring_status)" t-esc="objective.scoring_status_label"/>
+                                            <strong t-esc="objective.progress_pct === false ? 'No score' : this.formatPercent(objective.progress_pct)"/>
+                                        </span>
+                                    </button>
+                                </t>
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <div class="o_spm_empty_state o_spm_empty_state--compact">
+                                <span class="o_spm_empty_icon"><i class="fa fa-bullseye" aria-hidden="true"/></span>
+                                <strong>No active objectives found</strong>
+                                <span>Active objectives will appear here after activation.</span>
+                            </div>
+                        </t>
+                    </section>
+
+                    <section class="o_spm_dashboard_panel o_spm_dashboard_panel--attention">
+                        <div class="o_spm_panel_heading">
+                            <div>
+                                <span class="o_spm_panel_eyebrow">FOLLOW-UP REQUIRED</span>
+                                <h2>Needs attention</h2>
+                                <p>Items that may need management review.</p>
+                            </div>
+                        </div>
+                        <div class="o_spm_attention_group">
+                            <div class="o_spm_attention_title">
+                                <span><i class="fa fa-clock-o" aria-hidden="true"/> Overdue objectives</span>
+                                <span class="o_spm_attention_count" t-esc="this.state.data.attention.overdue_objectives.length"/>
+                            </div>
+                            <t t-if="this.state.data.attention.overdue_objectives.length">
+                                <button type="button" class="o_spm_attention_row" t-foreach="this.state.data.attention.overdue_objectives" t-as="objective" t-key="objective.id" t-on-click="() => this.openObjective(objective.id)">
+                                    <span class="o_spm_attention_item_name" t-esc="objective.name"/>
+                                    <span class="o_spm_attention_item_meta">Due <t t-esc="this.prettyDate(objective.deadline)"/></span>
+                                </button>
+                            </t>
+                            <t t-else="">
+                                <div class="o_spm_attention_clear"><i class="fa fa-check-circle" aria-hidden="true"/> No overdue active objectives</div>
+                            </t>
+                        </div>
+                        <div class="o_spm_attention_group">
+                            <div class="o_spm_attention_title">
+                                <span><i class="fa fa-flag-o" aria-hidden="true"/> KPI exceptions</span>
+                                <button type="button" class="o_spm_text_button" t-on-click="this.openKpiExceptions">View all</button>
+                            </div>
+                            <t t-if="this.state.data.attention.kpi_exceptions.length">
+                                <div class="o_spm_exception_list">
+                                    <div class="o_spm_exception_row" t-foreach="this.state.data.attention.kpi_exceptions" t-as="exception" t-key="exception.id">
+                                        <span class="o_spm_exception_dot" t-att-class="'o_spm_exception_dot--' + this.statusClass(exception.status)"/>
+                                        <span class="o_spm_exception_content">
+                                            <strong t-esc="exception.name"/>
+                                            <small><t t-esc="exception.status_label"/> · <t t-esc="this.prettyDate(exception.period_start)"/> – <t t-esc="this.prettyDate(exception.period_end)"/></small>
+                                        </span>
+                                    </div>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <div class="o_spm_attention_clear"><i class="fa fa-check-circle" aria-hidden="true"/> No KPI exceptions in this period</div>
+                            </t>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="o_spm_dashboard_footer" t-if="this.state.data.limits.evaluations_truncated or this.state.data.limits.objectives_truncated">
+                    <i class="fa fa-info-circle" aria-hidden="true"/>
+                    Some dashboard lists reached their safety limit. Use KPI Analysis or Objectives to inspect the full records.
+                </div>
+                <div class="o_spm_dashboard_bottom_note">
+                    <i class="fa fa-shield" aria-hidden="true"/>
+                    Values are read from current, non-superseded Odoo records. KPI attainment averages use valid evaluations only; unavailable measurements are not treated as zero.
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>

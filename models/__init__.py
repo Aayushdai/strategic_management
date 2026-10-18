@@ -9,3 +9,4 @@ from . import stock_picking
 from . import purchase_order
 from . import purchase_delivery_baseline
 from . import kpi_scheduler
+from . import dashboard

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_strategic_branch_dashboard" model="ir.actions.client">
+        <field name="name">Branch Manager Dashboard</field>
+        <field name="tag">strategic_management.branch_dashboard</field>
+    </record>
+</odoo>

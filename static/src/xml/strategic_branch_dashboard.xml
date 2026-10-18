@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+    <t t-name="strategic_management.BranchDashboard" owl="1">
+        <div class="o_spm_branch_dashboard">
+            <header class="o_spm_branch_header">
+                <div>
+                    <div class="o_spm_branch_eyebrow">STRATEGIC PERFORMANCE / BRANCH VIEW</div>
+                    <h1 t-if="this.state.data" t-esc="this.state.data.branch.name + ' Performance'"/>
+                    <h1 t-else="">Branch Performance</h1>
+                    <p>Track your branch objectives, KPI outcomes, inventory-related measures, and follow-up items.</p>
+                    <div class="o_spm_branch_period" t-if="this.state.data" t-esc="this.prettyDate(this.state.data.period.start) + ' – ' + this.prettyDate(this.state.data.period.end)"/>
+                </div>
+                <div class="o_spm_branch_filters">
+                    <label><span>From</span><input type="date" t-att-value="this.state.dateStart" t-on-change="this.onStartDateChanged"/></label>
+                    <label><span>To</span><input type="date" t-att-value="this.state.dateEnd" t-on-change="this.onEndDateChanged"/></label>
+                    <button type="button" class="o_spm_branch_refresh" t-on-click="this.loadDashboard" t-att-disabled="this.state.loading"><i class="fa fa-refresh" aria-hidden="true"/> Refresh</button>
+                </div>
+            </header>
+
+            <t t-if="this.state.loading">
+                <div class="o_spm_branch_loading"><span class="o_spm_branch_spinner"/><span>Loading branch performance…</span></div>
+            </t>
+            <t t-elif="this.state.error">
+                <section class="o_spm_branch_error" role="alert"><i class="fa fa-exclamation-circle" aria-hidden="true"/><div><strong>Dashboard could not be loaded</strong><p t-esc="this.state.error"/></div><button type="button" t-on-click="this.loadDashboard">Try again</button></section>
+            </t>
+            <t t-elif="this.state.data">
+                <div class="o_spm_branch_metrics">
+                    <article class="o_spm_branch_metric o_spm_branch_metric--purple"><div class="o_spm_branch_metric_label">Average KPI attainment <i class="fa fa-line-chart" aria-hidden="true"/></div><div class="o_spm_branch_metric_value" t-esc="this.formatPercent(this.state.data.kpi_summary.average_attainment)"/><div class="o_spm_branch_metric_note"><t t-esc="this.state.data.kpi_summary.valid_evaluation_count"/> valid evaluations in the selected period</div></article>
+                    <article class="o_spm_branch_metric o_spm_branch_metric--blue"><div class="o_spm_branch_metric_label">Active objectives <i class="fa fa-bullseye" aria-hidden="true"/></div><div class="o_spm_branch_metric_value" t-esc="this.state.data.objective_summary.active_count"/><div class="o_spm_branch_metric_note"><t t-esc="this.state.data.objective_summary.pending_approval_count"/> awaiting approval</div></article>
+                    <article class="o_spm_branch_metric o_spm_branch_metric--amber"><div class="o_spm_branch_metric_label">Overdue objectives <i class="fa fa-clock-o" aria-hidden="true"/></div><div class="o_spm_branch_metric_value" t-esc="this.state.data.objective_summary.overdue_count"/><div class="o_spm_branch_metric_note">Active branch objectives past deadline</div></article>
+                    <article class="o_spm_branch_metric o_spm_branch_metric--rose"><div class="o_spm_branch_metric_label">KPI exceptions <i class="fa fa-flag-o" aria-hidden="true"/></div><div class="o_spm_branch_metric_value" t-esc="this.state.data.kpi_summary.exception_count"/><div class="o_spm_branch_metric_note">Missing, pending, or data-quality results</div></article>
+                </div>
+
+                <div class="o_spm_branch_grid">
+                    <section class="o_spm_branch_panel">
+                        <div class="o_spm_branch_panel_heading"><div><span>PERFORMANCE OVER TIME</span><h2>Monthly KPI attainment</h2><p>Mean attainment from valid evaluations; unreported months are not treated as zero.</p></div><button type="button" class="o_spm_branch_text_button" t-on-click="this.openKpiAnalysis">Explore KPIs <i class="fa fa-arrow-right" aria-hidden="true"/></button></div>
+                        <t t-if="this.state.data.monthly_trend.length">
+                            <div class="o_spm_branch_chart"><div class="o_spm_branch_chart_axis"><span>100%+</span><span>0%</span></div><div class="o_spm_branch_chart_columns"><t t-foreach="this.state.data.monthly_trend" t-as="point" t-key="point.month"><div class="o_spm_branch_chart_column"><span class="o_spm_branch_chart_value" t-esc="this.formatPercent(point.average_attainment)"/><div class="o_spm_branch_chart_slot"><div class="o_spm_branch_chart_bar" t-att-style="'height: ' + this.trendHeight(point.average_attainment) + '%'"/></div><span class="o_spm_branch_chart_month" t-esc="point.label"/><span class="o_spm_branch_chart_count" t-esc="point.evaluation_count + ' KPI(s)'"/></div></t></div></div>
+                        </t>
+                        <t t-else=""><div class="o_spm_branch_empty"><i class="fa fa-area-chart" aria-hidden="true"/><strong>No valid KPI trend yet</strong><span>Trend points appear when the selected period has valid branch or employee KPI evaluations.</span></div></t>
+                    </section>
+                    <section class="o_spm_branch_panel">
+                        <div class="o_spm_branch_panel_heading"><div><span>OBJECTIVE DELIVERY</span><h2>Branch objectives</h2><p>Local objectives ordered by urgency and deadline.</p></div></div>
+                        <t t-if="this.state.data.objectives.length">
+                            <div class="o_spm_branch_objectives"><t t-foreach="this.state.data.objectives" t-as="objective" t-key="objective.id"><button type="button" class="o_spm_branch_objective" t-on-click="() => this.openObjective(objective.id)"><span class="o_spm_branch_objective_top"><strong t-esc="objective.name"/><t t-if="objective.overdue"><span class="o_spm_branch_badge o_spm_branch_badge--overdue">Overdue</span></t></span><span class="o_spm_branch_objective_meta"><t t-esc="objective.perspective_label"/> · Due <t t-esc="this.prettyDate(objective.deadline)"/></span><span class="o_spm_branch_progress_track"><span class="o_spm_branch_progress_fill" t-att-class="'o_spm_branch_progress_fill o_spm_branch_progress_fill--' + this.statusClass(objective.scoring_status)" t-att-style="'width: ' + this.progressWidth(objective.progress_pct) + '%'"/></span><span class="o_spm_branch_objective_footer"><span t-att-class="'o_spm_branch_badge o_spm_branch_badge--' + this.statusClass(objective.scoring_status)" t-esc="objective.scoring_status_label"/><strong t-esc="objective.progress_pct === false ? 'Not evaluated' : this.formatPercent(objective.progress_pct)"/></span></button></t></div>
+                        </t>
+                        <t t-else=""><div class="o_spm_branch_empty o_spm_branch_empty--compact"><i class="fa fa-bullseye" aria-hidden="true"/><strong>No branch objectives for this view</strong><span>Approved branch objectives will appear here after activation.</span></div></t>
+                    </section>
+                </div>
+
+                <section class="o_spm_branch_panel o_spm_branch_scorecard">
+                    <div class="o_spm_branch_panel_heading"><div><span>OUTCOME SCORECARD</span><h2>Branch KPI results</h2><p>Tracked branch KPIs and KPIs for employees assigned to this branch. Operational values reflect saved KPI evaluations.</p></div><button type="button" class="o_spm_branch_text_button" t-on-click="this.openKpiAnalysis">View analysis <i class="fa fa-arrow-right" aria-hidden="true"/></button></div>
+                    <t t-if="this.state.data.kpis.length">
+                        <div class="o_spm_branch_table_wrap"><table class="o_spm_branch_table"><thead><tr><th>KPI</th><th>Scope</th><th>Actual</th><th>Target</th><th>Attainment</th><th>Status</th></tr></thead><tbody><tr t-foreach="this.state.data.kpis" t-as="kpi" t-key="kpi.id"><td><strong t-esc="kpi.name"/><small t-esc="this.prettyDate(kpi.date_start) + ' – ' + this.prettyDate(kpi.date_end)"/></td><td><span t-esc="kpi.scope_label"/><small t-if="kpi.user_name" t-esc="kpi.user_name"/></td><td><t t-if="kpi.has_actual_value"><span t-esc="this.formatNumber(kpi.actual_value, 2)"/> <t t-esc="kpi.unit"/></t><t t-else="">—</t></td><td><span t-esc="this.formatNumber(kpi.target_value, 2)"/> <t t-esc="kpi.unit"/></td><td><div class="o_spm_branch_attainment"><strong t-esc="this.formatPercent(kpi.attainment)"/><span class="o_spm_branch_progress_track"><span class="o_spm_branch_progress_fill" t-att-class="'o_spm_branch_progress_fill o_spm_branch_progress_fill--' + this.statusClass(kpi.attainment_status)" t-att-style="'width: ' + this.progressWidth(kpi.attainment) + '%'"/></span></div></td><td><span t-att-class="'o_spm_branch_badge o_spm_branch_badge--' + this.statusClass(kpi.attainment_status)" t-esc="kpi.attainment_status_label"/></td></tr></tbody></table></div>
+                    </t>
+                    <t t-else=""><div class="o_spm_branch_empty o_spm_branch_empty--compact"><i class="fa fa-bar-chart" aria-hidden="true"/><strong>No KPI evaluations in this period</strong><span>Only saved evaluations in the assigned branch scope are shown.</span></div></t>
+                </section>
+
+                <section class="o_spm_branch_panel o_spm_branch_attention">
+                    <div class="o_spm_branch_panel_heading"><div><span>FOLLOW-UP REQUIRED</span><h2>Data issues and pending measurements</h2><p>Investigate exceptions before treating the branch score as complete.</p></div><span class="o_spm_branch_attention_count" t-esc="this.state.data.attention.kpi_exceptions.length"/></div>
+                    <t t-if="this.state.data.attention.kpi_exceptions.length"><div class="o_spm_branch_exception_list"><div class="o_spm_branch_exception" t-foreach="this.state.data.attention.kpi_exceptions" t-as="exception" t-key="exception.id"><span class="o_spm_branch_exception_dot" t-att-class="'o_spm_branch_exception_dot o_spm_branch_exception_dot--' + this.statusClass(exception.status)"/><div><strong t-esc="exception.name"/><span t-esc="exception.status_label"/><small t-esc="exception.reason"/></div><span class="o_spm_branch_exception_period" t-esc="this.prettyDate(exception.period_start)"/></div></div></t>
+                    <t t-else=""><div class="o_spm_branch_attention_clear"><i class="fa fa-check-circle" aria-hidden="true"/> No KPI data exceptions in the selected period.</div></t>
+                </section>
+                <footer class="o_spm_branch_footer">Branch scope is determined from your assigned warehouse. Organization-wide branch comparisons are available to Head Office Managers.</footer>
+            </t>
+        </div>
+    </t>
+</templates>

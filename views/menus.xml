@@ -63,21 +63,21 @@
     <menuitem id="menu_strategic_kpi_dashboard_head_office"
               name="Head Office Dashboard"
               parent="menu_strategic_kpi_dashboards"
-              action="action_strategic_kpi_dashboard_head_office"
+              action="action_strategic_head_office_dashboard"
               sequence="10"
               groups="strategic_management.group_strategic_head_office_manager"/>
 
     <menuitem id="menu_strategic_kpi_dashboard_branch"
               name="Branch Performance"
               parent="menu_strategic_kpi_dashboards"
-              action="action_strategic_kpi_dashboard_branch"
+              action="action_strategic_branch_dashboard"
               sequence="20"
               groups="strategic_management.group_strategic_branch_manager"/>
 
     <menuitem id="menu_strategic_kpi_dashboard_employee"
               name="My KPI Dashboard"
               parent="menu_strategic_kpi_dashboards"
-              action="action_strategic_kpi_dashboard_employee"
+              action="action_strategic_employee_dashboard"
               sequence="30"
               groups="strategic_management.group_strategic_employee"/>
 

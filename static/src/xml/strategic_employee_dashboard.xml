@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+    <t t-name="strategic_management.EmployeeDashboard" owl="1">
+        <main class="o_spm_employee_dashboard">
+            <header class="o_spm_employee_header">
+                <div>
+                    <div class="o_spm_employee_eyebrow">STRATEGIC PERFORMANCE / PERSONAL VIEW</div>
+                    <h1 t-if="this.state.data" t-esc="'My Performance, ' + this.state.data.user_name"/>
+                    <h1 t-else="">My KPI Dashboard</h1>
+                    <p>Your assigned KPI targets, current results, progress history, and measurement submissions.</p>
+                    <div class="o_spm_employee_period" t-if="this.state.data" t-esc="this.prettyDate(this.state.data.period.start) + ' – ' + this.prettyDate(this.state.data.period.end)"/>
+                </div>
+                <div class="o_spm_employee_filters">
+                    <label><span>From</span><input type="date" t-att-value="this.state.dateStart" t-on-change="this.onStartDateChanged"/></label>
+                    <label><span>To</span><input type="date" t-att-value="this.state.dateEnd" t-on-change="this.onEndDateChanged"/></label>
+                    <button type="button" class="o_spm_employee_refresh" t-on-click="this.loadDashboard" t-att-disabled="this.state.loading"><i class="fa fa-refresh" aria-hidden="true"/> Refresh</button>
+                </div>
+            </header>
+
+            <t t-if="this.state.loading">
+                <div class="o_spm_employee_loading"><span class="o_spm_employee_spinner"/><span>Loading your KPI results…</span></div>
+            </t>
+            <t t-elif="this.state.error">
+                <section class="o_spm_employee_error" role="alert"><i class="fa fa-exclamation-circle" aria-hidden="true"/><div><strong>Dashboard could not be loaded</strong><p t-esc="this.state.error"/></div><button type="button" t-on-click="this.loadDashboard">Try again</button></section>
+            </t>
+            <t t-elif="this.state.data">
+                <div class="o_spm_employee_metrics">
+                    <article class="o_spm_employee_metric o_spm_employee_metric--purple"><div class="o_spm_employee_metric_label">Average KPI attainment <i class="fa fa-line-chart" aria-hidden="true"/></div><div class="o_spm_employee_metric_value" t-esc="this.formatPercent(this.state.data.kpi_summary.average_attainment)"/><div class="o_spm_employee_metric_note">Mean of valid evaluations only</div></article>
+                    <article class="o_spm_employee_metric o_spm_employee_metric--blue"><div class="o_spm_employee_metric_label">Evaluated KPIs <i class="fa fa-bullseye" aria-hidden="true"/></div><div class="o_spm_employee_metric_value" t-esc="this.state.data.kpi_summary.valid_evaluation_count"/><div class="o_spm_employee_metric_note">Valid results in the selected period</div></article>
+                    <article class="o_spm_employee_metric o_spm_employee_metric--amber"><div class="o_spm_employee_metric_label">Below target <i class="fa fa-flag-o" aria-hidden="true"/></div><div class="o_spm_employee_metric_value" t-esc="this.state.data.kpi_summary.below_target_count"/><div class="o_spm_employee_metric_note">Results classified as Not Achieved or Almost Met</div></article>
+                    <article class="o_spm_employee_metric o_spm_employee_metric--rose"><div class="o_spm_employee_metric_label">Submission follow-up <i class="fa fa-inbox" aria-hidden="true"/></div><div class="o_spm_employee_metric_value" t-esc="this.state.data.measurement_summary.submitted_count + this.state.data.measurement_summary.returned_count"/><div class="o_spm_employee_metric_note">Awaiting review or returned for correction</div></article>
+                </div>
+
+                <div class="o_spm_employee_grid">
+                    <section class="o_spm_employee_panel">
+                        <div class="o_spm_employee_panel_heading"><div><span>PROGRESS OVER TIME</span><h2>Monthly KPI attainment</h2><p>Only periods with valid evaluations appear; missing months are not treated as zero.</p></div><button type="button" class="o_spm_employee_text_button" t-on-click="this.openMyEvaluations">My evaluations <i class="fa fa-arrow-right" aria-hidden="true"/></button></div>
+                        <t t-if="this.state.data.monthly_trend.length">
+                            <div class="o_spm_employee_chart"><div class="o_spm_employee_chart_axis"><span>100%+</span><span>0%</span></div><div class="o_spm_employee_chart_columns"><t t-foreach="this.state.data.monthly_trend" t-as="point" t-key="point.month"><div class="o_spm_employee_chart_column"><span class="o_spm_employee_chart_value" t-esc="this.formatPercent(point.average_attainment)"/><div class="o_spm_employee_chart_slot"><div class="o_spm_employee_chart_bar" t-att-style="'height: ' + this.trendHeight(point.average_attainment) + '%'"/></div><span class="o_spm_employee_chart_month" t-esc="point.label"/><span class="o_spm_employee_chart_count" t-esc="point.evaluation_count + ' KPI(s)'"/></div></t></div></div>
+                        </t>
+                        <div t-else="" class="o_spm_employee_empty"><i class="fa fa-line-chart" aria-hidden="true"/><strong>No progress history for this period</strong><span>Try another reporting range or check whether your KPIs have been evaluated.</span></div>
+                    </section>
+
+                    <section class="o_spm_employee_panel">
+                        <div class="o_spm_employee_panel_heading"><div><span>YOUR RESULTS</span><h2>KPI performance history</h2><p>Actual values are shown separately from the approved targets.</p></div></div>
+                        <t t-if="this.state.data.kpis.length">
+                            <div class="o_spm_employee_table_wrap"><table class="o_spm_employee_table"><thead><tr><th>KPI</th><th>Reporting period</th><th>Actual</th><th>Target</th><th>Attainment</th><th>Status</th></tr></thead><tbody><t t-foreach="this.state.data.kpis" t-as="kpi" t-key="kpi.id"><tr><td><strong t-esc="kpi.name"/><small t-esc="kpi.unit or 'No unit specified'"/></td><td><span t-esc="this.prettyDate(kpi.date_start)"/> <span>–</span> <span t-esc="this.prettyDate(kpi.date_end)"/></td><td><strong t-esc="kpi.has_actual_value ? this.formatNumber(kpi.actual_value) + (kpi.unit ? ' ' + kpi.unit : '') : 'Not reported'"/></td><td t-esc="kpi.target_value === false || kpi.target_value === null ? '—' : this.formatNumber(kpi.target_value) + (kpi.unit ? ' ' + kpi.unit : '')"/><td><div class="o_spm_employee_attainment"><strong t-esc="this.formatPercent(kpi.attainment)"/><span class="o_spm_employee_progress_track"><span class="o_spm_employee_progress_fill" t-att-class="'o_spm_employee_progress_fill--' + this.statusClass(kpi.attainment_status)" t-att-style="'width: ' + this.progressWidth(kpi.attainment) + '%'"/></span></div></td><td><span class="o_spm_employee_badge" t-att-class="'o_spm_employee_badge--' + this.statusClass(kpi.attainment_status)" t-esc="kpi.attainment_status_label"/></td></tr></t></tbody></table></div>
+                        </t>
+                        <div t-else="" class="o_spm_employee_empty"><i class="fa fa-bullseye" aria-hidden="true"/><strong>No KPI evaluations in this period</strong><span>Your dashboard will show approved employee KPI results when they are available.</span></div>
+                    </section>
+                </div>
+
+                <section class="o_spm_employee_panel">
+                    <div class="o_spm_employee_panel_heading"><div><span>MANUAL KPI WORKFLOW</span><h2>My measurement submissions</h2><p>Track whether each submission is a draft, awaiting review, returned, approved, or rejected.</p></div><button type="button" class="o_spm_employee_text_button" t-on-click="this.openMyMeasurements">Open submissions <i class="fa fa-arrow-right" aria-hidden="true"/></button></div>
+                    <t t-if="this.state.data.measurement_submissions.length">
+                        <div class="o_spm_employee_table_wrap"><table class="o_spm_employee_table"><thead><tr><th>KPI</th><th>Reporting period</th><th>Submitted actual</th><th>Version</th><th>Status</th><th>Review note</th></tr></thead><tbody><t t-foreach="this.state.data.measurement_submissions" t-as="submission" t-key="submission.id"><tr><td><strong t-esc="submission.kpi_name"/><small t-if="submission.is_correction">Correction submission</small></td><td><span t-esc="this.prettyDate(submission.date_start)"/> <span>–</span> <span t-esc="this.prettyDate(submission.date_end)"/></td><td t-esc="submission.has_actual_value ? this.formatNumber(submission.actual_value) : 'Not reported'"/><td t-esc="submission.submission_version"/><td><span class="o_spm_employee_badge" t-att-class="'o_spm_employee_badge--' + this.statusClass(submission.state)" t-esc="submission.state_label"/></td><td t-esc="submission.review_note || '—'"/></tr></t></tbody></table></div>
+                    </t>
+                    <div t-else="" class="o_spm_employee_empty o_spm_employee_empty--compact"><i class="fa fa-inbox" aria-hidden="true"/><strong>No manual KPI submissions in this period</strong><span>Automated KPI results appear in the KPI performance history above.</span></div>
+                </section>
+                <footer class="o_spm_employee_footer">Personal performance view · Only your employee-scoped KPI records and submissions are shown.</footer>
+            </t>
+        </main>
+    </t>
+</templates>
