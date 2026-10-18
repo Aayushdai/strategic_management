@@ -398,6 +398,18 @@ class TestHoshinXMatrix(StrategyFixture):
         self.assertIn('"target_id": %s' % target.id, history.new_snapshot)
 
 
+    def test_saved_metric_alignment_can_open_revision_when_target_missing(self):
+        """The saved form must let broken legacy metric links enter controlled revision."""
+        view = self.env.ref("strategic_management.view_strategic_xmatrix_alignment_form")
+        arch = etree.fromstring(view.arch_db.encode("utf-8"))
+        fields_found = arch.xpath(".//field[@name='target_id']")
+        self.assertTrue(fields_found, "The alignment form must include the KPI target field")
+        required = fields_found[0].get("required") or ""
+        self.assertRegex(
+            required,
+            r"\band\s+not\s+id\b",
+            "On saved records, a missing legacy KPI target must not block the Revise Alignment button; backend constraints still validate the replacement.",
+        )
     def test_alignment_forms_filter_breakthrough_and_annual_horizons(self):
         """Endpoint selectors must not offer objectives with the wrong Hoshin horizon."""
         cases = (

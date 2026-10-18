@@ -203,7 +203,7 @@
                                    string="Approved KPI Target"
                                    domain="[('kpi_id', '=', kpi_id), ('state', '=', 'approved'), ('scope', '=', 'organization'), ('date_start', '&lt;=', effective_date), ('date_end', '&gt;=', effective_date)]"
                                    invisible="link_type not in ('I>M', 'B>M')"
-                                   required="link_type in ('I>M', 'B>M')"
+                                   required="link_type in ('I>M', 'B>M') and not id"
                                    readonly="id"/>
                             <field name="owner_id"
                                    invisible="link_type != 'I>O'"
