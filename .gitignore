@@ -1,4 +1,16 @@
 @"
+# Python-generated files
 __pycache__/
 *.py[cod]
+
+# Temporary and historical backups
+*.bak
+*.bakn
+*.backup*
+*.before_*
+*.before-*
+*.broken-*
+*.orig
+*.rej
+*.tmp
 "@ | Set-Content .gitignore

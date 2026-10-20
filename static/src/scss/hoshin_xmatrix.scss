@@ -1,5 +1,9 @@
 .o_hoshin_xmatrix_action {
+    height: 100%;
     min-height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
     padding: 24px clamp(16px, 2vw, 32px) 32px;
     color: #202b3c;
     background: #f5f7fb;
@@ -499,6 +503,134 @@
 
     .o_hoshin_empty_plan h2 { margin: 0 0 8px; color: #25324a; font-size: 20px; font-weight: 750; }
     .o_hoshin_empty_plan p { max-width: 500px; margin: 0 0 16px; color: #79859a; font-size: 12px; }
+
+    &.is-relationship-map {
+        .o_hoshin_summary,
+        .o_hoshin_matrix_intro,
+        .o_hoshin_matrix_grid,
+        .o_hoshin_workspace_footer { display: none !important; }
+    }
+
+    .o_hoshin_relation_map_view {
+        display: grid;
+        gap: 18px;
+        margin-top: 18px;
+        padding: 22px;
+        background: #fff;
+        border: 1px solid #dfe6f2;
+        border-radius: 14px;
+        box-shadow: 0 4px 16px rgba(29, 47, 84, 0.04);
+    }
+
+    .o_hoshin_relation_map_intro {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #e9edf5;
+
+        h2 { margin: 3px 0 5px; color: #202b3c; font-size: 20px; font-weight: 750; }
+        p { max-width: 760px; margin: 0; color: #718099; font-size: 12px; line-height: 1.6; }
+    }
+
+    .o_hoshin_relation_map_legend {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    .o_hoshin_relation_map_grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        align-items: start;
+    }
+
+    .o_hoshin_relation_lane {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 12px;
+        padding: 15px;
+        background: #fbfcff;
+        border: 1px solid #e1e7f2;
+        border-radius: 11px;
+
+        > .btn { align-self: flex-start; margin-top: 2px; }
+    }
+
+    .o_hoshin_relation_lane_header {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: start;
+        gap: 10px;
+
+        h3 { margin: 0 0 5px; color: #263651; font-size: 13px; font-weight: 750; line-height: 1.45; }
+        h3 .fa { margin: 0 3px; color: #7c88b8; }
+        p { margin: 0; color: #7b879a; font-size: 10px; line-height: 1.5; }
+        .o_hoshin_link_code { margin-top: 1px; }
+    }
+
+    .o_hoshin_relation_connections { display: grid; gap: 8px; }
+
+    .o_hoshin_map_connection {
+        display: grid;
+        width: 100%;
+        min-width: 0;
+        grid-template-columns: minmax(0, 1fr) 22px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        padding: 10px;
+        color: inherit;
+        text-align: left;
+        background: #fff;
+        border: 1px solid #dfe6f2;
+        border-radius: 9px;
+        cursor: pointer;
+        transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+
+        &:hover, &:focus-visible { border-color: #8c9ae2; box-shadow: 0 3px 10px rgba(69, 87, 159, 0.10); }
+        &:hover { transform: translateY(-1px); }
+        &:focus-visible { outline: 2px solid #6478cb; outline-offset: 2px; }
+    }
+
+    .o_hoshin_map_node {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 4px;
+        padding: 9px 10px;
+        background: #f4f6ff;
+        border: 1px solid #e1e6ff;
+        border-radius: 7px;
+
+        small { color: #7b86a1; font-size: 9px; line-height: 1.3; }
+        strong { overflow-wrap: anywhere; color: #283957; font-size: 11px; font-weight: 700; line-height: 1.45; }
+        &.is-target { background: #f1faf7; border-color: #d8eee5; }
+        &.is-target strong { color: #225d4b; }
+        &.is-missing { background: #fff5f3; border-color: #f2c9c2; }
+        &.is-missing strong { color: #a13f35; }
+    }
+
+    .o_hoshin_map_arrow { display: flex; justify-content: center; color: #7887c2; font-size: 17px; }
+    .o_hoshin_relation_badge.is-missing { color: #a33c31; background: #fde8e5; }
+    .o_hoshin_relation_empty { padding: 14px 12px; color: #8791a2; background: #fff; border: 1px dashed #dce3ef; border-radius: 8px; font-size: 11px; }
+
+    @media (max-width: 1100px) {
+        .o_hoshin_relation_map_grid { grid-template-columns: minmax(0, 1fr); }
+    }
+
+    @media (max-width: 780px) {
+        .o_hoshin_relation_map_view { padding: 14px; }
+        .o_hoshin_relation_map_intro { flex-direction: column; }
+        .o_hoshin_relation_map_legend { justify-content: flex-start; }
+        .o_hoshin_map_connection { grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr); }
+        .o_hoshin_map_connection > .o_hoshin_relation_badge { grid-column: 1 / -1; justify-self: start; }
+    }
 
     @media (max-width: 1280px) {
         .o_hoshin_matrix_grid {

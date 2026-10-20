@@ -4,13 +4,22 @@
     <!-- Root menu: available to all three strategic roles -->
     <menuitem id="menu_strategic_management_root"
               name="Strategic Management"
+              action="action_strategic_navigation_shell"
               sequence="45"
               groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_employee"/>
 
-    <!-- KPI section: available to all three strategic roles -->
+    <!-- Keep the existing technical configuration screens intact but separate from the
+         business-facing home screen. The everyday owner sees the custom in-app sidebar. -->
+    <menuitem id="menu_strategic_management_technical"
+              name="Strategic Configuration"
+              parent="base.menu_administration"
+              sequence="90"
+              groups="base.group_system"/>
+
+    <!-- KPI section: existing technical records remain available to system administrators -->
     <menuitem id="menu_strategic_management_kpi"
               name="KPIs"
-              parent="menu_strategic_management_root"
+              parent="menu_strategic_management_technical"
               sequence="10"
               groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_employee"/>
 
@@ -56,7 +65,7 @@
     <!-- Role-specific KPI dashboards; underlying evaluation record rules remain authoritative. -->
     <menuitem id="menu_strategic_kpi_dashboards"
               name="Dashboards"
-              parent="menu_strategic_management_root"
+              parent="menu_strategic_management_technical"
               sequence="30"
               groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_employee"/>
 
@@ -94,7 +103,7 @@
     <!-- Strategy: Head Office and Branch Managers only -->
     <menuitem id="menu_strategic_management_strategy"
               name="Strategy"
-              parent="menu_strategic_management_root"
+              parent="menu_strategic_management_technical"
               sequence="20"
               groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,-strategic_management.group_strategic_employee"/>
 

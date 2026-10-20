@@ -20,6 +20,7 @@
         "security/strategic_management_security.xml",
         "security/ir.access.csv",
         "views/res_users_views.xml",
+        "views/navigation_shell.xml",
         "views/kpi_views.xml",
         "views/dashboard_views.xml",
         "views/branch_dashboard_views.xml",
@@ -33,6 +34,9 @@
     ],
     "assets": {
         "web.assets_backend": [
+            "strategic_management/static/src/js/navigation_shell.js",
+            "strategic_management/static/src/xml/navigation_shell.xml",
+            "strategic_management/static/src/scss/navigation_shell.scss",
             "strategic_management/static/src/js/hoshin_xmatrix.js",
             "strategic_management/static/src/xml/hoshin_xmatrix.xml",
             "strategic_management/static/src/scss/hoshin_xmatrix.scss",

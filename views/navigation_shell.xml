@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_strategic_navigation_shell" model="ir.actions.client">
+        <field name="name">Business Overview</field>
+        <field name="tag">strategic_management.navigation_shell</field>
+    </record>
+</odoo>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="strategic_management.HoshinXMatrix" owl="1">
-        <div class="o_hoshin_xmatrix_action">
+        <div t-att-class="this.state.showRelationshipMap ? 'o_hoshin_xmatrix_action is-relationship-map' : 'o_hoshin_xmatrix_action'">
             <div class="o_hoshin_xmatrix_header">
                 <div>
                     <div class="o_hoshin_eyebrow">STRATEGIC MANAGEMENT / PHASE 7</div>
@@ -9,6 +9,10 @@
                     <p>Translate breakthrough intent into annual objectives, improvement initiatives, accountable owners, and measurable targets.</p>
                 </div>
                 <div class="o_hoshin_header_actions">
+                    <button t-if="this.state.selectedPlan" type="button" class="btn btn-outline-primary" t-att-aria-pressed="this.state.showRelationshipMap" t-on-click="this.toggleRelationshipMap">
+                        <i class="fa fa-share-alt me-1"/>
+                        <t t-esc="this.state.showRelationshipMap ? 'Back to workspace' : 'Visualize relationships'"/>
+                    </button>
                     <button type="button" class="btn btn-secondary" t-on-click="this.refresh" t-att-disabled="this.state.loading">
                         <i class="fa fa-refresh me-1"/> Refresh
                     </button>
@@ -242,6 +246,131 @@
                     <button type="button" class="btn btn-link btn-sm" t-on-click="this.openAlignmentRegister">Open alignment register <i class="fa fa-arrow-right ms-1"/></button>
                 </div>
             </t>
+            <section t-if="this.state.showRelationshipMap" class="o_hoshin_relation_map_view" aria-label="Strategic relationships">
+                <div class="o_hoshin_relation_map_intro">
+                    <div>
+                        <div class="o_hoshin_eyebrow">STRATEGY CONNECTIONS</div>
+                        <h2>How the strategy connects</h2>
+                        <p>Each row is an active alignment for the selected plan. Select a row to open its alignment record. Red destinations identify relationships that still need a KPI target or owner.</p>
+                    </div>
+                    <div class="o_hoshin_relation_map_legend">
+                        <span class="o_hoshin_relation_badge is-primary">Primary</span>
+                        <span class="o_hoshin_relation_badge is-supporting">Supporting</span>
+                        <span class="o_hoshin_relation_badge is-missing">Missing destination</span>
+                    </div>
+                </div>
+                <div class="o_hoshin_relation_map_grid">
+                    <section class="o_hoshin_relation_lane">
+                        <header class="o_hoshin_relation_lane_header">
+                            <span class="o_hoshin_link_code">B → A</span>
+                            <div><h3>Long-term goal <i class="fa fa-long-arrow-right"/> Annual objective</h3><p>Which annual objective advances a breakthrough goal?</p></div>
+                            <span class="o_hoshin_count"><t t-esc="this.linksFor('B&gt;A').length"/></span>
+                        </header>
+                        <div class="o_hoshin_relation_connections">
+                            <t t-if="this.linksFor('B&gt;A').length">
+                                <t t-foreach="this.linksFor('B&gt;A')" t-as="link" t-key="link.id">
+                                    <button type="button" class="o_hoshin_map_connection" t-on-click="() => this.openRecord('strategic.xmatrix.alignment', link.id)">
+                                        <span class="o_hoshin_map_node is-source"><small>Breakthrough objective</small><strong><t t-esc="this.alignmentOriginLabel(link)"/></strong></span>
+                                        <span class="o_hoshin_map_arrow"><i class="fa fa-long-arrow-right"/></span>
+                                        <span class="o_hoshin_map_node is-target"><small>Annual objective</small><strong><t t-esc="this.alignmentDestinationLabel(link)"/></strong></span>
+                                        <span t-att-class="link.relationship_type === 'primary' ? 'o_hoshin_relation_badge is-primary' : 'o_hoshin_relation_badge is-supporting'"><t t-esc="link.relationship_type === 'primary' ? 'Primary' : 'Supporting'"/></span>
+                                    </button>
+                                </t>
+                            </t>
+                            <div t-else="" class="o_hoshin_relation_empty">No active connections yet.</div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" t-on-click="() => this.openCreateAlignment('B&gt;A')"><i class="fa fa-plus me-1"/> Add relationship</button>
+                    </section>
+
+                    <section class="o_hoshin_relation_lane">
+                        <header class="o_hoshin_relation_lane_header">
+                            <span class="o_hoshin_link_code">I → A</span>
+                            <div><h3>Improvement initiative <i class="fa fa-long-arrow-right"/> Annual objective</h3><p>Which initiative supports an annual objective?</p></div>
+                            <span class="o_hoshin_count"><t t-esc="this.linksFor('I&gt;A').length"/></span>
+                        </header>
+                        <div class="o_hoshin_relation_connections">
+                            <t t-if="this.linksFor('I&gt;A').length">
+                                <t t-foreach="this.linksFor('I&gt;A')" t-as="link" t-key="link.id">
+                                    <button type="button" class="o_hoshin_map_connection" t-on-click="() => this.openRecord('strategic.xmatrix.alignment', link.id)">
+                                        <span class="o_hoshin_map_node is-source"><small>Improvement initiative</small><strong><t t-esc="this.alignmentOriginLabel(link)"/></strong></span>
+                                        <span class="o_hoshin_map_arrow"><i class="fa fa-long-arrow-right"/></span>
+                                        <span class="o_hoshin_map_node is-target"><small>Annual objective</small><strong><t t-esc="this.alignmentDestinationLabel(link)"/></strong></span>
+                                        <span t-att-class="link.relationship_type === 'primary' ? 'o_hoshin_relation_badge is-primary' : 'o_hoshin_relation_badge is-supporting'"><t t-esc="link.relationship_type === 'primary' ? 'Primary' : 'Supporting'"/></span>
+                                    </button>
+                                </t>
+                            </t>
+                            <div t-else="" class="o_hoshin_relation_empty">No active connections yet.</div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" t-on-click="() => this.openCreateAlignment('I&gt;A')"><i class="fa fa-plus me-1"/> Add relationship</button>
+                    </section>
+
+                    <section class="o_hoshin_relation_lane">
+                        <header class="o_hoshin_relation_lane_header">
+                            <span class="o_hoshin_link_code">B → M</span>
+                            <div><h3>Long-term goal <i class="fa fa-long-arrow-right"/> KPI target</h3><p>Which measure shows progress toward a breakthrough goal?</p></div>
+                            <span class="o_hoshin_count"><t t-esc="this.linksFor('B&gt;M').length"/></span>
+                        </header>
+                        <div class="o_hoshin_relation_connections">
+                            <t t-if="this.linksFor('B&gt;M').length">
+                                <t t-foreach="this.linksFor('B&gt;M')" t-as="link" t-key="link.id">
+                                    <button type="button" class="o_hoshin_map_connection" t-on-click="() => this.openRecord('strategic.xmatrix.alignment', link.id)">
+                                        <span class="o_hoshin_map_node is-source"><small>Breakthrough objective</small><strong><t t-esc="this.alignmentOriginLabel(link)"/></strong></span>
+                                        <span class="o_hoshin_map_arrow"><i class="fa fa-long-arrow-right"/></span>
+                                        <span t-att-class="this.alignmentDestinationLabel(link) === 'Not linked' ? 'o_hoshin_map_node is-missing' : 'o_hoshin_map_node is-target'"><small>KPI target</small><strong><t t-esc="this.alignmentDestinationLabel(link)"/></strong></span>
+                                        <span t-att-class="this.alignmentDestinationLabel(link) === 'Not linked' ? 'o_hoshin_relation_badge is-missing' : (link.relationship_type === 'primary' ? 'o_hoshin_relation_badge is-primary' : 'o_hoshin_relation_badge is-supporting')"><t t-esc="this.alignmentDestinationLabel(link) === 'Not linked' ? 'Missing target' : (link.relationship_type === 'primary' ? 'Primary' : 'Supporting')"/></span>
+                                    </button>
+                                </t>
+                            </t>
+                            <div t-else="" class="o_hoshin_relation_empty">No active connections yet.</div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" t-on-click="() => this.openCreateAlignment('B&gt;M')"><i class="fa fa-plus me-1"/> Add relationship</button>
+                    </section>
+
+                    <section class="o_hoshin_relation_lane">
+                        <header class="o_hoshin_relation_lane_header">
+                            <span class="o_hoshin_link_code">I → M</span>
+                            <div><h3>Improvement initiative <i class="fa fa-long-arrow-right"/> KPI target</h3><p>Which KPI target measures this initiative's contribution?</p></div>
+                            <span class="o_hoshin_count"><t t-esc="this.linksFor('I&gt;M').length"/></span>
+                        </header>
+                        <div class="o_hoshin_relation_connections">
+                            <t t-if="this.linksFor('I&gt;M').length">
+                                <t t-foreach="this.linksFor('I&gt;M')" t-as="link" t-key="link.id">
+                                    <button type="button" class="o_hoshin_map_connection" t-on-click="() => this.openRecord('strategic.xmatrix.alignment', link.id)">
+                                        <span class="o_hoshin_map_node is-source"><small>Improvement initiative</small><strong><t t-esc="this.alignmentOriginLabel(link)"/></strong></span>
+                                        <span class="o_hoshin_map_arrow"><i class="fa fa-long-arrow-right"/></span>
+                                        <span t-att-class="this.alignmentDestinationLabel(link) === 'Not linked' ? 'o_hoshin_map_node is-missing' : 'o_hoshin_map_node is-target'"><small>KPI target</small><strong><t t-esc="this.alignmentDestinationLabel(link)"/></strong></span>
+                                        <span t-att-class="this.alignmentDestinationLabel(link) === 'Not linked' ? 'o_hoshin_relation_badge is-missing' : (link.relationship_type === 'primary' ? 'o_hoshin_relation_badge is-primary' : 'o_hoshin_relation_badge is-supporting')"><t t-esc="this.alignmentDestinationLabel(link) === 'Not linked' ? 'Missing target' : (link.relationship_type === 'primary' ? 'Primary' : 'Supporting')"/></span>
+                                    </button>
+                                </t>
+                            </t>
+                            <div t-else="" class="o_hoshin_relation_empty">No active connections yet.</div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" t-on-click="() => this.openCreateAlignment('I&gt;M')"><i class="fa fa-plus me-1"/> Add relationship</button>
+                    </section>
+
+                    <section class="o_hoshin_relation_lane">
+                        <header class="o_hoshin_relation_lane_header">
+                            <span class="o_hoshin_link_code">I → O</span>
+                            <div><h3>Improvement initiative <i class="fa fa-long-arrow-right"/> Accountable owner</h3><p>Who is accountable for delivering each initiative?</p></div>
+                            <span class="o_hoshin_count"><t t-esc="this.linksFor('I&gt;O').length"/></span>
+                        </header>
+                        <div class="o_hoshin_relation_connections">
+                            <t t-if="this.linksFor('I&gt;O').length">
+                                <t t-foreach="this.linksFor('I&gt;O')" t-as="link" t-key="link.id">
+                                    <button type="button" class="o_hoshin_map_connection" t-on-click="() => this.openRecord('strategic.xmatrix.alignment', link.id)">
+                                        <span class="o_hoshin_map_node is-source"><small>Improvement initiative</small><strong><t t-esc="this.alignmentOriginLabel(link)"/></strong></span>
+                                        <span class="o_hoshin_map_arrow"><i class="fa fa-long-arrow-right"/></span>
+                                        <span t-att-class="this.alignmentDestinationLabel(link) === 'Not linked' ? 'o_hoshin_map_node is-missing' : 'o_hoshin_map_node is-target'"><small>Accountable owner</small><strong><t t-esc="this.alignmentDestinationLabel(link)"/></strong></span>
+                                        <span t-att-class="this.alignmentDestinationLabel(link) === 'Not linked' ? 'o_hoshin_relation_badge is-missing' : (link.relationship_type === 'primary' ? 'o_hoshin_relation_badge is-primary' : 'o_hoshin_relation_badge is-supporting')"><t t-esc="this.alignmentDestinationLabel(link) === 'Not linked' ? 'Missing owner' : (link.relationship_type === 'primary' ? 'Primary' : 'Supporting')"/></span>
+                                    </button>
+                                </t>
+                            </t>
+                            <div t-else="" class="o_hoshin_relation_empty">No active owner connections yet.</div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" t-on-click="() => this.openCreateAlignment('I&gt;O')"><i class="fa fa-plus me-1"/> Add relationship</button>
+                    </section>
+                </div>
+            </section>
         </div>
     </t>
 </templates>

@@ -47,6 +47,7 @@ export class StrategicHoshinXMatrix extends Component {
             initiatives: [],
             alignments: [],
             targets: [],
+            showRelationshipMap: false,
         });
         onWillStart(() => this.loadPlansAndMatrix());
     }
@@ -344,6 +345,10 @@ export class StrategicHoshinXMatrix extends Component {
 
     async openAlignmentRegister() {
         return this.action.doAction("strategic_management.action_strategic_xmatrix_alignment");
+    }
+
+    toggleRelationshipMap() {
+        this.state.showRelationshipMap = !this.state.showRelationshipMap;
     }
 
     async refresh() {

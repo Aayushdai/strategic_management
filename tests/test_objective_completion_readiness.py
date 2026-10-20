@@ -1,3 +1,4 @@
+
 """TDD acceptance tests for objective completion readiness.
 
 These tests are expected to expose the current lifecycle gap: action_complete()
