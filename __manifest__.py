@@ -7,6 +7,7 @@
     "license": "LGPL-3",
     "depends": [
         "base",
+        "bus",
         "account",
         "mail",
         "stock",
@@ -20,6 +21,7 @@
         "security/strategic_management_security.xml",
         "security/ir.access.csv",
         "views/res_users_views.xml",
+        "views/stock_warehouse_views.xml",
         "views/navigation_shell.xml",
         "views/kpi_views.xml",
         "views/dashboard_views.xml",

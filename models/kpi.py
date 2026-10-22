@@ -1073,6 +1073,29 @@ class StrategicKpiEvaluation(models.Model):
             Evaluation._sync_linked_key_result_evaluation(target, existing)
             return existing
 
+        prepared = Evaluation._prepare_source_adapter_values(target, result)
+        prepared["source_key"] = source_key
+        # Call the inherited ORM create directly: the public override intentionally
+        # rejects a caller-supplied source_key. This method is private (RPC-inaccessible).
+        evaluation = super(StrategicKpiEvaluation, Evaluation).create([prepared])
+        previous = Evaluation.search([
+            ("target_id", "=", target.id),
+            ("source_key", "!=", False),
+            ("id", "!=", evaluation.id),
+            ("superseded_by_id", "=", False),
+        ], order="evaluated_at desc, id desc")
+        if previous:
+            previous[:1].write({"superseded_by_id": evaluation.id})
+        Evaluation._sync_linked_key_result_evaluation(target, evaluation)
+        return evaluation
+
+    @api.model
+    def _prepare_source_adapter_values(self, target, result):
+        """Return evaluation values for one source result without creating a record.
+
+        Shared by immutable evaluation creation and the live (read-only) branch
+        dashboard preview so both apply the same attainment rules.
+        """
         is_valid = result.get("status") == "valid" and result.get("has_value", False)
         vals = {
             "target_id": target.id,
@@ -1081,9 +1104,8 @@ class StrategicKpiEvaluation(models.Model):
             "source_model": result.get("source_model") or False,
             "source_record_ref": result.get("source_record_ref") or False,
         }
-        prepared = Evaluation._prepare_evaluation_values(vals)
+        prepared = self._prepare_evaluation_values(vals)
         prepared.update({
-            "source_key": source_key,
             "source_model": result.get("source_model") or False,
             "source_record_ref": result.get("source_record_ref") or False,
             "source_note": result.get("reason") or False,
@@ -1100,19 +1122,7 @@ class StrategicKpiEvaluation(models.Model):
                 "attainment_status": status,
                 "reason": reason,
             })
-        # Call the inherited ORM create directly: the public override intentionally
-        # rejects a caller-supplied source_key. This method is private (RPC-inaccessible).
-        evaluation = super(StrategicKpiEvaluation, Evaluation).create([prepared])
-        previous = Evaluation.search([
-            ("target_id", "=", target.id),
-            ("source_key", "!=", False),
-            ("id", "!=", evaluation.id),
-            ("superseded_by_id", "=", False),
-        ], order="evaluated_at desc, id desc")
-        if previous:
-            previous[:1].write({"superseded_by_id": evaluation.id})
-        Evaluation._sync_linked_key_result_evaluation(target, evaluation)
-        return evaluation
+        return prepared
 
     @api.model
     def _sync_linked_key_result_evaluation(self, target, evaluation):

@@ -849,7 +849,7 @@
 .o_sm_navigation_shell .o_sm_ov_date_filter svg,.o_sm_navigation_shell .o_sm_ov_scope svg { width:.9rem; height:.9rem; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; flex:0 0 auto; }
 .o_sm_navigation_shell .o_sm_ov_date_filter input { width:7rem; padding:0; border:0; outline:0; background:transparent; color:inherit; font:inherit; }
 .o_sm_navigation_shell .o_sm_ov_branch_filter { min-width:8rem; max-width:13rem; }
-.o_sm_navigation_shell .o_sm_ov_metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.7rem; }
+.o_sm_navigation_shell .o_sm_ov_metrics { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:.7rem; }
 .o_sm_navigation_shell .o_sm_ov_metric { display:flex; align-items:flex-start; gap:.7rem; min-width:0; padding:.9rem; border:1px solid #e5e9f0; border-radius:.6rem; background:#fff; box-shadow:0 1px 2px #10182806; }
 .o_sm_navigation_shell .o_sm_ov_metric_icon { display:flex; align-items:center; justify-content:center; flex:0 0 2.35rem; width:2.35rem; height:2.35rem; border-radius:.55rem; }
 .o_sm_navigation_shell .o_sm_ov_metric_icon svg { width:1.25rem; height:1.25rem; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
@@ -914,3 +914,18 @@
 @media (max-width:1250px) { .o_sm_navigation_shell .o_sm_ov_metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:950px) { .o_sm_navigation_shell .o_sm_ov_header { flex-direction:column; } .o_sm_navigation_shell .o_sm_ov_filters { justify-content:flex-start; } .o_sm_navigation_shell .o_sm_ov_primary_grid,.o_sm_navigation_shell .o_sm_ov_secondary_grid { grid-template-columns:minmax(0,1fr); } }
 @media (max-width:620px) { .o_sm_navigation_shell .o_sm_ov_metrics { grid-template-columns:minmax(0,1fr); } .o_sm_navigation_shell .o_sm_ov_date_filter { flex-wrap:wrap; max-width:100%; } .o_sm_navigation_shell .o_sm_ov_date_filter input { width:6.1rem; } .o_sm_navigation_shell .o_sm_ov_branch_row { grid-template-columns:minmax(0,1fr) minmax(3rem,.7fr); } .o_sm_navigation_shell .o_sm_ov_branch_bar { display:none; } .o_sm_navigation_shell .o_sm_ov_branch_values { grid-column:2; } .o_sm_navigation_shell .o_sm_ov_task_row { grid-template-columns:1.4rem minmax(0,1fr); } .o_sm_navigation_shell .o_sm_ov_task_row time { grid-column:2; } }
+/* Overview: operational summaries and strategic status */
+.o_sm_navigation_shell .o_sm_ov_ops_grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.75rem; }
+.o_sm_navigation_shell .o_sm_ov_stats { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.45rem .6rem; margin:0; font-size:.72rem; }
+.o_sm_navigation_shell .o_sm_ov_stats dt { overflow:hidden; color:#667085; font-weight:400; text-overflow:ellipsis; white-space:nowrap; }
+.o_sm_navigation_shell .o_sm_ov_stats dd { margin:0; color:#101828; font-weight:600; text-align:right; white-space:nowrap; }
+.o_sm_navigation_shell .o_sm_ov_strategy_row { display:grid; grid-template-columns:7rem minmax(0,1fr); gap:.3rem .7rem; align-items:center; margin-bottom:.8rem; }
+.o_sm_navigation_shell .o_sm_ov_strategy_label { display:flex; flex-direction:column; font-size:.72rem; } .o_sm_navigation_shell .o_sm_ov_strategy_label small { color:#667085; }
+.o_sm_navigation_shell .o_sm_ov_strategy_bar { display:flex; height:.75rem; overflow:hidden; border-radius:.4rem; background:#f2f4f7; }
+.o_sm_navigation_shell .o_sm_ov_on_track { background:#2eb67d; } .o_sm_navigation_shell .o_sm_ov_at_risk { background:#f7a333; } .o_sm_navigation_shell .o_sm_ov_not_evaluated { background:#c9ced6; }
+.o_sm_navigation_shell .o_sm_ov_strategy_counts { grid-column:2; display:flex; flex-wrap:wrap; gap:.8rem; color:#667085; font-size:.66rem; }
+.o_sm_navigation_shell .o_sm_ov_on_track_text { color:#067647; } .o_sm_navigation_shell .o_sm_ov_at_risk_text { color:#b54708; }
+@media (max-width:1250px) { .o_sm_navigation_shell .o_sm_ov_ops_grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:620px) { .o_sm_navigation_shell .o_sm_ov_ops_grid { grid-template-columns:minmax(0,1fr); } }
+.o_sm_navigation_shell .o_sm_issue_actions { display:inline-flex; flex-wrap:wrap; gap:.6rem; margin-top:.2rem; white-space:nowrap; }
+.o_sm_navigation_shell button.o_sm_iw_panel_tag { font-family: inherit; line-height: inherit; cursor: pointer; }

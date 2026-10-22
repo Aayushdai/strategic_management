@@ -173,13 +173,15 @@ class StrategicKpiScheduledJobs(models.Model):
 
     @api.model
     def _create_deduplicated_activity(
-        self, record, summary, note, warehouse=None, scope="organization", company=None
+        self, record, summary, note, warehouse=None, scope="organization", company=None,
+        recipients=None, date_deadline=None,
     ):
         """Create an in-app activity only when the same live reminder is absent."""
         company = company or record.company_id
-        recipients = self._get_schedule_notification_users(
-            scope, company, warehouse=warehouse
-        )
+        if recipients is None:
+            recipients = self._get_schedule_notification_users(
+                scope, company, warehouse=warehouse
+            )
         if not recipients:
             _logger.warning(
                 "No configured reviewer found for scheduled KPI notification on %s,%s",
@@ -214,7 +216,7 @@ class StrategicKpiScheduledJobs(models.Model):
                     "summary": summary,
                     "note": safe_note,
                     "user_id": recipient.id,
-                    "date_deadline": fields.Date.today(),
+                    "date_deadline": date_deadline or fields.Date.today(),
                 }
             )
             created += 1

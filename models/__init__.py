@@ -8,6 +8,11 @@ from . import kpi_receipt_refresh
 from . import stock_picking
 from . import purchase_order
 from . import purchase_delivery_baseline
+from . import live_refresh
 from . import kpi_scheduler
 from . import dashboard
 from . import business_overview
+from . import branch_overview
+from . import people_overview
+from . import overview_extras
+from . import stock_warehouse

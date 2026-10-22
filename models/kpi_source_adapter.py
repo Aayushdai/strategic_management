@@ -48,6 +48,18 @@ _SOURCE_COLLECTORS = {
 }
 
 
+def source_collector_for(version):
+    """Return the operational collector for a definition version, or False."""
+    collector = (
+        collect_supplier_delivery_result
+        if version.calculation_type == "supplier_on_time_delivery_pct"
+        else _SOURCE_COLLECTORS.get(version.source_type)
+    )
+    if not collector or version.calculation_type not in _SOURCE_ADAPTERS.get(version.source_type, set()):
+        return False
+    return collector
+
+
 class StrategicKpiTarget(models.Model):
     _inherit = "strategic.kpi.target"
 
@@ -70,13 +82,8 @@ class StrategicKpiTarget(models.Model):
                 raise AccessError(_("Branch Managers may evaluate only targets for their own branch."))
 
         version = self.kpi_id._get_definition_version_for_period(self.date_start, self.date_end)
-        collector = (
-            collect_supplier_delivery_result
-            if version.calculation_type == "supplier_on_time_delivery_pct"
-            else _SOURCE_COLLECTORS.get(version.source_type)
-        )
-        supported = _SOURCE_ADAPTERS.get(version.source_type, set())
-        if not collector or version.calculation_type not in supported:
+        collector = source_collector_for(version)
+        if not collector:
             raise ValidationError(_("The approved KPI definition version does not select an operational source adapter supported by this release."))
 
         result = collector(self, version)

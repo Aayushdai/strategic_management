@@ -14,6 +14,8 @@ import pytz
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 
+from ..services.kpi_sources.pos import recipe_consumption
+
 
 _logger = logging.getLogger(__name__)
 
@@ -98,7 +100,10 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         config_domain = [("company_id", "=", company.id)]
         if scope_warehouse_ids:
             config_domain.append(("picking_type_id.warehouse_id", "in", scope_warehouse_ids))
-        configs = self._overview_safe(lambda: PosConfig.search(config_domain)) or PosConfig.browse()
+        configs = self._overview_safe(lambda: PosConfig.search(config_domain))
+        # Unreadable POS configuration means sales are unknown, not zero.
+        pos_readable = configs is not False
+        configs = configs or PosConfig.browse()
         config_ids = configs.ids
 
         start_utc, end_utc = self._overview_utc_bounds(start, end)
@@ -119,13 +124,15 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         order_groups = self._overview_safe(lambda: [
     {
         "config_id": (config, self.env["pos.config"].browse(config).display_name) if config else False,
-        "amount_total": amount,
-        "__count": count,
+        # Sales are reported excluding tax, like product, category and margin figures.
+        "amount_total": (amount or 0.0) - (tax or 0.0),
+        # Refund orders reduce net sales but are not customer orders.
+        "__count": 0 if is_refund else count,
     }
-    for config, amount, count in PosOrder.read_group(
+    for config, is_refund, amount, tax, count in PosOrder.read_group(
         order_domain,
-        groupby=["config_id"],
-        aggregates=["amount_total:sum", "id:count"],
+        groupby=["config_id", "is_refund"],
+        aggregates=["amount_total:sum", "amount_tax:sum", "id:count"],
     )
 ])
         sales_total = False
@@ -143,7 +150,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             picking = row.get("picking_type_id")
             config_to_branch[row["id"]] = picking_type_to_warehouse.get(picking[0], (False, row["name"])) if picking else (False, row["name"])
 
-        if order_groups is not False:
+        if order_groups is not False and pos_readable:
             sales_total = 0.0
             for row in order_groups:
                 amount = float(row.get("amount_total") or 0.0)
@@ -159,11 +166,11 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
 
         trend_groupby = "date_order:month" if trend_granularity == "month" else "date_order:day"
         trend_groups = self._overview_safe(lambda: [
-            {"period_value": period_value, "amount_total": amount}
-            for period_value, amount in PosOrder.read_group(
+            {"period_value": period_value, "amount_total": (amount or 0.0) - (tax or 0.0)}
+            for period_value, amount, tax in PosOrder.read_group(
                 order_domain,
                 groupby=[trend_groupby],
-                aggregates=["amount_total:sum"],
+                aggregates=["amount_total:sum", "amount_tax:sum"],
             )
         ])
         trend_sales = self._overview_period_buckets(start, end, trend_granularity)
@@ -185,11 +192,14 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         # Aggregate POS sales by hour-of-day, reusing the same authorized order domain.
         # Odoo groups each calendar date/hour separately; combine those hourly buckets
         # into 24 hour-of-day totals for the dashboard chart.
-        hourly_groups = self._overview_safe(lambda: PosOrder.read_group(
-            order_domain,
-            groupby=["date_order:hour"],
-            aggregates=["amount_total:sum"],
-        ))
+        hourly_groups = self._overview_safe(lambda: [
+            (hour_bucket, (amount or 0.0) - (tax or 0.0))
+            for hour_bucket, amount, tax in PosOrder.read_group(
+                order_domain,
+                groupby=["date_order:hour"],
+                aggregates=["amount_total:sum", "amount_tax:sum"],
+            )
+        ])
         sales_by_hour = []
         if hourly_groups is not False:
             hourly_totals = [0.0] * 24
@@ -240,12 +250,13 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         "qty": quantity,
         "price_subtotal": subtotal,
     }
-    for product, quantity, subtotal in self.env["pos.order.line"].read_group(
+    for product, quantity, subtotal in self._overview_pos_line_groups(
         product_domain,
         groupby=["product_id"],
         aggregates=["qty:sum", "price_subtotal:sum"],
     )
 ])
+        discounts_refunds = self._overview_safe(lambda: self._overview_discounts_refunds(order_domain, product_domain))
         sales_by_category = []
         if product_groups is not False:
             grouped_product_ids = sorted({
@@ -329,7 +340,8 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             branch_sales = [row for row in branch_sales if row.get("branch_id") in authorized_ids]
         for row in branch_sales:
             count = row.get("orders", 0)
-            row["average_ticket"] = row.get("sales", 0.0) / count if count else 0.0
+            row["sales"] = round(row.get("sales", 0.0), 2)
+            row["average_ticket"] = row["sales"] / count if count else 0.0
 
         trend = list(trend_sales.values())
         trend.sort(key=lambda row: row["month_key"])
@@ -344,8 +356,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                 "position": company.currency_id.position,
                 "decimal_places": company.currency_id.decimal_places,
             },
-            "branch_options": branch_options,
-            "currency": {
+            "branch_options": branch_options,            "currency": {
                 "name": company.currency_id.name,
                 "symbol": company.currency_id.symbol or company.currency_id.name,
                 "position": company.currency_id.position or "before",
@@ -363,13 +374,15 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             "sales_by_hour": sales_by_hour,
             "branch_sales": branch_sales,
             "top_products": top_products,
+            "discounts_refunds": discounts_refunds,
             "sales_by_category": sales_by_category,
             "alerts": alerts,
             "tasks": tasks,
             "branch_performance": branch_sales,
             "open_issues": len(alerts),
             "branch_count": branch_count,
-            "messages": [],
+            "messages": ["Some POS orders are in a currency other than %s; POS totals are summed without conversion." % company.currency_id.name]
+            if discounts_refunds and discounts_refunds["mixed_currency"] else [],
         }
 
     @api.model
@@ -438,7 +451,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
 
         warehouse_ids = [selected_warehouse.id] if selected_warehouse else [item["id"] for item in branch_options]
         PurchaseOrder = self.env["purchase.order"]
-        if not {"company_id", "date_order", "state", "amount_total", "partner_id"}.issubset(PurchaseOrder._fields):
+        if not {"company_id", "date_order", "state", "amount_untaxed", "partner_id"}.issubset(PurchaseOrder._fields):
             empty["messages"] = ["The Purchase order model does not expose the fields required for this report."]
             empty["branch_options"] = branch_options
             return empty
@@ -453,12 +466,33 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                 empty["selected_warehouse_id"] = selected_warehouse.id
                 return empty
 
+        # In Odoo 20 ``date_order`` is the editable "Order Deadline" and may lie in
+        # the future; the actual order date of a confirmed PO is ``date_approve``.
+        # RFQs that were never approved fall back to ``date_order``. This matches
+        # the KPI purchase source, which also reports confirmed orders by approval.
+        has_date_approve = "date_approve" in PurchaseOrder._fields
+
+        def effective_datetime(order):
+            return (order.date_approve if has_date_approve else False) or order.date_order
+
+        def period_domain(start_value, end_value):
+            start_text = fields.Datetime.to_string(start_value)
+            end_text = fields.Datetime.to_string(end_value)
+            order_date_range = [("date_order", ">=", start_text), ("date_order", "<", end_text)]
+            if not has_date_approve:
+                return order_date_range
+            return [
+                "|",
+                "&", "&", ("date_approve", "!=", False), ("date_approve", ">=", start_text), ("date_approve", "<", end_text),
+                "&", ("date_approve", "=", False), "&", *order_date_range,
+            ]
+
+        def sort_recent(records):
+            return records.sorted(key=lambda order: (effective_datetime(order) or datetime.min, order.id), reverse=True)
+
         start_utc, end_utc = self._overview_utc_bounds(start, end)
-        order_domain = company_domain + [
-            ("date_order", ">=", fields.Datetime.to_string(start_utc)),
-            ("date_order", "<", fields.Datetime.to_string(end_utc)),
-        ]
-        orders = PurchaseOrder.search(order_domain, order="date_order desc, id desc")
+        order_domain = company_domain + period_domain(start_utc, end_utc)
+        orders = sort_recent(PurchaseOrder.search(order_domain))
         confirmed = orders.filtered(lambda order: order.state in ("purchase", "done"))
         company_currency = company.currency_id
 
@@ -470,9 +504,9 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             return source_currency._convert(amount, company_currency, company, rate_date or end)
 
         def order_date(order):
-            if not order.date_order:
+            if not effective_datetime(order):
                 return False
-            order_datetime = fields.Datetime.to_datetime(order.date_order)
+            order_datetime = fields.Datetime.to_datetime(effective_datetime(order))
             if not order_datetime:
                 return False
             timezone = pytz.timezone(user.tz or "UTC")
@@ -505,7 +539,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             return max(0.0, ordered - received)
 
         purchase_order_value = sum(
-            to_company_currency(order.amount_total, order.currency_id if "currency_id" in order._fields else company_currency, order.date_order)
+            to_company_currency(order.amount_untaxed, order.currency_id if "currency_id" in order._fields else company_currency, order.date_order)
             for order in confirmed
         )
         pending_delivery_value = 0.0
@@ -568,10 +602,9 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         previous_start = shifted_month(month_starts[0], -len(month_starts)) if month_starts else start.replace(day=1)
         previous_end = month_starts[0] - timedelta(days=1) if month_starts else start
         previous_start_utc, previous_end_utc = self._overview_utc_bounds(previous_start, previous_end) if month_starts else (False, False)
-        previous_orders = PurchaseOrder.search(company_domain + [
-            ("date_order", ">=", fields.Datetime.to_string(previous_start_utc)),
-            ("date_order", "<", fields.Datetime.to_string(previous_end_utc)),
-        ], order="date_order asc, id asc") if month_starts else PurchaseOrder.browse()
+        previous_orders = PurchaseOrder.search(
+            company_domain + period_domain(previous_start_utc, previous_end_utc), order="id asc"
+        ) if month_starts else PurchaseOrder.browse()
         previous_confirmed = previous_orders.filtered(lambda order: order.state in ("purchase", "done"))
         current_by_month = defaultdict(float)
         previous_by_month = defaultdict(float)
@@ -579,11 +612,11 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             dt = order_date(order)
             if dt:
                 key = dt.strftime("%Y-%m")
-                current_by_month[key] += to_company_currency(order.amount_total, order.currency_id if "currency_id" in order._fields else company_currency, order.date_order)
+                current_by_month[key] += to_company_currency(order.amount_untaxed, order.currency_id if "currency_id" in order._fields else company_currency, order.date_order)
         for order in previous_confirmed:
             dt = order_date(order)
             if dt:
-                previous_by_month[dt.strftime("%Y-%m")] += to_company_currency(order.amount_total, order.currency_id if "currency_id" in order._fields else company_currency, order.date_order)
+                previous_by_month[dt.strftime("%Y-%m")] += to_company_currency(order.amount_untaxed, order.currency_id if "currency_id" in order._fields else company_currency, order.date_order)
         expenditure_trend = []
         for index, month_start in enumerate(month_starts):
             prior_month = shifted_month(month_starts[0], index - len(month_starts))
@@ -729,7 +762,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                 "supplier": order.partner_id.display_name if order.partner_id else "Unknown supplier",
                 "branch": order_branch(order),
                 "date": fields.Date.to_string(order_date(order)) if order_date(order) else "",
-                "amount": round(to_company_currency(order.amount_total, order.currency_id if "currency_id" in order._fields else company_currency, order.date_order), 2),
+                "amount": round(to_company_currency(order.amount_untaxed, order.currency_id if "currency_id" in order._fields else company_currency, order.date_order), 2),
                 "status": status_label,
                 "status_class": status_class,
             })
@@ -757,6 +790,54 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             "price_months": [{"key": key, "label": month_label_by_key[key]} for key in month_keys],
             "ingredient_price_trend": price_trends,
             "messages": [] if orders else ["No purchase orders match the selected period and branch."],
+        }
+
+    @api.model
+    def _overview_pos_line_groups(self, domain, groupby, aggregates):
+        """``read_group`` on POS lines with line prices signed by quantity.
+
+        Odoo stores POS line prices as positive amounts even on refund lines
+        ("Line prices are always positive"), so negative-quantity lines are
+        subtracted to keep product, category and margin figures net of refunds.
+        """
+        Line = self.env["pos.order.line"]
+        signed = [index for index, aggregate in enumerate(aggregates) if aggregate.split(":")[0].startswith("price_subtotal")]
+        totals = {}
+        for sign, quantity_leaf in ((1, ("qty", ">=", 0)), (-1, ("qty", "<", 0))):
+            for row in Line.read_group(domain + [quantity_leaf], groupby=groupby, aggregates=aggregates):
+                keys, values = tuple(row[:len(groupby)]), list(row[len(groupby):])
+                for index in signed:
+                    values[index] = sign * float(values[index] or 0.0)
+                current = totals.get(keys)
+                totals[keys] = values if current is None else [(left or 0) + (right or 0) for left, right in zip(current, values)]
+        return [(*keys, *values) for keys, values in totals.items()]
+
+    @api.model
+    def _overview_discounts_refunds(self, order_domain, line_domain):
+        """POS discounts and refunds for the same orders as Total Sales, excluding tax."""
+        PosOrder = self.env["pos.order"]
+        refund_rows = PosOrder.read_group(
+            order_domain + [("is_refund", "=", True)], groupby=[], aggregates=["amount_total:sum", "amount_tax:sum", "id:count"],
+        )
+        refund_total, refund_tax, refund_count = refund_rows[0] if refund_rows else (0.0, 0.0, 0)
+        refund_amount = (refund_total or 0.0) - (refund_tax or 0.0)
+        # Discount = undiscounted price minus what was charged (both excluding tax),
+        # on sale orders only: a refund is reported once, as the refunded amount.
+        lines = self.env["pos.order.line"].search(line_domain + [("discount", ">", 0), ("order_id.is_refund", "=", False)])
+        discount_total = 0.0
+        for line in lines:
+            order = line.order_id
+            taxes = line.tax_ids_after_fiscal_position.compute_all(
+                line.price_unit, order.currency_id, line.qty, product=line.product_id, partner=order.partner_id,
+            )
+            discount_total += taxes["total_excluded"] - line.price_subtotal
+        mixed_currency = bool(PosOrder.search_count(order_domain + [("config_id.currency_id", "!=", self.env.company.currency_id.id)], limit=1))
+        return {
+            "discount_total": round(discount_total, 2),
+            "discounted_lines": len(lines),
+            "refund_total": round(-float(refund_amount or 0.0), 2) or 0.0,
+            "refund_count": int(refund_count or 0),
+            "mixed_currency": mixed_currency,
         }
 
     @api.model
@@ -1235,14 +1316,10 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                     if not tags or tags.difference(allowed_tags):
                         waste_breakdown_available = False
                         break
-                layers = self._overview_safe(lambda: self.env["stock.valuation.layer"].search([("stock_move_id", "in", scrap_moves.ids)])) if waste_breakdown_available and "stock.valuation.layer" in self.env.registry.models else False
-                if layers is False or (scrap_moves and not layers):
+                cost_by_move = self._overview_scrap_costs(scrap_moves) if waste_breakdown_available else False
+                if cost_by_move is False:
                     waste_breakdown_available = False
-                elif waste_breakdown_available:
-                    value_by_move = defaultdict(float)
-                    for layer in layers:
-                        if layer.stock_move_id:
-                            value_by_move[layer.stock_move_id.id] += float(layer.value or 0.0)
+                else:
                     waste_by_product_map = defaultdict(lambda: {"cost": 0.0, "quantity": 0.0, "product": "Product", "category": "Uncategorized", "unit": ""})
                     for move in scrap_moves:
                         pid = move.product_id.id
@@ -1253,7 +1330,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                         bucket["category"] = meta.get("category") or "Uncategorized"
                         bucket["unit"] = meta.get("uom") or ""
                         bucket["quantity"] += qty
-                        bucket["cost"] += max(0.0, -value_by_move.get(move.id, 0.0))
+                        bucket["cost"] += cost_by_move.get(move.id, 0.0)
                     waste_by_product = [dict(product_id=pid, cost=round(values["cost"], 2), quantity=round(values["quantity"], 4), product=values["product"], category=values["category"], unit=values["unit"])
                                          for pid, values in waste_by_product_map.items() if values["cost"] > 0]
                     waste_by_product.sort(key=lambda item: item["cost"], reverse=True)
@@ -1271,7 +1348,9 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             if movement_fields_ok:
                 movement_domain = [
                     ("company_id", "=", company.id), ("state", "=", "done"), ("product_id", "=", selected_product_id),
-                    ("date", ">=", fields.Datetime.to_string(start_utc)), ("date", "<", fields.Datetime.to_string(fields.Datetime.now())),
+                    # No upper bound: every completed move up to now explains current stock;
+                    # a "< now" bound drops moves done in the current second.
+                    ("date", ">=", fields.Datetime.to_string(start_utc)),
                     "|", ("location_id", "in", scoped_location_ids), ("location_dest_id", "in", scoped_location_ids),
                 ]
                 movement_rows = self._overview_safe(lambda: Move.search(movement_domain, order="date asc, id asc", limit=30000))
@@ -1279,7 +1358,8 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                 net_since_start = 0.0
                 period_net = 0.0
                 received_qty = 0.0
-                production_qty = 0.0
+                consumption_qty = 0.0
+                adjustment_qty = 0.0
                 waste_qty = 0.0
                 tags_field = "scrap_reason_tag_ids" in Move._fields
                 allowed_tags = {"spoilage/expiry", "damaged goods"}
@@ -1301,15 +1381,19 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                         period_net += delta
                         if net_delta > 0 and move.location_id.usage == "supplier":
                             received_qty += qty
-                        if net_delta < 0 and move.location_dest_id.usage == "production":
-                            production_qty += qty
+                        # Actual consumption: completed issues to customers (POS/sales) or production.
+                        counterpart = move.location_dest_id if net_delta < 0 else move.location_id
+                        if net_delta < 0 and counterpart.usage in ("customer", "production"):
+                            consumption_qty += qty
+                        elif net_delta and counterpart.usage == "inventory" and not ("is_scrap" in Move._fields and move.is_scrap):
+                            adjustment_qty += delta
                         if net_delta < 0 and "is_scrap" in Move._fields and move.is_scrap and tags_field:
                             tags = {(tag.name or "").strip().casefold() for tag in move.scrap_reason_tag_ids}
                             if tags and not tags.difference(allowed_tags):
                                 waste_qty += qty
                 opening_quantity = current_quantity - net_since_start
                 expected_closing = opening_quantity + period_net
-                other_net = period_net - received_qty + production_qty + waste_qty
+                other_net = period_net - received_qty + consumption_qty + waste_qty - adjustment_qty
                 opening_value = round(opening_quantity, 4) if opening_quantity >= -0.0001 else False
                 expected_value = round(expected_closing, 4) if opening_quantity is not False and expected_closing >= -0.0001 else False
                 physical_applicable = end >= today
@@ -1317,13 +1401,15 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                 movement = {
                     "product_id": selected_product_id, "product": meta.get("name") or "Product", "unit": meta.get("uom") or "",
                     "opening_stock": opening_value, "received_quantity": round(received_qty, 4),
-                    "recipe_consumption_quantity": False, "production_issue_quantity": round(production_qty, 4),
-                    "waste_quantity": round(waste_qty, 4), "other_net_quantity": round(other_net, 4),
+                    "consumption_quantity": round(consumption_qty, 4), "adjustment_quantity": round(adjustment_qty, 4) or 0.0,
+                    "waste_quantity": round(waste_qty, 4), "other_net_quantity": round(other_net, 4) or 0.0,
                     "expected_closing_stock": expected_value,
                     "physical_count": physical_count if physical_applicable else False,
                     "variance": physical_variance if physical_applicable else False,
-                    "message": "Opening stock is reconstructed from completed movements since the selected period began. POS recipe consumption is not inferred; configure a recipe source to show that metric.",
+                    "message": "Opening stock is reconstructed from completed movements since the selected period began. Physical count compares pending inventory counts with system stock.",
                 }
+                recipe_value, recipe_note = self._overview_recipe_estimate(start_utc, end_utc, selected_product_id, scoped_warehouses)
+                movement.update({"recipe_consumption_quantity": recipe_value, "recipe_consumption_note": recipe_note})
                 if opening_value is False or expected_value is False:
                     movement["message"] = "Opening or expected closing stock could not be reconciled from the accessible movement history."
             else:
@@ -1347,12 +1433,12 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
 
         attention = []
         for item in low_stock_all[:4]:
-            attention.append({"kind": "stock", "severity": "high" if item["status"] == "critical" else "medium", "title": item["status_label"], "detail": "%s - %s - %s %s available" % (item["branch_name"], item["name"], item["available_quantity"], item["unit"]), "date": ""})
+            attention.append({"kind": "stock", "severity": "high" if item["status"] == "critical" else "medium", "title": item["status_label"], "detail": "%s - %s - %s %s available" % (item["branch_name"], item["name"], item["available_quantity"], item["unit"]), "date": "", "res_model": "product.product", "res_id": item["product_id"]})
         for item in expiring_stock[:4]:
             if item["days_left"] <= 7:
-                attention.append({"kind": "expiry", "severity": "high" if item["days_left"] < 0 else "medium", "title": item["status"], "detail": "%s - %s - %s %s" % (item["branch"], item["product"], item["quantity"], item["unit"]), "date": item["expiry_date"]})
+                attention.append({"kind": "expiry", "severity": "high" if item["days_left"] < 0 else "medium", "title": item["status"], "detail": "%s - %s - %s %s" % (item["branch"], item["product"], item["quantity"], item["unit"]), "date": item["expiry_date"], "res_model": "stock.lot", "res_id": item["lot_id"]})
         for item in stock_discrepancies[:3]:
-            attention.append({"kind": "variance", "severity": "review", "title": "Unreconciled stock count", "detail": "%s - %s - variance %s %s" % (item["branch"], item["product"], item["variance"], item["unit"]), "date": ""})
+            attention.append({"kind": "variance", "severity": "review", "title": "Unreconciled stock count", "detail": "%s - %s - variance %s %s" % (item["branch"], item["product"], item["variance"], item["unit"]), "date": "", "res_model": "product.product", "res_id": item["product_id"]})
         attention = attention[:10]
 
         messages = []
@@ -1362,6 +1448,11 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             messages.append("Low-stock classification requires readable replenishment rules for the selected warehouses.")
         if not expiry_available:
             messages.append("Expiry tracking is not enabled on the available stock data; the expiring-stock panel cannot be calculated.")
+        manufacturing_recipes = self._overview_safe(lambda: self._overview_pos_recipes_not_kits(company))
+        if manufacturing_recipes:
+            messages.append(
+                "Ingredients are not deducted by POS sales for: %s. Their recipe is a manufacturing BoM; set BoM Type to Kit "
+                "so each sale consumes its ingredients from branch stock." % ", ".join(manufacturing_recipes[:5]))
         if waste_cost is False:
             messages.append("Waste cost is unavailable because the required recorded scrap reasons or valuation data are missing.")
         if not waste_by_product and waste_cost not in (False, None, 0, 0.0):
@@ -1395,8 +1486,6 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         }
     @api.model
     def _overview_waste_cost(self, start, end, warehouse=False):
-        if "stock.valuation.layer" not in self.env.registry.models:
-            return False
         Move = self.env["stock.move"]
         required_fields = {"is_scrap", "date", "state", "company_id", "scrap_reason_tag_ids", "location_id"}
         if not required_fields.issubset(Move._fields):
@@ -1424,12 +1513,73 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             tags = {(tag.name or "").strip().casefold() for tag in move.scrap_reason_tag_ids}
             if not tags or tags.difference(allowed_tags):
                 return False
-        layers = self._overview_safe(lambda: self.env["stock.valuation.layer"].search([("stock_move_id", "in", moves.ids)]))
-        if layers is False or not layers:
-            return False
-        # Scrap valuation layers normally carry a negative value; negate the sum
-        # to present the stock value lost as a positive cost.
-        return round(max(0.0, -sum(layers.mapped("value"))), 2)
+        costs = self._overview_scrap_costs(moves)
+        return round(sum(costs.values()), 2) if costs is not False else False
+
+    @api.model
+    def _overview_pos_recipes_not_kits(self, company):
+        """POS products whose only recipe is a manufacturing BoM, so sales never move ingredient stock."""
+        if "mrp.bom" not in self.env.registry.models:
+            return []
+        # sudo: reads recipe configuration only; returns product names.
+        boms = self.env["mrp.bom"].sudo().search([
+            ("company_id", "in", [False, company.id]), ("type", "in", ["normal", "phantom"]),
+            ("product_tmpl_id.available_in_pos", "=", True),
+        ])
+        kits = boms.filtered(lambda bom: bom.type == "phantom").product_tmpl_id
+        return sorted(set((boms.product_tmpl_id - kits).mapped("display_name")))
+
+    @api.model
+    def _overview_recipe_estimate(self, start_utc, end_utc, product_id, warehouses):
+        """Estimated ingredient use from completed POS sales and effective recipes.
+
+        Kept separate from recorded stock moves and waste: it is an estimate.
+        Returns (quantity or False, explanation).
+        """
+        if "mrp.bom" not in self.env.registry.models:
+            return False, "Recipe consumption: Not Configured (Manufacturing app for recipes is not installed)."
+        company = self.env.company
+        # sudo: limited to POS registers of the user's authorized branch warehouses;
+        # only an aggregated quantity is returned.
+        configs = self.env["pos.config"].sudo().search([
+            ("company_id", "=", company.id), ("picking_type_id.warehouse_id", "in", warehouses.ids),
+        ])
+        if not configs:
+            return False, "Recipe consumption: Not Available (no POS register is mapped to the selected branch)."
+        orders = self.env["pos.order"].sudo().search([
+            ("company_id", "=", company.id), ("config_id", "in", configs.ids), ("state", "in", _POS_STATES),
+            ("date_order", ">=", fields.Datetime.to_string(start_utc)), ("date_order", "<", fields.Datetime.to_string(end_utc)),
+        ])
+        if not orders:
+            return False, "Recipe consumption: Not Available (no completed POS sales in this period)."
+        status, value, reason = recipe_consumption(self.env, company, orders, self.env["product.product"].browse(product_id))[:3]
+        if status == "valid":
+            return round(value, 4), "Estimated recipe consumption (not included above): " + reason
+        return False, "Recipe consumption: Not Available. " + reason
+
+    @api.model
+    def _overview_scrap_costs(self, moves):
+        """Return {move id: stock value lost} for scrap moves, or False if any is unvalued.
+
+        Odoo 19+ stores valuation on the move itself (``stock.move.value``);
+        older versions use ``stock.valuation.layer``. A scrap without valuation
+        makes the total incomplete, so no partial figure is returned.
+        """
+        Move = self.env["stock.move"]
+        if "value" in Move._fields and "is_valued" in Move._fields:
+            if not all(move.is_valued for move in moves):
+                return False
+            # Outgoing moves carry a negative value; the cost is the value lost.
+            return {move.id: abs(float(move.value or 0.0)) for move in moves}
+        if "stock.valuation.layer" in self.env.registry.models:
+            layers = self._overview_safe(lambda: self.env["stock.valuation.layer"].search([("stock_move_id", "in", moves.ids)]))
+            if not layers:
+                return False
+            costs = defaultdict(float)
+            for layer in layers:
+                costs[layer.stock_move_id.id] -= float(layer.value or 0.0)
+            return {move_id: max(0.0, value) for move_id, value in costs.items()}
+        return False
 
     @api.model
     def _overview_alerts(self, date_end, warehouse=False, waste_cost=False):

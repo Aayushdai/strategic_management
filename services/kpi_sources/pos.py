@@ -161,7 +161,17 @@ def collect_pos_result(target, version):
 
 
 def _collect_recipe_consumption(target, version, orders, Line):
-    env = target.env
+    return _result(target, version, *recipe_consumption(target.env, company, orders, version.source_product_id))
+
+
+def recipe_consumption(env, company, orders, tracked_product):
+    """Estimate ``tracked_product`` consumed by completed POS ``orders`` from recipes.
+
+    Uses the BoM effective on each sale date. Returns
+    ``(status, value, reason, source_model, tokens, refs)``; shared by the KPI
+    adapter and the Inventory dashboard so both apply identical rules.
+    """
+    Line = env["pos.order.line"].sudo()
     # Recipe consumption is based on positive completed sales. A POS refund does
     # not prove ingredients were physically returned to stock, so negative/refund
     # lines must not cancel the estimated preparation/consumption from a sale.
@@ -169,20 +179,25 @@ def _collect_recipe_consumption(target, version, orders, Line):
         lambda line: line.qty > 0 and not line.order_id.is_refund_or_negative()
     )
     if not sale_lines:
-        return _result(
-            target, version, VALID, 0.0,
+        return (
+            VALID, 0.0,
             "No positive completed POS sale lines were found in this period. Refund/negative lines are excluded because they do not establish that ingredients were returned to stock.",
             "pos.order.line+mrp.bom", _record_tokens(orders), _refs(orders),
         )
     Bom = env["mrp.bom"].sudo().with_context(active_test=False)
-    if not {"date_start", "date_stop", "product_tmpl_id", "product_qty", "product_uom_id", "bom_line_ids"}.issubset(Bom._fields):
-        return _result(
-            target, version, DATA_QUALITY, None,
+    # Odoo 20 Community has no explicit BoM effective dates (recipe versions are
+    # separate BoMs; validity then follows creation/change history) and names the
+    # unit field ``uom_id``; older versions use ``product_uom_id``.
+    bom_uom_field = "product_uom_id" if "product_uom_id" in Bom._fields else "uom_id"
+    BomLine = env["mrp.bom.line"]
+    line_uom_field = "product_uom_id" if "product_uom_id" in BomLine._fields else "uom_id"
+    if not {"product_tmpl_id", "product_qty", "bom_line_ids", bom_uom_field}.issubset(Bom._fields) or line_uom_field not in BomLine._fields:
+        return (
+            DATA_QUALITY, None,
             "The installed BoM model does not expose the effective-date and component fields required for historical recipe evaluation.",
             "pos.order.line+mrp.bom", _record_tokens(orders) + _record_tokens(sale_lines), _refs(orders, sale_lines),
         )
 
-    tracked_product = version.source_product_id
     total = 0.0
     used_boms = {}
     data_issues = []
@@ -191,7 +206,7 @@ def _collect_recipe_consumption(target, version, orders, Line):
         if not line.product_id or not line.product_id.uom_id:
             data_issues.append("POS line %s has no product/unit." % line.id)
             continue
-        sale_date = _sale_date_in_timezone(line.order_id.date_order, target.company_id.partner_id.tz)
+        sale_date = _sale_date_in_timezone(line.order_id.date_order, company.partner_id.tz)
         if not sale_date:
             data_issues.append("POS order %s has an invalid date." % line.order_id.id)
             continue
@@ -204,8 +219,8 @@ def _collect_recipe_consumption(target, version, orders, Line):
             data_issues.append("POS line %s contains custom attributes that are not mapped to recipe components." % line.id)
             continue
         bom, issue = _resolve_bom(
-            Bom, line.product_id, target.company_id, sale_date,
-            target.company_id.partner_id.tz,
+            Bom, line.product_id, company, sale_date,
+            company.partner_id.tz,
         )
         if issue:
             data_issues.append("POS line %s: %s" % (line.id, issue))
@@ -220,7 +235,7 @@ def _collect_recipe_consumption(target, version, orders, Line):
             continue
         try:
             output_qty_in_bom_uom = line.product_id.uom_id._compute_quantity(
-                line.qty, bom.product_uom_id
+                line.qty, bom[bom_uom_field]
             )
             recipe_multiplier = output_qty_in_bom_uom / bom.product_qty
             for component in bom.bom_line_ids:
@@ -235,7 +250,7 @@ def _collect_recipe_consumption(target, version, orders, Line):
                     )
                     if required_variant_values and any(value not in sold_variant_values for value in required_variant_values):
                         continue
-                component_qty = component.product_uom_id._compute_quantity(
+                component_qty = component[line_uom_field]._compute_quantity(
                     component.product_qty * recipe_multiplier,
                     tracked_product.uom_id,
                 )
@@ -246,25 +261,25 @@ def _collect_recipe_consumption(target, version, orders, Line):
     tokens = _record_tokens(orders) + _record_tokens(sale_lines) + _record_tokens(list(used_boms.values()))
     refs = _refs(orders, sale_lines, list(used_boms.values()))
     if data_issues:
-        return _result(
-            target, version, DATA_QUALITY, None,
+        return (
+            DATA_QUALITY, None,
             "Recipe consumption is incomplete or ambiguous: %s" % "; ".join(data_issues[:20]),
             "pos.order.line+mrp.bom", tokens, refs,
         )
     if not used_boms:
-        return _result(
-            target, version, DATA_QUALITY, None,
+        return (
+            DATA_QUALITY, None,
             "No effective recipe BoMs were found for completed POS sales. The system cannot distinguish non-recipe products from missing recipe mappings, so it will not assume zero ingredient consumption.",
             "pos.order.line+mrp.bom", tokens, refs,
         )
     if not math.isfinite(total):
-        return _result(
-            target, version, DATA_QUALITY, None,
+        return (
+            DATA_QUALITY, None,
             "Recipe-based consumption did not produce a finite numeric value.",
             "pos.order.line+mrp.bom", tokens, refs,
         )
-    return _result(
-        target, version, VALID, float(total),
+    return (
+        VALID, float(total),
         "Estimated ingredient consumption based on completed POS sales and the BoM effective on each sale date. This is an estimate, not proof of actual stock consumption.",
         "pos.order.line+mrp.bom", tokens, refs,
     )
@@ -274,7 +289,9 @@ def _resolve_bom(Bom, sold_product, company, sale_date, timezone_name):
     """Return the single effective normal BoM, preferring a variant-specific BoM."""
     domain = [
         ("company_id", "in", [False, company.id]),
-        ("type", "=", "normal"),
+        # Kits are how POS sales deduct recipe ingredients (pos_mrp); manufacturing
+        # BoMs remain valid recipe sources. Both at once is ambiguous and fails closed.
+        ("type", "in", ["normal", "phantom"]),
         "|", ("product_id", "=", sold_product.id),
              "&", ("product_id", "=", False), ("product_tmpl_id", "=", sold_product.product_tmpl_id.id),
     ]
@@ -282,8 +299,8 @@ def _resolve_bom(Bom, sold_product, company, sale_date, timezone_name):
     effective = Bom.browse()
     invalid_history = []
     for bom in candidates:
-        explicit_start = fields.Date.to_date(bom.date_start) if bom.date_start else False
-        explicit_stop = fields.Date.to_date(bom.date_stop) if bom.date_stop else False
+        explicit_start = fields.Date.to_date(bom.date_start) if "date_start" in bom._fields and bom.date_start else False
+        explicit_stop = fields.Date.to_date(bom.date_stop) if "date_stop" in bom._fields and bom.date_stop else False
         created_on = _sale_date_in_timezone(bom.create_date, timezone_name) if bom.create_date else False
         effective_start = explicit_start or created_on
         if not effective_start:

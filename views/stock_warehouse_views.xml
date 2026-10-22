@@ -1,0 +1,15 @@
+<odoo>
+    <record id="view_warehouse_form_strategic_planned_headcount" model="ir.ui.view">
+        <field name="name">stock.warehouse.form.strategic.planned.headcount</field>
+        <field name="model">stock.warehouse</field>
+        <field name="inherit_id" ref="stock.view_warehouse"/>
+        <field name="arch" type="xml">
+            <field name="partner_id" position="after">
+                <field name="strategic_planned_headcount"/>
+            </field>
+            <xpath expr="//sheet" position="after">
+                <chatter/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

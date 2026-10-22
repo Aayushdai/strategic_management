@@ -18,3 +18,6 @@ from . import test_head_office_dashboard
 from . import test_branch_dashboard
 
 from . import test_employee_dashboard
+from . import test_people_dashboard
+from . import test_inventory_dashboard
+from . import test_overview_dashboard

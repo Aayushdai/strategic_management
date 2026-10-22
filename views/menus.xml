@@ -8,13 +8,14 @@
               sequence="45"
               groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_employee"/>
 
-    <!-- Keep the existing technical configuration screens intact but separate from the
-         business-facing home screen. The everyday owner sees the custom in-app sidebar. -->
+    <!-- Strategy and KPI records live inside the app so Head Office and Branch Managers
+         can reach them without Odoo administrator rights; each child keeps its own groups.
+         The everyday owner still starts from the custom in-app sidebar. -->
     <menuitem id="menu_strategic_management_technical"
-              name="Strategic Configuration"
-              parent="base.menu_administration"
+              name="Strategy &amp; KPIs"
+              parent="menu_strategic_management_root"
               sequence="90"
-              groups="base.group_system"/>
+              groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_employee"/>
 
     <!-- KPI section: existing technical records remain available to system administrators -->
     <menuitem id="menu_strategic_management_kpi"
