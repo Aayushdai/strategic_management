@@ -2,18 +2,20 @@
 
 import { Component, onMounted, onWillStart, onWillUnmount, proxy } from "@odoo/owl";
 import { registry } from "@web/core/registry";
+import { user } from "@web/core/user";
 import { useService } from "@web/core/utils/hooks";
 
 const NAVIGATION_ITEMS = [
-    { id: "overview", label: "Overview", icon: "fa-home", description: "See overall business performance and important changes." },
-    { id: "sales_finance", label: "Sales & Finance", icon: "fa-bar-chart", description: "Review sales, revenue trends, orders, and financial results." },
-    { id: "inventory_waste", label: "Inventory & Waste", icon: "fa-archive", description: "Monitor stock, ingredient consumption, waste, and discrepancies." },
-    { id: "purchasing", label: "Purchasing", icon: "fa-shopping-cart", description: "Review supplier orders, deliveries, and purchasing activity." },
-    { id: "branches", label: "Branches", icon: "fa-building-o", description: "Compare locations and investigate branch-level performance." },
-    { id: "people", label: "People", icon: "fa-users", description: "Review employees and workforce-related information." },
-    { id: "tasks_issues", label: "Tasks & Issues", icon: "fa-tasks", description: "Track assigned issues, deadlines, and follow-up actions." },
-    { id: "reports", label: "Reports", icon: "fa-file-text-o", description: "Open business reports and historical analysis." },
-    { id: "configuration", label: "Configuration", icon: "fa-sliders", description: "Access authorized module configuration and management tools.", dividerBefore: true },
+    { id: "overview", label: "Overview", icon: "home", description: "See overall business performance and important changes." },
+    { id: "sales_finance", label: "Sales & Finance", icon: "bar_chart", description: "Review sales, revenue trends, orders, and financial results." },
+    { id: "inventory_waste", label: "Inventory & Waste", icon: "inventory_2", description: "Monitor stock, ingredient consumption, waste, and discrepancies." },
+    { id: "purchasing", label: "Purchasing", icon: "shopping_cart", description: "Review supplier orders, deliveries, and purchasing activity." },
+    { id: "branches", label: "Branches", icon: "storefront", description: "Compare locations and investigate branch-level performance." },
+    { id: "people", label: "People", icon: "group", description: "Review employees and workforce-related information." },
+    { id: "tasks_issues", label: "Tasks & Issues", icon: "checklist", description: "Track assigned issues, deadlines, and follow-up actions." },
+    { id: "reports", label: "Reports", icon: "description", description: "Open business reports and historical analysis." },
+    { id: "app_dependencies", label: "App Dependencies", icon: "widgets", description: "See which Odoo apps Strategic Management relies on and what each enables." },
+    { id: "configuration", label: "Configuration", icon: "tune", description: "Access authorized module configuration and management tools.", dividerBefore: true },
 ];
 
 // Reports and Configuration open Odoo's own screens. Standard POS, purchase, stock and
@@ -43,7 +45,31 @@ const SECTION_LINKS = {
     ],
 };
 
+// Sidebar: short labels in the Overview design's order. Business Goals opens its own client action; the sections the
+// design does not list stay one click away under "More", so no existing page becomes unreachable.
+const SIDEBAR_PRIMARY = [
+    { id: "overview", label: "Overview" },
+    { id: "sales_finance", label: "Sales" },
+    { id: "purchasing", label: "Purchasing" },
+    { id: "inventory_waste", label: "Inventory" },
+    { id: "business_goals", label: "Business Goals", action: "strategic_management.action_business_goals" },
+    { id: "reports", label: "Reports" },
+    { id: "configuration", label: "Settings" },
+];
+const SIDEBAR_MORE = NAVIGATION_ITEMS.filter((item) => ["branches", "people", "tasks_issues", "app_dependencies"].includes(item.id));
+const PERIOD_PRESETS = [
+    { key: "this_month", label: "This Month" },
+    { key: "last_month", label: "Last Month" },
+    { key: "last_3_months", label: "Last 3 Months" },
+    { key: "this_year", label: "This Year" },
+    { key: "custom", label: "Custom dates" },
+];
+const BAR_COLORS = ["#7b68d9", "#8b7add", "#9d8fe3", "#b0a5ea"];
+// Purchasing category colours, purple first like the Overview (donut and legend share them).
+const PURCHASE_COLORS = ["#6f5bd3", "#35b56f", "#f5a524", "#4a8fe7", "#a39bc8", "#e86a5a"];
+
 const CHART_COLORS = ["#2e9cf0", "#25a56a", "#f5a23d", "#9673c9", "#91a0ae"];
+const PAGE_SIZE = 5;
 
 // Sent by models/live_refresh.py after POS, Purchase, Inventory or Strategic changes commit.
 const DATA_CHANGED = "strategic_management.data_changed";
@@ -59,24 +85,33 @@ export class StrategicNavigationShell extends Component {
         this.notification = useService("notification");
         this.action = useService("action");
         this.items = NAVIGATION_ITEMS;
+        this.sidebarPrimary = SIDEBAR_PRIMARY;
+        this.sidebarMore = SIDEBAR_MORE;
+        this.periodPresets = PERIOD_PRESETS;
+        // The Overview opens on This Month (shared by every section's period filter).
+        const today = new Date();
+        const [monthStart, todayInput] = [this.asDateInput(new Date(today.getFullYear(), today.getMonth(), 1)), this.asDateInput(today)];
         this.state = proxy({
             items: NAVIGATION_ITEMS,
             activeSection: "overview",
             loading: true,
             error: "",
-            // Empty until the first load: the server resolves the default period
-            // in the user's Odoo timezone and the shell adopts it.
-            dateStart: "",
-            dateEnd: "",
-            todayDate: "",
+            dateStart: monthStart,
+            dateEnd: todayInput,
+            todayDate: todayInput,
+            periodPreset: "this_month",
             warehouseId: "all",
-            trendGranularity: "month",
+            trendGranularity: "day",
             branchMetric: "sales",
             topProductLimit: 5,
             data: null,
             inventoryData: null,
             inventoryLoading: false,
             inventoryError: "",
+            appDependenciesData: null,
+            appDependenciesLoading: false,
+            appDependenciesError: "",
+            expandedDependencyId: "inventory",
             inventoryProductId: "all",
             purchasingData: null,
             purchasingLoading: false,
@@ -85,6 +120,22 @@ export class StrategicNavigationShell extends Component {
             peopleData: null,
             peopleLoading: false,
             overviewExtras: null,
+            // Purchasing: compact previews; "See more" expands the existing full lists in place.
+            purExpanded: {},
+            // Inventory & Waste: compact previews; "See all" and the detail toggles expand the existing sections in place.
+            invExpanded: {},
+            brExpanded: {},
+            // Overview: objective requests from branch managers and the decisions already taken.
+            requestsData: null,
+            requestsLoading: false,
+            reqExpanded: {},
+            historyStatus: "all",
+            reviewRequestId: null,
+            rejectRequestId: null,
+            rejectReason: "",
+            deciding: false,
+            pages: {},
+            areaGoals: {},
         });
         this.purchasingRequestId = 0;
         this.branchesRequestId = 0;
@@ -130,6 +181,7 @@ export class StrategicNavigationShell extends Component {
             branches: "loadBranches",
             people: "loadPeople",
             tasks_issues: "loadTasksIssues",
+            app_dependencies: "loadAppDependencies",
         };
         const loader = loaders[this.state.activeSection];
         if (!loader || document.visibilityState === "hidden") {
@@ -177,7 +229,7 @@ export class StrategicNavigationShell extends Component {
                 console.error("Overview data could not be refreshed", error);
             }
             if (this.state.activeSection === "overview") {
-                await this.loadOverviewExtras({ silent: true });
+                await this.loadObjectiveRequests({ silent: true });
             }
             return;
         }
@@ -197,7 +249,7 @@ export class StrategicNavigationShell extends Component {
             if (!this.state.todayDate && data.period) {
                 Object.assign(this.state, { dateStart: data.period.start, dateEnd: data.period.end, todayDate: data.period.end });
             }
-            if (this.state.activeSection === "overview") { await this.loadOverviewExtras(); }
+            if (this.state.activeSection === "overview") { await this.loadObjectiveRequests(); }
             if (this.state.activeSection === "purchasing") { await this.loadPurchasing(); }
             if (this.state.activeSection === "branches") { await this.loadBranches(); }
             if (this.state.activeSection === "people") { await this.loadPeople(); }
@@ -273,8 +325,11 @@ export class StrategicNavigationShell extends Component {
 
     selectSection(sectionId) {
         this.state.activeSection = sectionId;
+        if (["sales_finance", "inventory_waste", "purchasing"].includes(sectionId)) {
+            this.loadAreaGoals(sectionId);
+        }
         if (sectionId === "overview") {
-            return this.loadOverviewExtras();
+            return this.loadObjectiveRequests();
         }
         if (sectionId === "purchasing") {
             return this.loadPurchasing();
@@ -291,6 +346,206 @@ export class StrategicNavigationShell extends Component {
         if (sectionId === "inventory_waste") {
             return this.loadInventory();
         }
+        if (sectionId === "app_dependencies") {
+            return this.loadAppDependencies();
+        }
+    }
+
+    // ------------------------------------------------------------ Overview home ("Welcome back!")
+    openNavItem(item) {
+        return item.action ? this.action.doAction(item.action) : this.selectSection(item.id);
+    }
+
+    get avatarUrl() {
+        return `/web/image/res.users/${user.userId}/avatar_128`;
+    }
+
+    /** [start, end] of a period preset as date inputs, ending today at the latest; null for custom dates. */
+    presetRange(preset, today = new Date()) {
+        const year = today.getFullYear();
+        const month = today.getMonth();
+        const range = {
+            this_month: [new Date(year, month, 1), today],
+            last_month: [new Date(year, month - 1, 1), new Date(year, month, 0)],
+            last_3_months: [new Date(year, month - 2, 1), today],
+            this_year: [new Date(year, 0, 1), today],
+        }[preset];
+        return range ? range.map((date) => this.asDateInput(date)) : null;
+    }
+
+    /** Daily buckets up to about a month, weekly up to about four months, monthly beyond. */
+    granularityFor(start, end) {
+        const days = (new Date(`${end}T12:00:00`) - new Date(`${start}T12:00:00`)) / 86400000 + 1;
+        return days <= 45 ? "day" : days <= 125 ? "week" : "month";
+    }
+
+    onPeriodPresetChanged(event) {
+        const preset = event.target.value;
+        if (!PERIOD_PRESETS.some((option) => option.key === preset)) {
+            return;
+        }
+        this.state.periodPreset = preset;
+        const range = this.presetRange(preset);
+        if (!range) {
+            return; // Custom dates: the date fields appear and load on change.
+        }
+        [this.state.dateStart, this.state.dateEnd] = range;
+        this.state.trendGranularity = this.granularityFor(...range);
+        return this.loadOverview();
+    }
+
+    onCustomDateChanged(which, event) {
+        const start = which === "start" ? event.target.value : this.state.dateStart;
+        const end = which === "end" ? event.target.value : this.state.dateEnd;
+        if (start && end && start <= end) {
+            this.state.trendGranularity = this.granularityFor(start, end);
+        }
+        return which === "start" ? this.onStartDateChanged(event) : this.onEndDateChanged(event);
+    }
+
+    get periodPhrase() {
+        return {
+            this_month: "this month", last_month: "last month", last_3_months: "over the last three months", this_year: "this year",
+        }[this.state.periodPreset] || "in the selected period";
+    }
+
+    get trendCaption() {
+        const unit = { day: "Daily", week: "Weekly", month: "Monthly" }[this.state.trendGranularity] || "";
+        return `${unit} · ${this.formatDate(this.state.dateStart)} – ${this.formatDate(this.state.dateEnd)}`;
+    }
+
+    /** Change versus the previous equal period, or null when no truthful comparison exists (missing data, zero base). */
+    changeInfo(current, previous) {
+        const missing = (value) => value === false || value === null || value === undefined || !Number.isFinite(Number(value));
+        if (missing(current) || missing(previous) || Number(previous) === 0) {
+            return null;
+        }
+        const change = ((Number(current) - Number(previous)) / Math.abs(Number(previous))) * 100;
+        return { up: change >= 0, text: `${change >= 0 ? "+" : ""}${change.toLocaleString("en-US", { maximumFractionDigits: 1 })}%` };
+    }
+
+    /** Small trend line of one series of the sales trend (sales or profit); null unless two real points exist. */
+    sparkline(key) {
+        const values = (this.state.data?.sales_trend || [])
+            .map((point) => point[key])
+            .filter((value) => value !== undefined && value !== null && value !== false && Number.isFinite(Number(value)))
+            .map(Number);
+        if (values.length < 2) {
+            return null;
+        }
+        const low = Math.min(...values);
+        const span = Math.max(...values) - low || 1;
+        const line = values.map((value, index) => `${((index * 100) / (values.length - 1)).toFixed(1)},${(34 - ((value - low) / span) * 28).toFixed(1)}`).join(" ");
+        return { line, area: `0,40 ${line} 100,40` };
+    }
+
+    /** Round axis bounds and step covering [low, high]. */
+    niceScale(low, high) {
+        const span = high - low || Math.abs(high) || 1;
+        const rough = span / 4;
+        const magnitude = 10 ** Math.floor(Math.log10(rough));
+        const step = [1, 2, 2.5, 5, 10].find((factor) => factor * magnitude >= rough) * magnitude;
+        return { low: Math.floor(low / step) * step, high: Math.max(step, Math.ceil(high / step) * step), step };
+    }
+
+    axisTicks(scale, y) {
+        const ticks = [];
+        for (let value = scale.low; value <= scale.high + scale.step / 2; value += scale.step) {
+            ticks.push({ key: String(value), y: y(value), label: this.formatCompactCurrency(value) });
+        }
+        return ticks;
+    }
+
+    /** Sales over the selected period from the existing sales trend; null when no POS order was completed. */
+    get salesTrendChart() {
+        const data = this.state.data;
+        const points = data?.sales_trend || [];
+        if (!points.length || !data.order_count) {
+            return null;
+        }
+        const [left, right, top, bottom] = [58, 620, 12, 178];
+        const values = points.map((point) => Number(point.sales) || 0);
+        const scale = this.niceScale(Math.min(0, ...values), Math.max(0, ...values));
+        const y = (value) => bottom - ((value - scale.low) / (scale.high - scale.low)) * (bottom - top);
+        const x = (index) => (points.length === 1 ? (left + right) / 2 : left + (index * (right - left)) / (points.length - 1));
+        const last = points.length - 1;
+        const step = Math.max(1, Math.ceil(points.length / 8));
+        const dots = points.map((point, index) => ({
+            key: point.month_key || String(index), x: x(index), y: y(values[index]),
+            title: `${point.label || ""}: ${this.formatCurrency(values[index])}`,
+            label: index === last || (index % step === 0 && last - index >= step / 2) ? point.label : "",
+        }));
+        const line = dots.map((dot) => `${dot.x.toFixed(1)},${dot.y.toFixed(1)}`).join(" ");
+        const base = y(Math.max(scale.low, 0)).toFixed(1);
+        return {
+            dots, line, ticks: this.axisTicks(scale, y), left, right, bottom,
+            area: `${dots[0].x.toFixed(1)},${base} ${line} ${dots[last].x.toFixed(1)},${base}`,
+        };
+    }
+
+    /** Sales per branch from the existing branch performance (already limited to the user's branches). */
+    get branchChart() {
+        const rows = this.state.data?.branch_performance || [];
+        if (!rows.length) {
+            return null;
+        }
+        const [left, right, top, bottom] = [52, 620, 22, 176];
+        const values = rows.map((row) => Number(row.sales) || 0);
+        const scale = this.niceScale(0, Math.max(0, ...values));
+        const y = (value) => bottom - ((Math.max(value, 0) - scale.low) / (scale.high - scale.low)) * (bottom - top);
+        const slot = (right - left) / rows.length;
+        const width = Math.min(70, slot * 0.58);
+        const bars = rows.map((row, index) => {
+            const center = left + slot * (index + 0.5);
+            const barTop = y(values[index]);
+            const name = row.name || "";
+            return {
+                key: String(row.branch_id || index), x: center - width / 2, center, y: barTop, width, height: Math.max(0, bottom - barTop),
+                color: BAR_COLORS[index % BAR_COLORS.length], value: this.formatCompactCurrency(values[index]),
+                name: name.length > 16 ? `${name.slice(0, 15)}…` : name, title: `${name}: ${this.formatCurrency(values[index])}`,
+            };
+        });
+        return { bars, ticks: this.axisTicks(scale, y), left, right, bottom };
+    }
+
+    /** Active goals on track among those with an evaluated result; goals without a result are reported apart. */
+    get goalSummary() {
+        const counts = this.state.overviewExtras?.strategy?.objectives;
+        if (!counts) {
+            return null;
+        }
+        const onTrack = counts.on_track || 0;
+        const evaluated = onTrack + (counts.at_risk || 0);
+        return { onTrack, evaluated, notEvaluated: counts.not_evaluated || 0, pct: evaluated ? Math.round((onTrack * 100) / evaluated) : null };
+    }
+
+    ringDash(pct, radius) {
+        const circumference = 2 * Math.PI * radius;
+        return `${((circumference * (pct || 0)) / 100).toFixed(1)} ${circumference.toFixed(1)}`;
+    }
+
+    /** The three most important alerts (already sorted by severity on the server), without duplicates. */
+    get topAttention() {
+        const seen = new Set();
+        return (this.state.overviewExtras?.attention || []).filter((alert) => {
+            const key = `${alert.title}|${alert.branch || ""}|${alert.evidence || ""}`;
+            if (seen.has(key)) {
+                return false;
+            }
+            seen.add(key);
+            return true;
+        }).slice(0, 3);
+    }
+
+    attentionActionLabel(alert) {
+        return { Inventory: "View Stock", Branches: "View Branch", People: "View Details" }[alert.source] || "View";
+    }
+
+    openAttention(alert) {
+        if (alert.res_model) {
+            return this.openIssueRecord(alert);
+        }
+        return this.selectSection({ Inventory: "inventory_waste", Branches: "branches", People: "people" }[alert.source] || "tasks_issues");
     }
 
     get activeItem() {
@@ -348,6 +603,35 @@ export class StrategicNavigationShell extends Component {
         }
     }
 
+    async loadAppDependencies({ silent = false } = {}) {
+        if (!silent) {
+            this.state.appDependenciesLoading = true;
+            this.state.appDependenciesError = "";
+        }
+        try {
+            this.state.appDependenciesData = await this.orm.silent.call(
+                "strategic.performance.dashboard",
+                "get_app_dependencies_data",
+                []
+            );
+            this.state.appDependenciesError = "";
+        } catch (error) {
+            if (silent) {
+                console.warn("App dependency status could not be refreshed", error);
+                return;
+            }
+            this.state.appDependenciesError = error.message || "App dependency status could not be loaded.";
+        } finally {
+            if (!silent) {
+                this.state.appDependenciesLoading = false;
+            }
+        }
+    }
+
+    toggleAppDependency(id) {
+        this.state.expandedDependencyId = this.state.expandedDependencyId === id ? "" : id;
+    }
+
     onInventoryProductChanged(event) {
         this.state.inventoryProductId = event.target.value || "all";
         return this.loadInventory();
@@ -388,20 +672,28 @@ export class StrategicNavigationShell extends Component {
         return Number(value).toLocaleString("en-US", { maximumFractionDigits: 0 });
     }
 
-    inventoryWasteDonutStyle() {
+    pageCount(rows) {
+        return Math.max(1, Math.ceil((rows || []).length / PAGE_SIZE));
+    }
+
+    pageOf(key, rows) {
+        // Clamped so a filter change that shrinks the list never leaves an empty page.
+        return Math.min(this.state.pages[key] || 1, this.pageCount(rows));
+    }
+
+    pageRows(key, rows) {
+        const page = this.pageOf(key, rows);
+        return (rows || []).slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    }
+
+    setPage(key, page) {
+        this.state.pages[key] = page;
+    }
+
+    inventoryWasteWidth(waste) {
         const rows = (this.state.inventoryData && this.state.inventoryData.waste_by_product) || [];
-        const total = rows.reduce((sum, row) => sum + Math.max(0, Number(row.cost) || 0), 0);
-        if (!total) {
-            return "background: #e2e7ed";
-        }
-        let offset = 0;
-        const segments = rows.map((row, index) => {
-            const share = (Math.max(0, Number(row.cost) || 0) / total) * 100;
-            const segment = this.inventoryColor(index) + " " + offset + "% " + (offset + share) + "%";
-            offset += share;
-            return segment;
-        });
-        return "background: conic-gradient(" + segments.join(", ") + ")";
+        const max = rows.reduce((top, row) => Math.max(top, Number(row.cost) || 0), 0);
+        return max > 0 ? Math.max(0, Number(waste.cost) || 0) / max * 100 : 0;
     }
 
     inventoryColor(index) {
@@ -415,6 +707,17 @@ export class StrategicNavigationShell extends Component {
             return 0;
         }
         return Math.max(0, Math.min(100, (available / minimum) * 100));
+    }
+
+    inventoryBranchWidth(branch) {
+        const rows = (this.state.inventoryData && this.state.inventoryData.branch_comparison) || [];
+        const max = rows.reduce((top, row) => Math.max(top, Number(row.low_stock_count) || 0), 0);
+        return max > 0 ? Math.max(0, Number(branch.low_stock_count) || 0) / max * 100 : 0;
+    }
+
+    get inventoryExpiredLotCount() {
+        const lots = (this.state.inventoryData && this.state.inventoryData.expiring_stock) || [];
+        return lots.filter((lot) => lot.days_left < 0).length;
     }
     async loadPurchasing({ silent = false } = {}) {
         // Ignore responses that arrive after a newer request (filter change or live refresh).
@@ -496,6 +799,26 @@ export class StrategicNavigationShell extends Component {
     }
 
     /** Open the Odoo record behind a dashboard issue. */
+    // "Goals in this area": the same strategic.objective records Business Goals shows.
+    async loadAreaGoals(area) {
+        try {
+            this.state.areaGoals[area] = await this.orm.silent.call("strategic.goal.setup", "get_goals", [], { area });
+        } catch (error) {
+            console.warn("Area goals could not be loaded", error);
+            this.state.areaGoals[area] = [];
+        }
+    }
+
+    openObjective(objectiveId) {
+        return this.action.doAction({
+            type: "ir.actions.act_window",
+            res_model: "strategic.objective",
+            res_id: objectiveId,
+            views: [[false, "form"]],
+            target: "current",
+        });
+    }
+
     async openIssueRecord(item) {
         try {
             await this.action.doAction({
@@ -534,6 +857,127 @@ export class StrategicNavigationShell extends Component {
         } catch (error) {
             this.notification.add(error.data?.message || error.message || "This screen is not available with your access rights.", { type: "warning" });
         }
+    }
+
+    // ------------------------------------------------------------ objective requests (Overview)
+    async loadObjectiveRequests({ silent = false } = {}) {
+        const requestId = this.requestsRequestId = (this.requestsRequestId || 0) + 1;
+        if (!silent) {
+            this.state.requestsLoading = true;
+        }
+        try {
+            const selectedWarehouse = this.state.warehouseId === "all" ? false : Number(this.state.warehouseId);
+            const data = await this.orm.silent.call("strategic.performance.dashboard", "get_objective_requests", [selectedWarehouse]);
+            if (requestId === this.requestsRequestId) {
+                this.state.requestsData = data;
+            }
+        } catch (error) {
+            if (!silent && requestId === this.requestsRequestId) {
+                this.state.requestsData = { available: false, pending: [], history: [], messages: [error.data?.message || error.message || "Objective requests could not be loaded."] };
+            }
+            console.error("Objective requests could not be loaded", error);
+        } finally {
+            if (requestId === this.requestsRequestId) {
+                this.state.requestsLoading = false;
+            }
+        }
+    }
+
+    toggleRequests(key) {
+        this.state.reqExpanded[key] = !this.state.reqExpanded[key];
+    }
+
+    get filteredRequestHistory() {
+        const rows = this.state.requestsData?.history || [];
+        return this.state.historyStatus === "all" ? rows : rows.filter((row) => row.decision === this.state.historyStatus);
+    }
+
+    onHistoryStatusChanged(event) {
+        this.state.historyStatus = event.target.value;
+        this.state.pages.req_history = 0;
+    }
+
+    // Pending rows are keyed by objective, history rows by decision ("p:12" / "h:7"), so the two never collide.
+    get reviewRequest() {
+        const key = this.state.reviewRequestId;
+        const data = this.state.requestsData;
+        if (!key || !data) return null;
+        const id = Number(key.slice(2));
+        return key.startsWith("p:")
+            ? (data.pending || []).find((row) => row.objective_id === id) || null
+            : (data.history || []).find((row) => row.review_id === id) || null;
+    }
+
+    openRequestReview(row) {
+        this.state.reviewRequestId = row.review_id ? `h:${row.review_id}` : `p:${row.objective_id}`;
+    }
+
+    closeRequestReview() {
+        this.state.reviewRequestId = null;
+    }
+
+    openRejectRequest(row) {
+        this.state.rejectRequestId = row.objective_id;
+        this.state.rejectReason = "";
+    }
+
+    closeRejectRequest() {
+        if (!this.state.deciding) {
+            this.state.rejectRequestId = null;
+        }
+    }
+
+    get rejectRequest() {
+        return (this.state.requestsData?.pending || []).find((row) => row.objective_id === this.state.rejectRequestId) || null;
+    }
+
+    onRejectReasonInput(event) {
+        this.state.rejectReason = event.target.value;
+    }
+
+    /** Approve or reject on the server; the lists refresh from its answer, so nothing changes before it confirms. */
+    async decideRequest(row, decision) {
+        if (this.state.deciding) return;
+        const reason = decision === "reject" ? this.state.rejectReason.trim() : false;
+        if (decision === "reject" && !reason) {
+            this.notification.add("Enter a reason for rejecting this objective.", { type: "warning" });
+            return;
+        }
+        this.state.deciding = true;
+        try {
+            const selectedWarehouse = this.state.warehouseId === "all" ? false : Number(this.state.warehouseId);
+            const data = await this.orm.call("strategic.performance.dashboard", "decide_objective_request", [row.objective_id, decision, reason, selectedWarehouse]);
+            this.state.requestsData = data;
+            this.state.rejectRequestId = null;
+            this.state.reviewRequestId = null;
+            this.notification.add(`"${row.name}" ${decision === "approve" ? "approved and activated" : "rejected"}.`, { type: "success" });
+        } catch (error) {
+            this.notification.add(error.data?.message || error.message || "The decision could not be saved.", { type: "danger" });
+            await this.loadObjectiveRequests({ silent: true });
+        } finally {
+            this.state.deciding = false;
+        }
+    }
+
+    async openRequestObjective(objectiveId) {
+        try {
+            await this.action.doAction({
+                type: "ir.actions.act_window",
+                res_model: "strategic.objective",
+                res_id: objectiveId,
+                views: [[false, "form"]],
+                target: "current",
+            });
+        } catch (error) {
+            this.notification.add(error.data?.message || error.message || "This objective is not available with your access rights.", { type: "warning" });
+        }
+    }
+
+    /** Server datetimes are UTC ("2026-10-27 14:55:58"); show the local calendar date. */
+    formatRequestDate(value) {
+        if (!value) return "—";
+        const date = new Date(String(value).replace(" ", "T") + (String(value).length > 10 ? "Z" : "T00:00:00"));
+        return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
     }
 
     async loadOverviewExtras({ silent = false } = {}) {
@@ -641,6 +1085,35 @@ export class StrategicNavigationShell extends Component {
         return Number(value).toLocaleString("en-US", { maximumFractionDigits: 2 });
     }
 
+    toggleBranches(key) {
+        this.state.brExpanded[key] = !this.state.brExpanded[key];
+    }
+
+    /** Sales chart rows, largest first; branches without readable sales stay listed as "Not Evaluated". */
+    get branchSalesRows() {
+        const missing = (value) => value === false || value === null || value === undefined;
+        return this.branchChartRows("sales").sort((a, b) => (missing(b.value) ? -1 : b.value) - (missing(a.value) ? -1 : a.value));
+    }
+
+    /** Attainment is already a percentage of target: draw it on a 0-100 scale, not relative to the best branch. */
+    branchAttainmentWidth(row) {
+        return row.attainment === false || row.attainment === null || row.attainment === undefined ? 0 : Math.max(0, Math.min(100, Number(row.attainment) || 0));
+    }
+
+    /** First sentence of a data note; the full text stays one click away. */
+    branchNoteHeadline(message) {
+        const text = message || "";
+        const cut = text.search(/\.(\s|$)/);
+        return cut > 0 ? text.slice(0, cut + 1) : text;
+    }
+
+    scrollToBranchTable() {
+        const table = document.querySelector(".o_sm_br_table_panel");
+        if (table) {
+            table.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+    }
+
     branchSeverityClass(severity) {
         return severity === "critical" ? "o_sm_br_issue_red" : "o_sm_br_issue_amber";
     }
@@ -692,7 +1165,7 @@ export class StrategicNavigationShell extends Component {
 
     purchasingCategoryDonutStyle() {
         const rows = this.state.purchasingData?.purchase_categories || [];
-        const colors = ["#2e9cf0", "#25a56a", "#f5a23d", "#9673c9", "#91a0ae", "#e5c343"];
+        const colors = PURCHASE_COLORS;
         const total = rows.reduce((sum, row) => sum + Math.max(0, Number(row.value) || 0), 0);
         if (!total) return "background: #e7e9ed";
         let offset = 0;
@@ -706,7 +1179,7 @@ export class StrategicNavigationShell extends Component {
     }
 
     purchasingCategoryColor(index) {
-        return ["#2e9cf0", "#25a56a", "#f5a23d", "#9673c9", "#91a0ae", "#e5c343"][index % 6];
+        return PURCHASE_COLORS[index % PURCHASE_COLORS.length];
     }
 
     purchasingBarWidth(value, maximum) {
@@ -719,6 +1192,38 @@ export class StrategicNavigationShell extends Component {
         if (value >= 85) return "o_sm_pur_bar_good";
         if (value >= 65) return "o_sm_pur_bar_medium";
         return "o_sm_pur_bar_bad";
+    }
+
+    toggleInventory(key) {
+        this.state.invExpanded[key] = !this.state.invExpanded[key];
+    }
+
+    togglePurchasing(key) {
+        this.state.purExpanded[key] = !this.state.purExpanded[key];
+    }
+
+    /** Purchasing goals grouped by the status tone the Business Goals page already gives them; null while loading. */
+    get purchasingGoalSummary() {
+        const rows = this.state.areaGoals.purchasing;
+        if (!rows) {
+            return null;
+        }
+        const count = (tones) => rows.filter((goal) => tones.includes(goal.tone)).length;
+        return { total: rows.length, onTrack: count(["good"]), attention: count(["warn", "bad"]), other: count(["neutral"]) };
+    }
+
+    /** Head Office only: Odoo's standard Purchase screens are not branch-restricted by this module (see SECTION_LINKS). */
+    get canOpenPurchaseOrders() {
+        return this.state.data?.role === "head_office";
+    }
+
+    openPurchaseOrder(order) {
+        return this.action.doAction(order.id ? {
+            type: "ir.actions.act_window", res_model: "purchase.order", res_id: order.id, views: [[false, "form"]], target: "current",
+        } : {
+            type: "ir.actions.act_window", name: order.name, res_model: "purchase.order", domain: [["name", "=", order.name]],
+            views: [[false, "list"], [false, "form"]], target: "current",
+        });
     }
 
     purchaseStatusClass(status) {

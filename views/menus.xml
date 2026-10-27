@@ -17,6 +17,14 @@
               sequence="90"
               groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_employee"/>
 
+    <!-- Top-bar shortcut to Objectives: Head Office and Branch Managers only -->
+    <menuitem id="menu_strategic_objective_top"
+              name="Objectives"
+              parent="menu_strategic_management_root"
+              action="action_strategic_objective"
+              sequence="80"
+              groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,-strategic_management.group_strategic_employee"/>
+
     <!-- KPI section: existing technical records remain available to system administrators -->
     <menuitem id="menu_strategic_management_kpi"
               name="KPIs"
@@ -142,6 +150,13 @@
     </record>
 
     <record id="menu_strategic_objective" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [
+            ref('group_strategic_head_office_manager'),
+            ref('group_strategic_branch_manager')
+        ])]"/>
+    </record>
+
+    <record id="menu_strategic_objective_top" model="ir.ui.menu">
         <field name="group_ids" eval="[(6, 0, [
             ref('group_strategic_head_office_manager'),
             ref('group_strategic_branch_manager')

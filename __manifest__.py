@@ -16,6 +16,8 @@
         "point_of_sale",
         "pos_stock",
         "mrp",
+        "hr",
+        "hr_attendance",
     ],
     "data": [
         "security/strategic_management_security.xml",
@@ -33,6 +35,8 @@
         "views/kpi_measurement_views.xml",
         "data/strategic_kpi_scheduled_actions.xml",
         "views/hoshin_matrix_views.xml",
+        "views/business_goals_action.xml",
+        "views/inventory_control_views.xml",
     ],
     "assets": {
         "web.assets_backend": [
@@ -51,6 +55,9 @@
             "strategic_management/static/src/js/strategic_employee_dashboard.js",
             "strategic_management/static/src/xml/strategic_employee_dashboard.xml",
             "strategic_management/static/src/scss/strategic_employee_dashboard.scss",
+            "strategic_management/static/src/js/business_goals.js",
+            "strategic_management/static/src/xml/business_goals.xml",
+            "strategic_management/static/src/scss/business_goals.scss",
         ],
     },
     "installable": True,

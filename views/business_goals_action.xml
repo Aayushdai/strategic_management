@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="action_business_goals" model="ir.actions.client">
+        <field name="name">Business Goals</field>
+        <field name="tag">strategic_management.business_goals</field>
+    </record>
+    <!-- Top-bar entry under the Strategic Management app root; inherits its group visibility. -->
+    <menuitem id="menu_business_goals" name="Business Goals" parent="menu_strategic_management_root" action="action_business_goals" sequence="4"/>
+</odoo>

@@ -1,0 +1,475 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="strategic_management.BusinessGoalsAction" owl="1">
+        <div class="o_sm_business_goals">
+            <aside class="o_sm_bg_sidebar">
+                <div class="o_sm_bg_brand"><span class="o_sm_bg_brand_icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg></span><span>Business Overview</span></div>
+                <nav aria-label="Business Overview navigation">
+                    <a t-att-class="'o_sm_bg_nav' + (this.state.section === 'overview' ? ' active' : '')" href="#" t-on-click.prevent="() => this.openSection('overview')"><i class="oi" data-icon="show_chart"/> <span>Overview</span></a>
+                    <a t-att-class="'o_sm_bg_nav' + (this.state.section === 'goals' ? ' active' : '')" href="#" t-on-click.prevent="() => this.openSection('goals')"><i class="oi" data-icon="flag"/> <span>Business Goals</span></a>
+                    <a t-att-class="'o_sm_bg_nav' + (this.state.section === 'sales_finance' ? ' active' : '')" href="#" t-on-click.prevent="() => this.openSection('sales_finance')"><i class="oi" data-icon="bar_chart"/> <span>Sales &amp; Finance</span></a>
+                    <a t-att-class="'o_sm_bg_nav' + (this.state.section === 'inventory_waste' ? ' active' : '')" href="#" t-on-click.prevent="() => this.openSection('inventory_waste')"><i class="oi" data-icon="inventory_2"/> <span>Inventory &amp; Waste</span></a>
+                    <a t-att-class="'o_sm_bg_nav' + (this.state.section === 'purchasing' ? ' active' : '')" href="#" t-on-click.prevent="() => this.openSection('purchasing')"><i class="oi" data-icon="shopping_cart"/> <span>Purchasing</span></a>
+                    <a t-att-class="'o_sm_bg_nav' + (this.state.section === 'branches' ? ' active' : '')" href="#" t-on-click.prevent="() => this.openSection('branches')"><i class="oi" data-icon="storefront"/> <span>Branches</span></a>
+                    <a t-att-class="'o_sm_bg_nav' + (this.state.section === 'people' ? ' active' : '')" href="#" t-on-click.prevent="() => this.openSection('people')"><i class="oi" data-icon="group"/> <span>People</span></a>
+                    <a t-att-class="'o_sm_bg_nav' + (this.state.section === 'tasks_issues' ? ' active' : '')" href="#" t-on-click.prevent="() => this.openSection('tasks_issues')"><i class="oi" data-icon="checklist"/> <span>Tasks &amp; Issues</span></a>
+                    <a t-att-class="'o_sm_bg_nav' + (this.state.section === 'reports' ? ' active' : '')" href="#" t-on-click.prevent="() => this.openSection('reports')"><i class="oi" data-icon="description"/> <span>Reports</span></a>
+                    <a t-att-class="'o_sm_bg_nav' + (this.state.section === 'app_dependencies' ? ' active' : '')" href="#" t-on-click.prevent="() => this.openSection('app_dependencies')"><i class="oi" data-icon="link"/> <span>App Dependencies</span></a>
+                    <div class="o_sm_bg_nav_divider"/>
+                    <a t-att-class="'o_sm_bg_nav' + (this.state.section === 'configuration' ? ' active' : '')" href="#" t-on-click.prevent="() => this.openSection('configuration')"><i class="oi" data-icon="settings"/> <span>Configuration</span></a>
+                </nav>
+            </aside>
+
+            <main class="o_sm_bg_main">
+                <header class="o_sm_bg_page_header">
+                    <div>
+                        <div t-if="this.state.section !== 'goals'" class="o_sm_bg_breadcrumb">Business Goals <span>/</span> <t t-esc="this.section.title"/></div>
+                        <h1 t-esc="this.section.title"/>
+                        <p t-esc="this.section.description"/>
+                    </div>
+                    <div class="o_sm_bg_header_actions">
+                        <button t-if="this.isGoalList and this.state.options and this.state.options.is_head_office" class="o_sm_bg_primary" t-on-click="this.openCreate"><i class="oi" data-icon="add"/> <t t-if="this.sectionArea">Create <t t-esc="this.areaLabel(this.sectionArea)"/> Goal</t><t t-else="">New Objective</t></button>
+                    </div>
+                </header>
+
+                <div t-if="this.state.loading" class="o_sm_bg_sample_note"><i class="oi" data-icon="info"/> Loading goals…</div>
+
+                <t t-elif="this.isGoalList">
+                <section class="o_sm_bg_summary" aria-label="Business goal summary">
+                    <div class="o_sm_bg_metric"><span class="o_sm_bg_metric_icon is-orange"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg></span><div class="o_sm_bg_metric_copy"><div>Active goals</div><strong t-esc="this.summary.active"/><small>approved and being measured</small></div></div>
+                    <div class="o_sm_bg_metric"><span class="o_sm_bg_metric_icon is-green"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="m8 12.5 2.8 2.8L16.5 9.5"/></svg></span><div class="o_sm_bg_metric_copy"><div>On track</div><strong t-esc="this.summary.onTrack"/><small>valid result meets the target</small></div></div>
+                    <div class="o_sm_bg_metric"><span class="o_sm_bg_metric_icon is-amber"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 21.5 20h-19Z"/><path d="M12 10v4.5M12 17.2h.01"/></svg></span><div class="o_sm_bg_metric_copy"><div>Need attention</div><strong t-esc="this.summary.attention"/><small>at risk, data problem or setup needed</small></div></div>
+                    <div class="o_sm_bg_metric"><span class="o_sm_bg_metric_icon is-red"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="m9 9 6 6M15 9l-6 6"/></svg></span><div class="o_sm_bg_metric_copy"><div>Target missed</div><strong t-esc="this.targetMissedCount"/><small>period ended below target</small></div></div>
+                </section>
+
+                <section t-if="this.areaMeasures" class="o_sm_bg_measures" aria-labelledby="o_sm_bg_measures_title">
+                    <div class="o_sm_bg_section_heading"><h2 id="o_sm_bg_measures_title">How <t t-esc="this.areaLabel(this.sectionArea)"/> goals can be measured</h2><span>Measures available in Odoo today</span></div>
+                    <ul t-if="this.areaMeasures.supported.length"><li t-foreach="this.areaMeasures.supported" t-as="measure" t-key="measure"><i class="oi" data-icon="check_circle"/> <t t-esc="measure"/></li></ul>
+                    <p class="o_sm_bg_measures_missing"><i class="oi" data-icon="info"/> <t t-esc="this.areaMeasures.missing"/></p>
+                </section>
+
+                <section class="o_sm_bg_cards_grid" aria-label="Objective performance">
+                    <section t-att-class="'o_sm_bg_card' + (this.state.showAllProgress ? ' is-expanded' : '')" aria-labelledby="o_sm_bg_progress_title">
+                        <div class="o_sm_bg_card_heading">
+                            <div><h2 id="o_sm_bg_progress_title">Goal Progress</h2><p>Track progress of your key business objectives.</p></div>
+                            <select t-on-input="(ev) => this.setValue(this.state, 'progressSort', ev)" aria-label="Sort objectives by progress"><option value="asc" t-att-selected="this.state.progressSort === 'asc'">Lowest progress first</option><option value="desc" t-att-selected="this.state.progressSort === 'desc'">Highest progress first</option></select>
+                        </div>
+                        <div class="o_sm_bg_rows">
+                            <div t-foreach="this.progressGoals" t-as="goal" t-key="goal.objective_id" class="o_sm_bg_row o_sm_bg_progress_row">
+                                <span class="o_sm_bg_area_icon"><i class="oi" t-att-data-icon="this.areaIcon(goal)"/></span>
+                                <div class="o_sm_bg_row_text"><strong t-att-title="goal.title" t-esc="goal.title"/><small><t t-esc="goal.area_label"/> · <t t-esc="goal.scope"/></small></div>
+                                <div class="o_sm_bg_row_bar" t-att-title="goal.current + ' / ' + (goal.target or 'Not set')"><t t-call="strategic_management.GoalBar" bar="goal.bar" showLabel="true"/></div>
+                                <span t-att-class="'o_sm_bg_badge ' + this.statusClass(goal.tone)" t-att-title="goal.status" t-esc="goal.status"/>
+                                <button type="button" class="o_sm_bg_text_button" t-on-click="() => this.openGoal(goal.objective_id)">View →</button>
+                            </div>
+                            <div t-if="!this.progressGoals.length" class="o_sm_bg_empty_row"><strong>No measured objectives yet</strong><span>Objectives without valid data are listed under Needs Attention, not ranked at 0%.</span></div>
+                        </div>
+                        <div class="o_sm_bg_card_footer_row">
+                            <small>Ranked only when a valid measurement exists; missing data is never shown as 0%.</small>
+                            <button t-if="this.progressCount > 3" type="button" class="o_sm_bg_text_button" t-on-click="() => this.toggle('showAllProgress')"><t t-esc="this.state.showAllProgress ? 'Show top 3' : 'View all objectives →'"/></button>
+                        </div>
+                    </section>
+
+                    <section t-att-class="'o_sm_bg_card' + (this.state.showAllAttention ? ' is-expanded' : '')" aria-labelledby="o_sm_bg_attention_title">
+                        <div class="o_sm_bg_card_heading">
+                            <div><h2 id="o_sm_bg_attention_title">Needs Attention</h2><p>Objectives at risk, with data issues or setup needed.</p></div>
+                            <button t-if="this.allAttentionGoals.length > 3" type="button" class="o_sm_bg_text_button" t-on-click="() => this.toggle('showAllAttention')"><t t-esc="this.state.showAllAttention ? 'Show top 3' : 'View all →'"/></button>
+                        </div>
+                        <div class="o_sm_bg_rows">
+                            <div t-foreach="this.attentionGoals" t-as="goal" t-key="goal.objective_id" class="o_sm_bg_row o_sm_bg_attention_row">
+                                <span class="o_sm_bg_area_icon"><i class="oi" t-att-data-icon="this.areaIcon(goal)"/></span>
+                                <div class="o_sm_bg_row_text"><strong t-att-title="goal.title" t-esc="goal.title"/><small><t t-esc="goal.area_label"/> · <t t-esc="goal.scope"/></small><small class="o_sm_bg_row_reason" t-att-title="goal.reason or this.nextStep(goal)" t-esc="goal.reason or this.nextStep(goal) or 'A valid measurement and target must be set up before progress can be calculated.'"/><div t-if="goal.bar" class="o_sm_bg_row_bar is-inline"><t t-call="strategic_management.GoalBar" bar="goal.bar" showLabel="false"/><small t-if="goal.target">Target: <t t-esc="goal.target"/></small></div></div>
+                                <span t-att-class="'o_sm_bg_badge ' + this.statusClass(goal.tone)" t-att-title="goal.status" t-esc="goal.status"/>
+                                <button type="button" class="o_sm_bg_text_button" t-on-click="() => this.openGoal(goal.objective_id)">View →</button>
+                            </div>
+                            <div t-if="!this.attentionGoals.length" class="o_sm_bg_empty_row"><strong>Nothing needs attention</strong><span>All listed objectives have measurement data.</span></div>
+                        </div>
+                    </section>
+                </section>
+
+                <section t-if="this.monitoringGoals.length" class="o_sm_bg_card o_sm_bg_monitor_card" aria-labelledby="o_sm_bg_monitoring_title">
+                    <div class="o_sm_bg_card_heading"><div><h2 id="o_sm_bg_monitoring_title">Monitoring</h2><p>Values and trends without a target, recalculated from Odoo data.</p></div></div>
+                    <div class="o_sm_bg_rows">
+                        <div t-foreach="this.monitoringGoals" t-as="goal" t-key="goal.objective_id" class="o_sm_bg_monitor_item">
+                        <div class="o_sm_bg_row o_sm_bg_monitor_row">
+                            <span class="o_sm_bg_area_icon"><i class="oi" t-att-data-icon="this.areaIcon(goal)"/></span>
+                            <div class="o_sm_bg_row_text"><strong t-att-title="goal.title" t-esc="goal.title"/><small><t t-esc="goal.area_label"/> · <t t-esc="goal.scope"/></small></div>
+                            <div class="o_sm_bg_row_text"><span t-esc="goal.monitor.title"/><small t-esc="goal.monitor.period_label"/></div>
+                            <strong class="o_sm_bg_row_value" t-esc="goal.current"/>
+                            <button type="button" class="o_sm_bg_text_button" t-on-click="() => this.openGoal(goal.objective_id)">View →</button>
+                        </div>
+                        <t t-set="tl" t-value="goal.monitor and goal.monitor.timeline"/>
+                        <div t-if="tl and tl.status === 'ok'" class="o_sm_bg_timeline">
+                            <div class="o_sm_bg_tl_bars" role="group" t-att-aria-label="tl.caption">
+                                <button t-foreach="tl.buckets" t-as="bucket" t-key="bucket.key" type="button" t-att-class="this.bucketClass(goal, bucket)"
+                                        t-att-disabled="bucket.future" t-att-title="bucket.range_label + ': ' + bucket.display"
+                                        t-att-aria-label="bucket.range_label + ': ' + bucket.display" t-att-aria-pressed="this.isSelectedBucket(goal, bucket) ? 'true' : 'false'"
+                                        t-on-click="() => this.selectMonitorBucket(goal, bucket, tl.granularity)"><span t-att-style="'height:' + this.bucketHeight(bucket) + '%'"/></button>
+                            </div>
+                            <div class="o_sm_bg_tl_axis"><span t-esc="tl.buckets[0].label"/><span t-if="tl.buckets.length > 2" t-esc="tl.buckets[Math.floor(tl.buckets.length / 2)].label"/><span t-esc="tl.buckets[tl.buckets.length - 1].label"/></div>
+                            <small class="o_sm_bg_tl_caption"><t t-esc="tl.caption"/> · <t t-esc="tl.note"/> Click an interval for its records.</small>
+                        </div>
+                        <div t-elif="tl and tl.status === 'snapshot'" class="o_sm_bg_timeline is-snapshot">
+                            <button type="button" t-att-class="'o_sm_bg_tl_snapshot' + (this.state.monitorSnapshot === goal.objective_id ? ' is-selected' : '')" t-att-aria-expanded="this.state.monitorSnapshot === goal.objective_id ? 'true' : 'false'" t-on-click="() => this.toggleMonitorSnapshot(goal)"><span>Now</span><strong t-esc="goal.current"/></button>
+                            <small class="o_sm_bg_tl_caption"><t t-esc="tl.note"/> Click Now for the rows behind it.</small>
+                        </div>
+                        <small t-elif="tl" class="o_sm_bg_tl_caption is-muted" t-esc="tl.note"/>
+
+                        <section t-if="this.state.monitorSnapshot === goal.objective_id and goal.monitor.table" class="o_sm_bg_tl_detail" aria-label="Current stock rows">
+                            <div class="o_sm_bg_tl_detail_head"><div><strong>Snapshot now</strong><small t-esc="goal.monitor.period_label"/></div><button type="button" class="o_sm_bg_icon_button" aria-label="Close" t-on-click="() => this.toggleMonitorSnapshot(goal)"><i class="oi" data-icon="close"/></button></div>
+                            <div class="o_sm_bg_table_wrap"><table class="o_sm_bg_table o_sm_bg_tl_table"><thead><tr><th t-foreach="goal.monitor.table.headers" t-as="header" t-key="header_index" t-esc="header"/></tr></thead>
+                                <tbody><tr t-foreach="goal.monitor.table.rows.slice(0, 20)" t-as="row" t-key="row.key"><td t-foreach="row.cells" t-as="cell" t-key="cell_index" t-esc="cell"/></tr>
+                                <tr t-if="!goal.monitor.table.rows.length"><td t-att-colspan="goal.monitor.table.headers.length">Nothing to list.</td></tr></tbody></table></div>
+                            <small t-if="goal.monitor.table.rows.length > 20" class="o_sm_bg_tl_caption">Showing 20 of <t t-esc="goal.monitor.table.rows.length"/> rows; View → shows them all.</small>
+                        </section>
+
+                        <t t-set="md" t-value="this.state.monitorDetail"/>
+                        <section t-if="md and md.objectiveId === goal.objective_id" class="o_sm_bg_tl_detail" aria-live="polite" aria-label="Selected interval">
+                            <div class="o_sm_bg_tl_detail_head">
+                                <nav class="o_sm_bg_tl_path" aria-label="Interval">
+                                    <t t-foreach="md.path" t-as="step" t-key="step.key">
+                                        <button t-if="step_index &lt; md.path.length - 1" type="button" class="o_sm_bg_text_button" t-on-click="() => this.monitorBackTo(goal, step_index)" t-esc="step.label"/>
+                                        <strong t-else="" t-esc="step.label"/>
+                                        <span t-if="step_index &lt; md.path.length - 1" aria-hidden="true"> › </span>
+                                    </t>
+                                    <strong t-if="md.loading and !md.path.length">Loading…</strong>
+                                </nav>
+                                <button type="button" class="o_sm_bg_icon_button" aria-label="Close interval details" t-on-click="() => this.closeMonitorDetail()"><i class="oi" data-icon="close"/></button>
+                            </div>
+                            <div t-if="md.loading" class="o_sm_bg_tl_loading">Loading the interval…</div>
+                            <t t-elif="md.data and md.data.status === 'ok'">
+                                <t t-set="d" t-value="md.data"/>
+                                <div class="o_sm_bg_tl_summary">
+                                    <div><small>Value</small><strong t-esc="d.display"/></div>
+                                    <div><small>Records</small><strong t-esc="d.record_count"/></div>
+                                    <div class="is-wide"><small>Scope</small><span><t t-esc="d.scope.branch"/> · <t t-esc="d.scope.filters"/><t t-if="d.scope.window"> · <t t-esc="d.scope.window"/> each day</t> · times in <t t-esc="d.scope.timezone"/></span></div>
+                                </div>
+                                <div t-if="d.children.length" class="o_sm_bg_tl_children">
+                                    <small>By <t t-esc="d.child_granularity"/> · click a bar to go further</small>
+                                    <div class="o_sm_bg_tl_bars is-small" role="group" t-att-aria-label="'By ' + d.child_granularity">
+                                        <button t-foreach="d.children" t-as="child" t-key="child.key" type="button" t-att-class="this.bucketClass(goal, child)" t-att-disabled="child.future"
+                                                t-att-title="child.range_label + ': ' + child.display" t-att-aria-label="child.range_label + ': ' + child.display"
+                                                t-on-click="() => this.selectMonitorBucket(goal, child, d.child_granularity, true)"><span t-att-style="'height:' + this.bucketHeight(child) + '%'"/></button>
+                                    </div>
+                                    <div class="o_sm_bg_tl_axis"><span t-esc="d.children[0].label"/><span t-esc="d.children[d.children.length - 1].label"/></div>
+                                </div>
+                                <div t-if="d.records.length" class="o_sm_bg_table_wrap"><table class="o_sm_bg_table o_sm_bg_tl_table">
+                                    <thead><tr><th>Record</th><th>When</th><th>Value</th><th>Details</th><th t-if="this.canOpenRecords"/></tr></thead>
+                                    <tbody><tr t-foreach="d.records" t-as="row" t-key="row.key">
+                                        <td><strong t-esc="row.name"/></td><td t-esc="row.when"/><td t-esc="row.value"/><td t-esc="row.detail"/>
+                                        <td t-if="this.canOpenRecords"><button type="button" class="o_sm_bg_text_button" t-on-click="() => this.openMonitorRecord(row)">Open</button></td>
+                                    </tr></tbody>
+                                </table></div>
+                                <p t-else="" class="o_sm_bg_tl_empty">No records in this interval.</p>
+                                <small t-if="d.more" class="o_sm_bg_tl_caption">and <t t-esc="d.more"/> more records.</small>
+                            </t>
+                            <p t-elif="md.data" class="o_sm_bg_tl_empty" t-esc="md.data.note"/>
+                        </section>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="o_sm_bg_card o_sm_bg_missed_card" aria-labelledby="o_sm_bg_missed_title">
+                    <div class="o_sm_bg_card_heading">
+                        <div><h2 id="o_sm_bg_missed_title">Targets Missed</h2><p>Objectives that ended below their target for the selected period.</p></div>
+                        <button t-if="this.targetMissedCount > 3" type="button" class="o_sm_bg_text_button" t-on-click="() => this.toggle('showAllMissed')"><t t-esc="this.state.showAllMissed ? 'Show recent 3' : 'View all →'"/></button>
+                    </div>
+                    <div t-if="this.targetMissedGoals.length" class="o_sm_bg_rows">
+                        <div t-foreach="this.targetMissedGoals" t-as="goal" t-key="goal.objective_id" class="o_sm_bg_row o_sm_bg_missed_row">
+                            <span class="o_sm_bg_area_icon"><i class="oi" t-att-data-icon="this.areaIcon(goal)"/></span>
+                            <div class="o_sm_bg_row_text"><strong t-att-title="goal.title" t-esc="goal.title"/><small><t t-esc="goal.area_label"/> · <t t-esc="goal.scope"/></small></div>
+                            <div class="o_sm_bg_row_text"><span><t t-esc="goal.current"/> / <t t-esc="goal.target or 'Not set'"/></span><small>Period ended <t t-esc="this.formatDate(this.periodEnd(goal))"/></small></div>
+                            <div class="o_sm_bg_row_bar"><t t-call="strategic_management.GoalBar" bar="goal.bar" showLabel="true"/></div>
+                            <span class="o_sm_bg_badge is-bad">Target missed</span>
+                            <button type="button" class="o_sm_bg_text_button" t-on-click="() => this.openGoal(goal.objective_id)">Review →</button>
+                        </div>
+                    </div>
+                    <div t-else="" class="o_sm_bg_missed_empty">
+                        <span class="o_sm_bg_missed_empty_icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg></span>
+                        <strong>No missed targets</strong>
+                        <span>There are no objectives that ended below target in the selected period.</span>
+                    </div>
+                </section>
+                </t>
+
+                <section t-elif="this.state.section === 'overview'" class="o_sm_bg_summary o_sm_bg_area_cards" aria-label="Goals by business area">
+                    <button t-foreach="this.areaOverview" t-as="row" t-key="row.key" type="button" class="o_sm_bg_metric" t-att-disabled="!row.sectionId" t-on-click="() => row.sectionId and this.openSection(row.sectionId)">
+                        <div t-esc="row.label"/><strong t-esc="row.total"/>
+                        <small><t t-esc="row.active"/> active · <t t-esc="row.attention"/> need attention</small>
+                    </button>
+                </section>
+
+                <section t-else="" class="o_sm_bg_goal_list o_sm_bg_placeholder">
+                    <i class="oi" data-icon="info"/>
+                    <strong>This Business Goals page has not been designed yet.</strong>
+                    <span>Use the area pages in the sidebar to see and create goals.</span>
+                </section>
+            </main>
+
+            <div t-if="this.selectedGoal" class="o_sm_bg_overlay" t-on-click="this.closeGoal">
+                <t t-set="goal" t-value="this.selectedGoal"/>
+                <aside class="o_sm_bg_drawer" role="dialog" aria-modal="true" aria-label="Business goal details" t-on-click.stop="() => {}">
+                    <header class="o_sm_bg_drawer_header"><div><span class="o_sm_bg_drawer_kicker">BUSINESS GOAL</span><h2 t-esc="goal.title"/></div><button class="o_sm_bg_icon_button" aria-label="Close details" t-on-click="this.closeGoal"><i class="oi" data-icon="close"/></button></header>
+                    <div class="o_sm_bg_drawer_body">
+                        <p t-if="goal.desired_result or goal.description" class="o_sm_bg_statement" t-esc="goal.desired_result or goal.description"/>
+                        <div class="o_sm_bg_drawer_status"><span t-att-class="'o_sm_bg_status ' + this.statusClass(goal.tone)"><span class="o_sm_bg_status_dot"/><t t-esc="goal.status"/></span><span>Deadline <strong t-esc="this.formatDate(goal.deadline)"/></span></div>
+                        <div class="o_sm_bg_detail_numbers"><div><small>Current result</small><strong t-esc="goal.current"/></div><div><small>Target</small><strong t-esc="goal.target or '—'"/></div><div><small t-esc="this.barTitle(goal.bar)"/><strong t-esc="goal.bar ? goal.bar.pct + '%' : '—'"/></div></div>
+                        <div class="o_sm_bg_drawer_bar"><t t-call="strategic_management.GoalBar" bar="goal.bar" showLabel="false"/></div>
+                        <p class="o_sm_bg_evidence" t-esc="goal.current_note"/>
+                        <dl class="o_sm_bg_details"><div><dt>Responsible</dt><dd t-esc="goal.owner"/></div><div><dt>Business area</dt><dd t-esc="goal.area_label"/></div><div><dt>Goal type</dt><dd t-esc="goal.goal_type_label"/></div><div><dt>Applies to</dt><dd t-esc="goal.scope"/></div><div><dt>Strategic plan</dt><dd t-esc="goal.plan"/></div></dl>
+
+                        <section t-if="goal.result" class="o_sm_bg_drawer_section o_sm_bg_budget">
+                            <t t-set="res" t-value="goal.result"/>
+                            <h3><t t-if="res.final">Final result</t><t t-else="">Progress</t> <small><t t-esc="this.formatDate(res.period_start)"/> – <t t-esc="this.formatDate(res.period_end)"/></small></h3>
+                            <div t-if="res.status" class="o_sm_bg_drawer_status"><span t-att-class="'o_sm_bg_status ' + this.statusClass(res.tone)"><span class="o_sm_bg_status_dot"/><t t-esc="res.status"/></span>
+                                <span t-if="res.phase === 'open'">Final result after <strong t-esc="this.formatDate(res.period_end)"/></span></div>
+                            <div t-if="res.value_display or (res.bar and res.bar.kind === 'waiting')" class="o_sm_bg_detail_numbers">
+                                <div t-if="res.value_display"><small t-esc="res.value_label"/><strong t-esc="res.value_display"/></div>
+                                <div t-else=""><small t-esc="res.value_label"/><strong class="is-waiting">Waiting for data</strong></div>
+                                <div><small>Target</small><strong t-esc="res.target_display"/></div>
+                                <div t-if="res.over_display"><small>Over by</small><strong class="is-bad" t-esc="res.over_display"/></div>
+                                <div t-elif="res.remaining_display"><small>Remaining</small><strong t-esc="res.remaining_display"/></div>
+                            </div>
+                            <div class="o_sm_bg_drawer_bar"><t t-call="strategic_management.GoalBar" bar="res.bar" showLabel="true"/></div>
+                            <p t-if="res.note" class="o_sm_bg_evidence" t-esc="res.note"/>
+                            <div t-if="res.rows.length" class="o_sm_bg_table_wrap">
+                                <table class="o_sm_bg_table o_sm_bg_budget_orders">
+                                    <thead><tr><th t-esc="res.rows_title"/><th>Details</th><th>Amount</th></tr></thead>
+                                    <tbody><tr t-foreach="res.rows" t-as="row" t-key="row.id"><td t-esc="row.name"/><td t-esc="row.detail"/><td t-esc="row.amount"/></tr></tbody>
+                                </table>
+                            </div>
+                            <p t-elif="res.rows_title" class="o_sm_bg_form_note">Nothing to list for this period.</p>
+                            <p t-if="res.count_label" class="o_sm_bg_form_note" t-esc="res.count_label"/>
+                        </section>
+
+                        <section t-if="goal.monitor" class="o_sm_bg_drawer_section o_sm_bg_monitor">
+                            <t t-set="mon" t-value="goal.monitor"/>
+                            <h3><t t-esc="mon.title"/> <small t-esc="mon.period_label"/></h3>
+                            <p class="o_sm_bg_form_note">Monitoring: no target, so nothing is marked achieved or failed. <t t-esc="mon.filters_label"/>.</p>
+                            <div t-if="mon.cards.length" class="o_sm_bg_detail_numbers o_sm_bg_monitor_cards">
+                                <div t-foreach="mon.cards" t-as="card" t-key="card.key" t-att-class="card.primary ? 'is-primary' : ''"><small t-esc="card.label"/><strong t-esc="card.value_display"/></div>
+                            </div>
+                            <div t-foreach="mon.warnings || []" t-as="warning" t-key="warning_index" class="o_sm_bg_callout is-warn"><i class="oi" data-icon="info"/><span t-esc="warning"/></div>
+                            <div t-if="mon.status !== 'ok'" class="o_sm_bg_callout is-warn"><i class="oi" data-icon="info"/><span t-esc="mon.note"/></div>
+                            <p t-elif="mon.note" class="o_sm_bg_evidence" t-esc="mon.note"/>
+                            <p t-if="mon.previous" class="o_sm_bg_evidence">Previous period (<t t-esc="mon.previous.label"/>): <strong t-esc="mon.previous.display"/><t t-if="mon.previous.change"> · <t t-esc="mon.previous.change"/></t></p>
+                            <t t-foreach="mon.blocks" t-as="block" t-key="block.title">
+                                <t t-if="block.rows.length">
+                                    <div class="o_sm_bg_step o_sm_bg_step_plain" t-esc="block.title"/>
+                                    <div class="o_sm_bg_monitor_rows">
+                                        <div t-foreach="block.rows" t-as="row" t-key="row.key" class="o_sm_bg_monitor_row"><span t-esc="row.label"/><span class="o_sm_bg_monitor_track"><span t-att-style="'width: ' + row.bar + '%'"/></span><strong t-esc="row.display"/></div>
+                                    </div>
+                                </t>
+                            </t>
+                            <div t-if="mon.table and mon.table.rows.length" class="o_sm_bg_table_wrap">
+                                <table class="o_sm_bg_table o_sm_bg_budget_orders">
+                                    <thead><tr><th t-foreach="mon.table.headers" t-as="header" t-key="header_index" t-esc="header"/></tr></thead>
+                                    <tbody><tr t-foreach="mon.table.rows" t-as="row" t-key="row.key"><td t-foreach="row.cells" t-as="cell" t-key="cell_index" t-esc="cell"/></tr></tbody>
+                                </table>
+                            </div>
+                        </section>
+
+                        <section t-if="goal.okr and goal.okr.length" class="o_sm_bg_drawer_section o_sm_bg_okr">
+                            <h3>How this objective will be achieved</h3>
+                            <div t-foreach="goal.okr" t-as="okr" t-key="okr.id" class="o_sm_bg_okr_objective">
+                                <div class="o_sm_bg_okr_head"><span class="o_sm_bg_okr_kicker">OKR OBJECTIVE</span><strong t-esc="okr.name"/><small t-esc="okr.period"/></div>
+                                <div t-foreach="okr.key_results" t-as="kr" t-key="kr.id" class="o_sm_bg_kr">
+                                    <div class="o_sm_bg_kr_head">
+                                        <div><span class="o_sm_bg_kr_label"><t t-esc="kr.label"/><t t-if="!kr.required"> · optional</t></span><strong t-esc="kr.title"/></div>
+                                        <span t-att-class="'o_sm_bg_kr_ready is-' + kr.readiness_tone"><i class="oi" t-att-data-icon="kr.readiness_tone === 'available' ? 'check' : 'schedule'"/> <t t-esc="kr.readiness"/></span>
+                                    </div>
+                                    <dl class="o_sm_bg_kr_grid">
+                                        <div><dt>KPI</dt><dd t-esc="kr.kpi"/></div>
+                                        <div><dt>Current</dt><dd t-esc="kr.current"/></div>
+                                        <div><dt>Target</dt><dd t-esc="kr.target"/></div>
+                                        <div><dt>Direction</dt><dd t-esc="kr.direction"/></div>
+                                        <div t-if="kr.source"><dt>Data from</dt><dd t-esc="kr.source"/></div>
+                                        <div t-if="kr.calculation"><dt>Calculation</dt><dd t-esc="kr.calculation"/></div>
+                                    </dl>
+                                    <p t-if="kr.note" class="o_sm_bg_kr_note" t-esc="kr.note"/>
+                                </div>
+                                <p t-if="!okr.key_results.length" class="o_sm_bg_form_note">No key results yet.</p>
+                            </div>
+                            <p class="o_sm_bg_okr_framework">Business goal → objective → OKR → key result → KPI. Values come from the KPI evaluations recorded in Odoo.</p>
+                        </section>
+
+                        <section t-if="goal.setup_id" class="o_sm_bg_drawer_section">
+                            <h3>How we will measure this goal</h3>
+                            <t t-if="goal.can_configure and this.state.setupForm">
+                                <t t-set="form" t-value="this.state.setupForm"/>
+                                <div class="o_sm_bg_setup_card">
+                                    <t t-if="this.isTemplateGoal">
+                                        <div class="o_sm_bg_step"><span class="o_sm_bg_step_no">1</span>What do you want to achieve?</div>
+                                        <t t-set="chosen" t-value="this.selectedTemplate"/>
+                                        <div t-if="chosen and !this.state.chooseOption" class="o_sm_bg_templates">
+                                            <div class="o_sm_bg_template is-selected">
+                                                <strong t-esc="chosen.title"/><small t-esc="chosen.description"/>
+                                                <em class="o_sm_bg_measured_in" t-esc="chosen.goal_type_label + ' · ' + this.measuredIn(chosen)"/>
+                                            </div>
+                                            <button type="button" class="o_sm_bg_text_button" t-on-click="this.changeOption">Choose a different option</button>
+                                        </div>
+                                        <div t-else="" class="o_sm_bg_templates">
+                                            <t t-foreach="this.templateGroups" t-as="group" t-key="group.name">
+                                                <div class="o_sm_bg_template_group" t-esc="group.name"/>
+                                                <button t-foreach="group.templates" t-as="tpl" t-key="tpl.key" type="button"
+                                                        t-att-class="'o_sm_bg_template' + (tpl.key === form.template_key ? ' is-selected' : '') + (tpl.status !== 'available' ? ' is-unavailable' : '')"
+                                                        t-on-click="() => this.pickTemplate(tpl)">
+                                                    <strong t-esc="tpl.title"/><small t-esc="tpl.description"/>
+                                                    <em t-if="tpl.status !== 'available'" t-esc="tpl.status === 'setup' ? 'Requires setup' : 'Not supported yet'"/>
+                                                    <em t-else="" class="o_sm_bg_measured_in" t-esc="tpl.goal_type_label + ' · ' + this.measuredIn(tpl)"/>
+                                                </button>
+                                            </t>
+                                        </div>
+                                        <t t-set="tpl" t-value="this.selectedTemplate"/>
+                                        <div t-if="tpl and tpl.status === 'available'" class="o_sm_bg_callout"><i class="oi" data-icon="info"/><span t-esc="tpl.how"/></div>
+                                        <div t-elif="tpl" class="o_sm_bg_callout is-warn"><i class="oi" data-icon="info"/><span><strong t-esc="tpl.status === 'setup' ? 'Requires setup. ' : 'Not supported yet. '"/><t t-esc="tpl.needs"/></span></div>
+                                        <div t-if="tpl and tpl.company_only and goal.scope !== 'Entire business'" class="o_sm_bg_callout is-warn"><i class="oi" data-icon="info"/><span>This option is measured for the whole company only.</span></div>
+                                        <div t-if="tpl and tpl.branch_only and goal.scope === 'Entire business'" class="o_sm_bg_callout is-warn"><i class="oi" data-icon="info"/><span>This option is measured for one branch; create the goal for that branch.</span></div>
+                                    </t>
+                                    <t t-else="">
+                                        <div class="o_sm_bg_step"><span class="o_sm_bg_step_no">1</span>What do you want to measure?</div>
+                                        <label class="o_sm_bg_field">
+                                            <select t-on-input="(ev) => this.setValue(form, 'measure_key', ev)">
+                                                <option value="" t-att-selected="!form.measure_key">Choose a measure…</option>
+                                                <option t-foreach="this.measuresFor(goal)" t-as="measure" t-key="measure.key" t-att-value="measure.key" t-att-selected="measure.key === form.measure_key" t-esc="measure.label"/>
+                                            </select>
+                                        </label>
+                                        <div t-if="!this.measuresFor(goal).length" class="o_sm_bg_callout"><i class="oi" data-icon="info"/><span t-esc="this.state.options.area_gaps[goal.areas[0]]"/></div>
+                                    </t>
+
+                                    <t t-if="this.setupReady">
+                                        <div class="o_sm_bg_step"><span class="o_sm_bg_step_no">2</span>Details</div>
+                                        <div class="o_sm_bg_setup_grid">
+                                            <t t-if="this.isMonitoring">
+                                                <label class="o_sm_bg_field o_sm_bg_field_full"><span>What to monitor</span>
+                                                    <select t-on-input="(ev) => this.setValue(form, 'measure_key', ev)">
+                                                        <option t-foreach="this.selectedTemplate.metrics" t-as="metric" t-key="metric.key" t-att-value="metric.key" t-att-selected="metric.key === form.measure_key" t-esc="metric.label"/>
+                                                    </select>
+                                                </label>
+                                                <t t-if="this.monitorSource === 'pos'">
+                                                <label class="o_sm_bg_field"><span>From (time of day)</span><input type="time" t-att-value="form.window_start" t-on-input="(ev) => this.setValue(form, 'window_start', ev)"/></label>
+                                                <label class="o_sm_bg_field"><span>Until (not included)</span><input type="time" t-att-value="form.window_end" t-on-input="(ev) => this.setValue(form, 'window_end', ev)"/></label>
+                                                <small class="o_sm_bg_hint o_sm_bg_field_full">Every day of the period, sales from the start time up to, but not including, the end time, in the company's time zone.</small>
+                                                </t>
+                                                <small t-if="this.monitorSource === 'inventory'" class="o_sm_bg_hint o_sm_bg_field_full">Current snapshot: Odoo's stock now, recalculated each time the goal is opened. No reporting period applies.</small>
+                                                <label t-if="this.monitorSource !== 'inventory'" class="o_sm_bg_field o_sm_bg_field_full"><span>Reporting period</span>
+                                                    <select t-on-input="(ev) => this.setValue(form, 'period_preset', ev)">
+                                                        <option t-foreach="this.state.options.period_presets" t-as="preset" t-key="preset.key" t-att-value="preset.key" t-att-selected="preset.key === form.period_preset" t-esc="preset.label"/>
+                                                    </select>
+                                                </label>
+                                                <label t-if="this.monitorSource === 'purchase'" class="o_sm_bg_field o_sm_bg_field_full"><span>Supplier (optional)</span>
+                                                    <select t-on-input="(ev) => this.setValue(form, 'partner_id', ev)">
+                                                        <option value="" t-att-selected="!form.partner_id">All suppliers</option>
+                                                        <option t-foreach="this.state.options.suppliers" t-as="supplier" t-key="supplier.id" t-att-value="supplier.id" t-att-selected="('' + supplier.id) === form.partner_id" t-esc="supplier.name"/>
+                                                    </select>
+                                                </label>
+                                                <label t-if="this.monitorSource === 'purchase' or this.monitorSource === 'inventory'" class="o_sm_bg_field o_sm_bg_field_full"><span>Product category (optional)</span>
+                                                    <select t-on-input="(ev) => this.setValue(form, 'product_category_id', ev)">
+                                                        <option value="" t-att-selected="!form.product_category_id">All categories</option>
+                                                        <option t-foreach="this.state.options.product_categories" t-as="category" t-key="category.id" t-att-value="category.id" t-att-selected="('' + category.id) === form.product_category_id" t-esc="category.name"/>
+                                                    </select>
+                                                </label>
+                                                <label t-if="this.monitorSource === 'pos'" class="o_sm_bg_field o_sm_bg_field_full"><span>POS category (optional)</span>
+                                                    <select t-on-input="(ev) => this.setValue(form, 'pos_category_id', ev)">
+                                                        <option value="" t-att-selected="!form.pos_category_id">All categories</option>
+                                                        <option t-foreach="this.state.options.pos_categories" t-as="category" t-key="category.id" t-att-value="category.id" t-att-selected="('' + category.id) === form.pos_category_id" t-esc="category.name"/>
+                                                    </select>
+                                                </label>
+                                            </t>
+                                            <div t-if="this.needsProduct or this.isMonitoring" class="o_sm_bg_field o_sm_bg_field_full"><span t-esc="!this.isMonitoring ? 'Product' : ['purchase_mon_unit_price', 'purchase_mon_price_comparison'].includes(form.measure_key) ? 'Product (required for purchase prices)' : 'Product (optional, all products when empty)'"/>
+                                                <div t-if="form.product_id" class="o_sm_bg_chip"><i class="oi" data-icon="inventory_2"/><strong t-esc="form.product_name"/><small t-if="form.product_uom" t-esc="form.product_uom"/><button type="button" class="o_sm_bg_text_button" t-on-click="this.changeProduct">Change</button></div>
+                                                <t t-else="">
+                                                    <div class="o_sm_bg_search_box"><i class="oi" data-icon="search"/><input t-att-value="form.product_name" t-on-focus="this.searchProducts" t-on-input="this.searchProducts" placeholder="Search products, e.g. coffee beans"/></div>
+                                                    <div t-if="this.state.productResults.length" class="o_sm_bg_product_list">
+                                                        <button t-foreach="this.state.productResults" t-as="product" t-key="product.id" type="button" t-on-click="() => this.pickProduct(product)"><span t-esc="product.name"/><small t-esc="product.uom"/></button>
+                                                    </div>
+                                                    <small t-elif="this.state.productSearched" class="o_sm_bg_hint">No products match.<t t-if="goal.areas[0] === 'purchasing'"> Products must be purchasable in Odoo.</t></small>
+                                                </t>
+                                            </div>
+                                            <label t-if="!this.isMonitoring" class="o_sm_bg_field o_sm_bg_field_full"><span t-esc="this.targetLabel"/>
+                                                <div class="o_sm_bg_input_unit"><input type="number" min="0" step="any" placeholder="0" t-att-value="form.target_value" t-on-input="(ev) => this.setValue(form, 'target_value', ev)"/><span t-if="this.targetUnit" t-esc="this.targetUnit"/></div>
+                                            </label>
+                                            <label t-if="!this.isMonitoring or (form.period_preset === 'custom' and this.monitorSource !== 'inventory')" class="o_sm_bg_field"><span>Measure from</span><input type="date" t-att-value="form.period_start" t-on-input="(ev) => this.setValue(form, 'period_start', ev)"/></label>
+                                            <label t-if="!this.isMonitoring or (form.period_preset === 'custom' and this.monitorSource !== 'inventory')" class="o_sm_bg_field"><span>Measure until</span><input type="date" t-att-max="goal.deadline" t-att-value="form.period_end" t-on-input="(ev) => this.setValue(form, 'period_end', ev)"/></label>
+                                            <small t-if="this.periodProblem(goal)" class="o_sm_bg_field_full o_sm_bg_field_error" t-esc="this.periodProblem(goal)"/>
+                                            <div class="o_sm_bg_field o_sm_bg_field_full"><span>Goal deadline</span>
+                                                <div class="o_sm_bg_deadline_row">
+                                                    <input type="date" t-att-min="goal.deadline" t-att-value="form.new_deadline" t-att-disabled="!this.state.options.is_head_office" t-on-input="(ev) => this.setValue(form, 'new_deadline', ev)"/>
+                                                    <button t-if="this.state.options.is_head_office and form.new_deadline and form.new_deadline > goal.deadline" type="button" class="o_sm_bg_secondary" t-att-disabled="this.state.busy" t-on-click="this.extendDeadline">Extend deadline</button>
+                                                </div>
+                                                <small class="o_sm_bg_hint">The measurement period must end by the goal deadline<t t-if="!this.state.options.is_head_office">; Head Office can extend it</t>.</small>
+                                            </div>
+                                        </div>
+                                    </t>
+                                    <div class="o_sm_bg_card_footer"><button class="o_sm_bg_primary" t-att-disabled="this.state.busy or !this.setupReady" t-on-click="this.saveMeasurement">Save and check readiness</button></div>
+                                </div>
+                            </t>
+                            <dl t-else="" class="o_sm_bg_details">
+                                <div><dt>Measure</dt><dd t-esc="goal.measure_label or 'Not chosen'"/></div>
+                                <div t-if="goal.product"><dt>Product</dt><dd t-esc="goal.product.name"/></div>
+                                <div><dt>Period</dt><dd><t t-esc="this.formatDate(goal.period_start)"/> – <t t-esc="this.formatDate(goal.period_end)"/></dd></div>
+                                <div t-if="goal.kpi"><dt>Measured by</dt><dd t-esc="goal.kpi"/></div>
+                            </dl>
+
+                            <div t-if="goal.readiness.length" class="o_sm_bg_step o_sm_bg_step_plain">Readiness</div>
+                            <div t-if="goal.readiness.length" class="o_sm_bg_readiness">
+                                <div t-foreach="goal.readiness" t-as="check" t-key="check.key" t-att-class="'o_sm_bg_check ' + (check.ok ? 'is-ok' : check.state === 'pending' ? 'is-pending' : 'is-fail')">
+                                    <i class="oi" t-att-data-icon="check.ok ? 'check' : check.state === 'pending' ? 'schedule' : 'close'"/>
+                                    <div><strong t-esc="check.label"/><small t-esc="check.message"/></div>
+                                </div>
+                            </div>
+                            <p t-if="this.nextStep(goal)" class="o_sm_bg_form_note"><i class="oi" data-icon="info"/> <t t-esc="this.nextStep(goal)"/></p>
+                            <div class="o_sm_bg_setup_actions">
+                                <button t-if="goal.can_prepare_target" class="o_sm_bg_primary" t-att-disabled="this.state.busy" t-on-click="this.prepareTarget">Prepare target</button>
+                                <button t-if="goal.can_approve_target" class="o_sm_bg_primary" t-att-disabled="this.state.busy" t-on-click="this.approveTarget">Approve target</button>
+                                <button t-if="goal.can_submit" class="o_sm_bg_primary" t-att-disabled="this.state.busy" t-on-click="this.submitGoal">Submit for approval</button>
+                                <button t-if="goal.can_approve_goal" class="o_sm_bg_primary" t-att-disabled="this.state.busy" t-on-click="this.approveGoal">Approve goal</button>
+                                <button t-if="goal.can_evaluate" class="o_sm_bg_secondary" t-att-disabled="this.state.busy" t-on-click="this.evaluateNow">Refresh result from Odoo data</button>
+                            </div>
+                        </section>
+                        <section t-else="" class="o_sm_bg_drawer_section">
+                            <p class="o_sm_bg_form_note"><i class="oi" data-icon="info"/> This goal was created outside Business Goals. Manage its measurement under Strategy &amp; KPIs.</p>
+                            <div t-if="goal.can_approve_goal" class="o_sm_bg_setup_actions"><button class="o_sm_bg_primary" t-att-disabled="this.state.busy" t-on-click="this.approveGoal">Approve goal</button></div>
+                        </section>
+                    </div>
+                    <footer class="o_sm_bg_drawer_footer"><button class="o_sm_bg_secondary" t-on-click="this.closeGoal">Close</button></footer>
+                </aside>
+            </div>
+
+            <div t-if="this.state.createOpen" class="o_sm_bg_overlay o_sm_bg_modal_overlay" t-on-click="this.closeCreate">
+                <section class="o_sm_bg_modal" role="dialog" aria-modal="true" aria-labelledby="o_sm_bg_create_title" t-on-click.stop="() => {}">
+                    <header class="o_sm_bg_modal_header"><div><h2 id="o_sm_bg_create_title">Create a business goal</h2><p>Describe the result you want. You will choose how it is measured next.</p></div><button class="o_sm_bg_icon_button" aria-label="Close form" t-on-click="this.closeCreate"><i class="oi" data-icon="close"/></button></header>
+                    <form class="o_sm_bg_form" t-on-submit.prevent="this.saveDraft">
+                        <label class="o_sm_bg_field o_sm_bg_field_full"><span>What do you want to improve? <b>*</b></span><input t-att-value="this.state.newGoal.name" t-on-input="(ev) => this.setValue(this.state.newGoal, 'name', ev)" required="required" maxlength="180" placeholder="e.g. Sell more lattes"/></label>
+                        <label class="o_sm_bg_field"><span>Business area <b>*</b></span><select t-on-input="(ev) => this.setValue(this.state.newGoal, 'business_area', ev)"><option t-foreach="this.areas" t-as="area" t-key="area.key" t-att-value="area.key" t-att-selected="area.key === this.state.newGoal.business_area" t-esc="area.label"/></select></label>
+                        <label class="o_sm_bg_field"><span>Desired result</span><input t-att-value="this.state.newGoal.desired_result" t-on-input="(ev) => this.setValue(this.state.newGoal, 'desired_result', ev)" placeholder="e.g. Sell 20 lattes a month"/></label>
+                        <label class="o_sm_bg_field"><span>Deadline <b>*</b></span><input t-att-value="this.state.newGoal.deadline" t-on-input="(ev) => this.setValue(this.state.newGoal, 'deadline', ev)" type="date" required="required"/><small t-if="this.deadlineHint" t-att-class="'o_sm_bg_field_hint' + (this.deadlineBeyondPlan or !this.state.options.has_plan ? ' is-warn' : '')" t-esc="this.deadlineHint"/></label>
+                        <label class="o_sm_bg_field"><span>Applies to</span><select t-on-input="(ev) => this.setValue(this.state.newGoal, 'scope', ev)"><option t-if="this.state.options.is_head_office" value="organization" t-att-selected="this.state.newGoal.scope === 'organization'">Entire business</option><option value="branch" t-att-selected="this.state.newGoal.scope === 'branch'">One branch</option></select></label>
+                        <t t-if="this.state.newGoal.scope === 'branch'">
+                            <label class="o_sm_bg_field"><span>Branch <b>*</b></span><select t-on-input="(ev) => this.setValue(this.state.newGoal, 'warehouse_id', ev)"><option value="" t-att-selected="!this.state.newGoal.warehouse_id">Choose a branch…</option><option t-foreach="this.state.options.branches" t-as="branch" t-key="branch.id" t-att-value="branch.id" t-att-selected="branch.id == this.state.newGoal.warehouse_id" t-esc="branch.name"/></select></label>
+                            <label class="o_sm_bg_field"><span>Supports company goal <b>*</b></span><select t-on-input="(ev) => this.setValue(this.state.newGoal, 'parent_objective_id', ev)"><option value="" t-att-selected="!this.state.newGoal.parent_objective_id">Choose a company goal…</option><option t-foreach="this.state.options.company_goals" t-as="parent" t-key="parent.id" t-att-value="parent.id" t-att-selected="parent.id == this.state.newGoal.parent_objective_id" t-esc="parent.name"/></select></label>
+                        </t>
+                        <label class="o_sm_bg_field"><span>Responsible person <b>*</b></span><select t-on-input="(ev) => this.setValue(this.state.newGoal, 'owner_id', ev)"><option t-foreach="this.state.options.users" t-as="user" t-key="user.id" t-att-value="user.id" t-att-selected="user.id == this.state.newGoal.owner_id" t-esc="user.name"/></select></label>
+                        <label t-if="this.state.options.plans.length > 1" class="o_sm_bg_field"><span>Strategic plan <b>*</b></span><select t-on-input="(ev) => this.setValue(this.state.newGoal, 'plan_id', ev)"><option value="" t-att-selected="!this.state.newGoal.plan_id">Choose a plan…</option><option t-foreach="this.state.options.plans" t-as="plan" t-key="plan.id" t-att-value="plan.id" t-att-selected="plan.id == this.state.newGoal.plan_id" t-esc="plan.name"/></select></label>
+                        <label class="o_sm_bg_field o_sm_bg_field_full"><span>Why is this goal important?</span><textarea t-att-value="this.state.newGoal.reason" t-on-input="(ev) => this.setValue(this.state.newGoal, 'reason', ev)" rows="2" placeholder="Add a short explanation (optional)"/></label>
+                        <p class="o_sm_bg_form_note"><i class="oi" data-icon="info"/> The goal is saved as a draft. It becomes active only after its measurement is set up and the goal is approved.</p>
+                        <footer class="o_sm_bg_modal_footer"><button type="button" class="o_sm_bg_secondary" t-on-click="this.closeCreate">Cancel</button><span/><button type="submit" class="o_sm_bg_primary" t-att-disabled="this.state.busy">Save draft and continue</button></footer>
+                    </form>
+                </section>
+            </div>
+        </div>
+    </t>
+    <!-- One bar for dashboard and detail: real % as text, width capped at 100, tone from the server. -->
+    <t t-name="strategic_management.GoalBar">
+        <div t-if="bar and bar.kind === 'waiting'" class="o_sm_bg_bar is-waiting" role="img" t-att-aria-label="bar.label">
+            <div class="o_sm_bg_mini_progress"/>
+            <strong class="is-neutral" t-esc="bar.label"/>
+        </div>
+        <div t-elif="bar" class="o_sm_bg_bar" role="img" t-att-aria-label="bar.label">
+            <div class="o_sm_bg_mini_progress"><span t-att-class="'is-' + bar.tone" t-att-style="'width:' + bar.bar + '%'"/></div>
+            <strong t-att-class="'is-' + bar.tone"><t t-esc="bar.pct"/>%<t t-if="bar.tone === 'exceeded'"> ⚠</t></strong>
+        </div>
+        <small t-if="bar and showLabel and bar.kind !== 'waiting'" class="o_sm_bg_bar_label" t-esc="bar.label"/>
+        <span t-if="!bar" class="o_sm_bg_bar_none">Not measured</span>
+    </t>
+</templates>

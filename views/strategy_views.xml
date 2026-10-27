@@ -170,6 +170,7 @@
                         <group string="Strategy">
                             <field name="plan_id"/>
                             <field name="perspective"/>
+                            <field name="goal_type"/>
                             <field name="scope"/>
                             <field name="is_primary" readonly="1" invisible="scope != 'organization'"/>
                             <field name="warehouse_id"

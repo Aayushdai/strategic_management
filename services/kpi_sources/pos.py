@@ -14,11 +14,24 @@ import pytz
 from odoo import fields
 from odoo.exceptions import UserError, ValidationError
 
+from .common import convert_quantity, units_compatible, validate_unit_price_contract
+
 
 VALID = "valid"
 NOT_EVALUATED = "not_evaluated"
 DATA_QUALITY = "data_quality_issue"
+# Odoo 20 POS order states that count as a sale (draft and cancelled orders do not). Shared with the dashboards.
+POS_SALE_STATES = ["paid", "done"]
+# Sales amounts in company currency; only pos_product_net_sales tracks a product.
+SALES_CALCULATIONS = {"pos_net_sales", "pos_sales_growth_pct", "pos_average_order_value", "pos_product_net_sales",
+                      "pos_average_unit_price"}
+_PRODUCT_SALES_CALCULATIONS = {"pos_product_net_sales", "pos_average_unit_price"}
 _SUPPORTED_CALCULATIONS = {
+    "pos_net_sales",
+    "pos_sales_growth_pct",
+    "pos_average_order_value",
+    "pos_product_net_sales",
+    "pos_average_unit_price",
     "pos_sold_quantity",
     "pos_recipe_consumption_estimate",
 }
@@ -40,6 +53,8 @@ def collect_pos_result(target, version):
             "The approved KPI definition version does not select a supported POS calculation.",
             "", [], [],
         )
+    if version.calculation_type in SALES_CALCULATIONS:
+        return _collect_sales(target, version)
     if not version.source_product_id:
         return _result(
             target, version, DATA_QUALITY, None,
@@ -92,7 +107,7 @@ def collect_pos_result(target, version):
 
     order_domain = [
         ("company_id", "=", target.company_id.id),
-        ("state", "in", ["paid", "done"]),
+        ("state", "in", POS_SALE_STATES),
         ("date_order", ">=", fields.Datetime.to_string(start_utc)),
         ("date_order", "<", fields.Datetime.to_string(end_utc)),
     ]
@@ -160,8 +175,216 @@ def collect_pos_result(target, version):
     return _collect_recipe_consumption(target, version, orders, Line)
 
 
+def period_bounds_utc(company, date_start, date_end):
+    """Company-timezone day bounds as naive UTC: inclusive start, exclusive end. Returns (start, end, problem)."""
+    if not company.partner_id.tz:
+        return None, None, "The company contact has no timezone configured; POS date boundaries cannot be evaluated safely."
+    try:
+        company_tz = pytz.timezone(company.partner_id.tz)
+        local_start = company_tz.localize(datetime.combine(fields.Date.to_date(date_start), time.min), is_dst=None)
+        local_end = company_tz.localize(datetime.combine(fields.Date.to_date(date_end) + timedelta(days=1), time.min), is_dst=None)
+    except (pytz.UnknownTimeZoneError, pytz.InvalidTimeError, ValueError, TypeError) as exc:
+        return None, None, "The company timezone or period boundary is invalid: %s" % exc
+    return local_start.astimezone(pytz.UTC).replace(tzinfo=None), local_end.astimezone(pytz.UTC).replace(tzinfo=None), False
+
+
+def sales_orders(env, company, start_utc, end_utc, warehouse=False):
+    """Paid or posted POS orders of the company (or of the branch's mapped POS) in the period.
+
+    Refund orders are included: their amounts are negative, so they reduce net sales.
+    Returns ``(orders, problem)``; orders in another currency are a problem, never converted silently.
+    """
+    Order = env["pos.order"].sudo()
+    config_domain = [("company_id", "=", company.id)]
+    if warehouse:
+        config_domain.append(("picking_type_id.warehouse_id", "=", warehouse.id))
+    configs = env["pos.config"].sudo().with_context(active_test=False).search(config_domain)
+    if not configs:
+        return Order.browse(), "No Point of Sale is linked to %s, so its sales cannot be measured." % (
+            warehouse.display_name if warehouse else "this company")
+    orders = Order.search([
+        ("company_id", "=", company.id),
+        ("state", "in", POS_SALE_STATES),
+        ("date_order", ">=", fields.Datetime.to_string(start_utc)),
+        ("date_order", "<", fields.Datetime.to_string(end_utc)),
+        ("config_id", "in", configs.ids),
+    ], order="date_order, id")
+    foreign = orders.filtered(lambda order: order.currency_id != company.currency_id)
+    if foreign:
+        return orders, "%s POS orders are in another currency (%s); sales cannot be added up safely." % (
+            len(foreign), ", ".join(sorted(set(foreign.mapped("currency_id.name")))))
+    return orders, False
+
+
+def net_sales(orders):
+    """Sales excluding tax; refund orders carry negative amounts (the Business Overview convention)."""
+    return float(sum(order.amount_total - order.amount_tax for order in orders))
+
+
+def customer_orders(orders):
+    """Customer orders for an average: refunds reduce revenue but are not new customer orders."""
+    return orders.filtered(lambda order: not order.is_refund)
+
+
+def window_sales(env, company, date_from, date_to, window_start, window_end, warehouse=False, product=False, category=False):
+    """POS sales between two times of day, on every date from ``date_from`` to ``date_to`` (company time zone).
+
+    The window is ``window_start`` (inclusive) to ``window_end`` (exclusive), in hours: 17.0 to 21.0 is 17:00-20:59:59.
+    Sales: paid or posted orders (draft and cancelled ones are not sales); order lines excluding tax, after discounts,
+    so nothing is counted twice. Order-level discount and tip lines belong to no menu item, so they count only when no
+    product or category filter is set. A refund is a POS order of its own with negative lines: it reduces sales and
+    quantity on the day and time it was made and is not an order. Orders: customer orders with at least one counted
+    line. Quantity: per unit of measure (combo summary rows skipped, their items counted).
+    Returns totals, per-day, per-product and per-branch figures, plus each counted order with its local time ("facts",
+    for time breakdowns that must add up to the same totals), or ``{"problem": ...}`` when the data cannot be measured.
+    """
+    start_utc, end_utc, problem = period_bounds_utc(company, date_from, date_to)
+    if problem:
+        return {"problem": problem}
+    orders, problem = sales_orders(env, company, start_utc, end_utc, warehouse)
+    if problem:
+        return {"problem": problem}
+    timezone = pytz.timezone(company.partner_id.tz)
+    categories = env["pos.category"].sudo().search([("id", "child_of", category.id)]) if category else False
+
+    def bucket():
+        return {"revenue": 0.0, "orders": 0, "quantity": {}}
+
+    def add(totals, revenue, counted_order, quantities):
+        totals["revenue"] += revenue
+        totals["orders"] += counted_order
+        for unit, qty in quantities.items():
+            totals["quantity"][unit] = totals["quantity"].get(unit, 0.0) + qty
+
+    days, branches, products, total, facts = {}, {}, {}, bucket(), []
+    for offset in range((fields.Date.to_date(date_to) - fields.Date.to_date(date_from)).days + 1):
+        days[fields.Date.to_date(date_from) + timedelta(days=offset)] = bucket()
+    for order in orders:
+        local = pytz.UTC.localize(fields.Datetime.to_datetime(order.date_order)).astimezone(timezone)
+        hour = local.hour + local.minute / 60.0 + local.second / 3600.0
+        if not window_start <= hour < window_end:
+            continue
+        lines = order.lines.filtered(lambda line: (not product or line.product_id == product) and (
+            not categories or line.product_id.pos_categ_ids & categories))
+        if (product or categories) and not lines:
+            continue
+        revenue, quantities = 0.0, {}
+        for line in lines:
+            revenue += line.price_subtotal
+            if line.combo_line_ids:
+                continue
+            unit = line.product_id.uom_id.name or ""
+            quantities[unit] = quantities.get(unit, 0.0) + line.qty
+            item = products.setdefault(line.product_id.id, {"name": line.product_id.display_name, "unit": unit, "qty": 0.0, "revenue": 0.0})
+            item["qty"] += line.qty
+            item["revenue"] += line.price_subtotal
+        counted_order = 0 if order.is_refund else 1
+        branch = order.config_id.picking_type_id.warehouse_id
+        add(total, revenue, counted_order, quantities)
+        add(days.setdefault(local.date(), bucket()), revenue, counted_order, quantities)
+        add(branches.setdefault(branch.id or 0, dict(bucket(), name=branch.display_name or "POS without a branch")),
+            revenue, counted_order, quantities)
+        facts.append({"order": order, "local": local.replace(tzinfo=None), "revenue": revenue, "orders": counted_order,
+                      "quantity": quantities, "branch": branch.display_name or "POS without a branch"})
+    return {"problem": False, "orders_in_period": len(orders), "total": total, "days": days, "branches": branches,
+            "products": sorted(products.values(), key=lambda item: (-item["qty"], item["name"])), "facts": facts}
+
+
+def _collect_sales(target, version):
+    calc = version.calculation_type
+    env = target.env
+    company = target.company_id
+    currency = company.currency_id
+    unit = (version.unit or "").strip()
+    if calc == "pos_sales_growth_pct" and unit != "%":
+        return _result(target, version, DATA_QUALITY, None, "Sales growth must use the % unit.", "", [], [])
+    if calc == "pos_average_unit_price":
+        problem = validate_unit_price_contract(target, version, "pos")
+        if problem:
+            return _result(target, version, DATA_QUALITY, None, problem, "", [], [])
+    elif calc != "pos_sales_growth_pct" and unit not in {(currency.symbol or "").strip(), (currency.name or "").strip()} - {""}:
+        return _result(target, version, DATA_QUALITY, None,
+                       "Sales amounts must use the company currency unit (%s)." % (currency.symbol or currency.name), "", [], [])
+    if (calc in _PRODUCT_SALES_CALCULATIONS) != bool(version.source_product_id):
+        return _result(target, version, DATA_QUALITY, None,
+                       "Product sales need the tracked product; the other sales measures cover all products.", "", [], [])
+    if target.scope not in ("organization", "branch") or (target.scope == "branch" and not target.warehouse_id):
+        return _result(target, version, DATA_QUALITY, None,
+                       "POS sales are measured for the company or one branch warehouse.", "", [], [])
+    if not target.date_start or not target.date_end or target.date_start > target.date_end:
+        return _result(target, version, DATA_QUALITY, None, "A valid reporting period is required.", "", [], [])
+    start_utc, end_utc, problem = period_bounds_utc(company, target.date_start, target.date_end)
+    if problem:
+        return _result(target, version, DATA_QUALITY, None, problem, "", [], [])
+    warehouse = target.warehouse_id if target.scope == "branch" else False
+    if calc == "pos_sales_growth_pct" and end_utc > fields.Datetime.to_datetime(fields.Datetime.now()):
+        return _result(target, version, NOT_EVALUATED, None,
+                       "Growth is compared once the period has ended; a partial period would not be comparable.", "", [], [])
+    orders, problem = sales_orders(env, company, start_utc, end_utc, warehouse)
+    tokens, refs = _record_tokens(orders), _refs(orders)
+    if problem:
+        return _result(target, version, DATA_QUALITY, None, problem, "pos.order", tokens, refs)
+    if not orders:
+        return _result(target, version, NOT_EVALUATED, None,
+                       "No paid or posted POS orders were found for this scope and period; zero sales have not been assumed.",
+                       "pos.order", tokens, refs)
+    total = net_sales(orders)
+    if calc == "pos_net_sales":
+        return _result(target, version, VALID, total,
+                       "Net sales excluding tax from %s paid or posted POS orders; refunds are subtracted." % len(orders),
+                       "pos.order", tokens, refs)
+    if calc == "pos_average_order_value":
+        count = len(customer_orders(orders))
+        if not count:
+            return _result(target, version, NOT_EVALUATED, None,
+                           "There were no customer orders (only refunds) in this period, so no average can be calculated.",
+                           "pos.order", tokens, refs)
+        return _result(target, version, VALID, total / count,
+                       "Net sales excluding tax (%.2f, refunds subtracted) divided by %s customer orders; refund orders are "
+                       "not counted as orders." % (total, count), "pos.order", tokens, refs)
+    if calc == "pos_average_unit_price":
+        product = version.source_product_id
+        lines = env["pos.order.line"].sudo().search([
+            ("order_id", "in", orders.ids), ("product_id", "=", product.id)], order="order_id, id")
+        quantity = float(sum(lines.mapped("qty")))
+        if quantity <= 0:
+            return _result(target, version, NOT_EVALUATED, None,
+                           "%s was not sold (net of refunds) in this period, so there is no selling price." % product.display_name,
+                           "pos.order.line", tokens + _record_tokens(lines), _refs(orders, lines))
+        value = float(sum(lines.mapped("price_subtotal"))) / quantity
+        return _result(target, version, VALID, value,
+                       "Selling price per %s: POS sales excluding tax divided by %g %s sold, refunds subtracted from both. "
+                       "This is what customers paid, not a purchase cost." % (product.uom_id.name, quantity, product.uom_id.name),
+                       "pos.order.line", tokens + _record_tokens(lines), _refs(orders, lines))
+    if calc == "pos_product_net_sales":
+        lines = env["pos.order.line"].sudo().search([
+            ("order_id", "in", orders.ids), ("product_id", "=", version.source_product_id.id)], order="order_id, id")
+        value = float(sum(lines.mapped("price_subtotal")))
+        return _result(target, version, VALID, value,
+                       "Sales excluding tax of %s from %s POS lines; refund lines carry negative amounts and are subtracted."
+                       % (version.source_product_id.display_name, len(lines)),
+                       "pos.order.line", tokens + _record_tokens(lines), _refs(orders, lines))
+    # Sales growth against the immediately preceding period of the same length.
+    length = (fields.Date.to_date(target.date_end) - fields.Date.to_date(target.date_start)).days + 1
+    previous_end = fields.Date.to_date(target.date_start) - timedelta(days=1)
+    previous_start = previous_end - timedelta(days=length - 1)
+    prev_start_utc, prev_end_utc, problem = period_bounds_utc(company, previous_start, previous_end)
+    previous, problem = (None, problem) if problem else sales_orders(env, company, prev_start_utc, prev_end_utc, warehouse)
+    if problem:
+        return _result(target, version, DATA_QUALITY, None, problem, "pos.order", tokens, refs)
+    baseline = net_sales(previous)
+    tokens, refs = tokens + _record_tokens(previous), _refs(orders | previous)
+    if not previous or baseline <= 0:
+        return _result(target, version, NOT_EVALUATED, None,
+                       "The previous period (%s to %s) has no positive net sales, so growth cannot be calculated."
+                       % (previous_start, previous_end), "pos.order", tokens, refs)
+    return _result(target, version, VALID, (total - baseline) / baseline * 100.0,
+                   "Net sales %.2f compared with %.2f in the previous period (%s to %s), same scope and rules."
+                   % (total, baseline, previous_start, previous_end), "pos.order", tokens, refs)
+
+
 def _collect_recipe_consumption(target, version, orders, Line):
-    return _result(target, version, *recipe_consumption(target.env, company, orders, version.source_product_id))
+    return _result(target, version, *recipe_consumption(target.env, target.company_id, orders, version.source_product_id))
 
 
 def recipe_consumption(env, company, orders, tracked_product):
@@ -234,9 +457,7 @@ def recipe_consumption(env, company, orders, tracked_product):
             data_issues.append("BoM %s has a non-positive or invalid output quantity." % bom.id)
             continue
         try:
-            output_qty_in_bom_uom = line.product_id.uom_id._compute_quantity(
-                line.qty, bom[bom_uom_field]
-            )
+            output_qty_in_bom_uom = convert_quantity(line.qty, line.product_id.uom_id, bom[bom_uom_field])
             recipe_multiplier = output_qty_in_bom_uom / bom.product_qty
             for component in bom.bom_line_ids:
                 if component.product_id != tracked_product:
@@ -250,10 +471,10 @@ def recipe_consumption(env, company, orders, tracked_product):
                     )
                     if required_variant_values and any(value not in sold_variant_values for value in required_variant_values):
                         continue
-                component_qty = component[line_uom_field]._compute_quantity(
-                    component.product_qty * recipe_multiplier,
-                    tracked_product.uom_id,
-                )
+                # Unrelated units (a gram recipe line on a product kept in another kind of unit) are refused,
+                # never converted 1:1.
+                component_qty = convert_quantity(
+                    component.product_qty * recipe_multiplier, component[line_uom_field], tracked_product.uom_id)
                 total += component_qty
         except (UserError, ValidationError, ZeroDivisionError, TypeError, ValueError) as exc:
             data_issues.append("BoM %s could not be normalized to the tracked product unit: %s" % (bom.id, exc))
@@ -283,6 +504,58 @@ def recipe_consumption(env, company, orders, tracked_product):
         "Estimated ingredient consumption based on completed POS sales and the BoM effective on each sale date. This is an estimate, not proof of actual stock consumption.",
         "pos.order.line+mrp.bom", tokens, refs,
     )
+
+
+def _recipe_problem(bom, product):
+    """Why a recipe cannot estimate ingredient use for ``product``, or False when it can."""
+    bom_uom = bom.product_uom_id if "product_uom_id" in bom._fields else bom.uom_id
+    if not bom.bom_line_ids:
+        return "its recipe has no ingredients"
+    if not bom.product_qty or not math.isfinite(bom.product_qty) or bom.product_qty <= 0:
+        return "its recipe has no valid output quantity"
+    if not units_compatible(product.uom_id, bom_uom):
+        return "its recipe is in %s, which cannot be converted from %s" % (bom_uom.name, product.uom_id.name)
+    for line in bom.bom_line_ids:
+        line_uom = line.product_uom_id if "product_uom_id" in line._fields else line.uom_id
+        if not line.product_qty or line.product_qty <= 0:
+            return "ingredient %s has no quantity" % line.product_id.display_name
+        if not units_compatible(line_uom, line.product_id.uom_id):
+            return "ingredient %s is entered in %s, which cannot be converted to %s" % (
+                line.product_id.display_name, line_uom.name, line.product_id.uom_id.name)
+    return False
+
+
+def recipe_coverage(env, company, orders):
+    """Menu items marked 'Needs a recipe' sold in ``orders``, and those that lacked a valid recipe.
+
+    An item is covered only when every one of its sales had a valid recipe in effect on the sale date (the rule
+    recipe_consumption uses). Returns ``(sold items, {item: reason}, sale lines, recipes used)``.
+    """
+    lines = env["pos.order.line"].sudo().search([("order_id", "in", orders.ids)], order="order_id, id").filtered(
+        lambda line: line.qty > 0 and not line.order_id.is_refund_or_negative()
+        and line.product_id.product_tmpl_id.strategic_recipe_required
+        # Combo parent rows summarize the selection; their child rows are the sold items.
+        and not ("combo_line_ids" in line._fields and line.combo_line_ids)
+    )
+    Bom = env["mrp.bom"].sudo().with_context(active_test=False)
+    timezone_name = company.partner_id.tz
+    missing, boms, checked = {}, Bom.browse(), set()
+    for line in lines:
+        product = line.product_id
+        sale_date = _sale_date_in_timezone(line.order_id.date_order, timezone_name)
+        if product in missing or (product.id, sale_date) in checked:
+            continue
+        checked.add((product.id, sale_date))
+        if not sale_date:
+            missing[product] = "order %s has an invalid date" % line.order_id.name
+            continue
+        bom, issue = _resolve_bom(Bom, product, company, sale_date, timezone_name)
+        problem = issue or (_recipe_problem(bom, product) if bom else "no recipe on %s" % sale_date)
+        if problem:
+            missing[product] = problem
+        else:
+            boms |= bom
+    return lines.product_id, missing, lines, boms
 
 
 def _resolve_bom(Bom, sold_product, company, sale_date, timezone_name):

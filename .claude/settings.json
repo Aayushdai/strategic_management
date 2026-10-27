@@ -1,7 +1,4 @@
 {
-  "enabledPlugins": {
-    "ponytail@ponytail": true
-  },
   "hooks": {
     "PreToolUse": [
       {
@@ -25,5 +22,6 @@
         ]
       }
     ]
-  }
+  },
+  "enabledPlugins": {}
 }

@@ -124,7 +124,8 @@ class TestStrategicKpiAccountingSourceAdapter(TransactionCase):
         return self.env["strategic.kpi.evaluation"].browse(action["res_id"])
 
     def test_manual_and_scheduled_dispatchers_register_accounting_calculations(self):
-        expected = {"accounting_net_profit", "accounting_net_profit_margin_pct"}
+        expected = {"accounting_net_profit", "accounting_net_profit_margin_pct", "accounting_overdue_supplier_bills_amount",
+                    "accounting_total_expenses", "accounting_expense_to_income_pct"}
         self.assertEqual(_SOURCE_ADAPTERS.get("accounting"), expected)
         self.assertIs(_SOURCE_COLLECTORS.get("accounting"), collect_accounting_result)
         self.assertIs(kpi_scheduler._SOURCE_COLLECTORS.get("accounting"), collect_accounting_result)

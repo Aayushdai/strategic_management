@@ -12,7 +12,11 @@ from .common import DATA_QUALITY, NOT_EVALUATED, VALID, source_result
 SUPPORTED_CALCULATIONS = {
     "accounting_net_profit",
     "accounting_net_profit_margin_pct",
+    "accounting_overdue_supplier_bills_amount",
+    "accounting_total_expenses",
+    "accounting_expense_to_income_pct",
 }
+_PERCENT_CALCULATIONS = {"accounting_net_profit_margin_pct", "accounting_expense_to_income_pct"}
 
 _INCOME_TYPES = {"income", "income_other"}
 _EXPENSE_TYPES = {"expense", "expense_other", "expense_direct_cost", "expense_depreciation"}
@@ -46,11 +50,11 @@ def collect_accounting_result(target, version):
         )
 
     company_currency = target.company_id.currency_id
-    if version.calculation_type == "accounting_net_profit_margin_pct":
+    if version.calculation_type in _PERCENT_CALCULATIONS:
         if (version.unit or "").strip() != "%":
             return source_result(
                 target, version, DATA_QUALITY, None,
-                "Net Profit Margin must use the % unit.",
+                "Percentage financial KPIs must use the % unit.",
                 "account.move.line", empty_lines,
             )
     else:
@@ -62,7 +66,7 @@ def collect_accounting_result(target, version):
         if (version.unit or "").strip() not in expected_units:
             return source_result(
                 target, version, DATA_QUALITY, None,
-                "Net Profit must use the KPI company's currency unit (%s)."
+                "Monetary financial KPIs must use the KPI company's currency unit (%s)."
                 % (company_currency.symbol or company_currency.name),
                 "account.move.line", empty_lines,
             )
@@ -82,6 +86,9 @@ def collect_accounting_result(target, version):
             "expenses to that scope.",
             "account.move.line", empty_lines,
         )
+
+    if version.calculation_type == "accounting_overdue_supplier_bills_amount":
+        return _collect_overdue_supplier_bills(target, version)
 
     required_line_fields = {"date", "balance", "company_id", "account_id", "move_id"}
     if not required_line_fields.issubset(Line._fields):
@@ -110,7 +117,7 @@ def collect_accounting_result(target, version):
     income_lines = lines.filtered(lambda line: line.account_id.account_type in _INCOME_TYPES)
     expense_lines = lines.filtered(lambda line: line.account_id.account_type in _EXPENSE_TYPES)
 
-    if not income_lines:
+    if not income_lines and version.calculation_type != "accounting_total_expenses":
         return source_result(
             target, version, NOT_EVALUATED, None,
             "No posted income lines were found for this company and period; the adapter "
@@ -146,7 +153,26 @@ def collect_accounting_result(target, version):
             "account.move.line", lines,
         )
 
-    if version.calculation_type == "accounting_net_profit":
+    if version.calculation_type == "accounting_total_expenses":
+        value = expenses
+        explanation = (
+            "Total expenses and direct costs = posted lines on expense, other expense, direct cost and depreciation "
+            "accounts (%s), in company currency. This includes cost of goods sold and depreciation, so it is not "
+            "operating expenses only."
+        ) % round(expenses, 2)
+    elif version.calculation_type == "accounting_expense_to_income_pct":
+        if revenue <= 0.0:
+            return source_result(
+                target, version, NOT_EVALUATED, None,
+                "Expenses cannot be compared with income because net posted income is zero or negative.",
+                "account.move.line", lines,
+            )
+        value = expenses / revenue * 100.0
+        explanation = (
+            "Expenses and direct costs (%s) divided by posted income (%s) * 100, from posted P&L lines with the same "
+            "account classification as net profit."
+        ) % (round(expenses, 2), round(revenue, 2))
+    elif version.calculation_type == "accounting_net_profit":
         value = net_profit
         explanation = (
             "Net Profit = posted income (%s) minus posted expenses/direct costs (%s), "
@@ -172,3 +198,59 @@ def collect_accounting_result(target, version):
         target, version, VALID, float(value), explanation,
         "account.move.line", lines,
     )
+
+
+def overdue_supplier_bills(env, company, as_of):
+    """Posted supplier bills past due on ``as_of`` and what was still unpaid on that date (company currency).
+
+    Paid amounts dated on or before ``as_of`` reduce what is owed, so the figure is the position on that date,
+    not today's: reconciliations (payments with a journal entry, credit notes) by the paying entry's date, and
+    payments without a journal entry (linked to the bill directly) by their payment date. Such a payment
+    linked to several bills cannot be split reliably and is reported as a problem. Drafts are excluded.
+    Returns (bills, rows, total, problems).
+    """
+    Move = env["account.move"].sudo()
+    bills = Move.search([
+        ("company_id", "=", company.id), ("move_type", "=", "in_invoice"), ("state", "=", "posted"),
+        ("invoice_date", "<=", as_of), ("invoice_date_due", "<", as_of),
+    ], order="invoice_date_due, id")
+    rows, total, problems = [], 0.0, []
+    for bill in bills:
+        payable = bill.line_ids.filtered(lambda line: line.account_id.account_type == "liability_payable")
+        owed = -sum(payable.mapped("balance"))
+        # Dated by the paying side (payment or credit note line): max_date can be the bill's later accounting date.
+        settled = sum(partial.amount for partial in payable.matched_debit_ids
+                      if partial.debit_move_id.date and partial.debit_move_id.date <= as_of)
+        direct = bill.matched_payment_ids.filtered(
+            lambda pay: not pay.move_id and pay.state in ("in_process", "paid") and pay.date and pay.date <= as_of)
+        for payment in direct:
+            if len(payment.invoice_ids) > 1:
+                problems.append("payment %s is linked to several bills and cannot be split" % payment.name)
+                continue
+            settled += abs(payment.amount_company_currency_signed)
+        unpaid = company.currency_id.round(owed - settled)
+        if unpaid <= 0:
+            continue
+        total += unpaid
+        rows.append({
+            "id": bill.id, "name": bill.name, "supplier": bill.partner_id.display_name or "",
+            "due": str(bill.invoice_date_due), "amount": unpaid,
+        })
+    return bills, rows, company.currency_id.round(total), problems
+
+
+def _collect_overdue_supplier_bills(target, version):
+    """Overdue unpaid supplier bills at the end of the period, or today if the period has not ended."""
+    from odoo import fields
+    today = fields.Date.context_today(target.env["res.partner"].with_context(tz=target.company_id.partner_id.tz or "UTC"))
+    as_of = min(target.date_end, today)
+    bills, rows, total, problems = overdue_supplier_bills(target.env, target.company_id, as_of)
+    if problems:
+        return source_result(target, version, DATA_QUALITY, None,
+                             "Overdue bills cannot be measured reliably: %s." % "; ".join(problems[:10]), "account.move", bills)
+    return source_result(
+        target, version, VALID, total,
+        "%s posted supplier bills were past due and not fully paid on %s." % (len(rows), as_of),
+        "account.move", bills,
+    )
+

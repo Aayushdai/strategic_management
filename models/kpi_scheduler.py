@@ -7,6 +7,7 @@ from markupsafe import escape
 from odoo import api, fields, models, _
 
 from .kpi_source_adapter import (
+    DELIVERY_CALCULATIONS,
     _SOURCE_ADAPTERS,
     _SOURCE_COLLECTORS,
     collect_supplier_delivery_result,
@@ -52,7 +53,7 @@ class StrategicKpiScheduledJobs(models.Model):
                     version = company_target.kpi_id._get_definition_version_for_period(
                         company_target.date_start, company_target.date_end
                     )
-                    if version.calculation_type == "supplier_on_time_delivery_pct":
+                    if version.calculation_type in DELIVERY_CALCULATIONS:
                         collector = collect_supplier_delivery_result
                     else:
                         collector = _SOURCE_COLLECTORS.get(version.source_type)

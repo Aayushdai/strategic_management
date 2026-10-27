@@ -4,238 +4,178 @@
         <div class="o_sm_navigation_shell">
             <aside class="o_sm_sidebar" aria-label="Strategic Management navigation">
                 <div class="o_sm_sidebar_brand">
-                    <span class="o_sm_brand_icon" aria-hidden="true"><svg class="o_sm_brand_svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 9h13v6.5A4.5 4.5 0 0 1 12.5 20h-4A4.5 4.5 0 0 1 4 15.5Z"/><path d="M17 11h1.5a2.5 2.5 0 0 1 0 5H17M7 4c-1 1 1 1.6 0 2.6M11 3.5c-1 1 1 1.6 0 2.6M15 4c-1 1 1 1.6 0 2.6"/></svg></span>
-                    <span class="o_sm_brand_title">Strategic Management</span>
+                    <span class="o_sm_brand_icon" aria-hidden="true"><svg class="o_sm_brand_svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 17.5 9 11.5l4 4 7.5-8"/><path d="M15 7.5h5.5V13"/></svg></span>
+                    <span class="o_sm_brand_title"><span>Strategic</span> <span>Management</span></span>
                 </div>
                 <nav class="o_sm_navigation_items">
-                    <t t-foreach="this.state.items || []" t-as="item" t-key="item.id">
-                        <div t-if="item.dividerBefore" class="o_sm_navigation_divider" role="separator"/>
-                        <button type="button"
-                                t-att-class="this.state.activeSection === item.id ? 'o_sm_nav_item active' : 'o_sm_nav_item'"
-                                t-att-aria-current="this.state.activeSection === item.id ? 'page' : false"
-                                t-on-click="() => this.selectSection(item.id)">
-                            <svg class="o_sm_nav_svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-    <g t-if="item.id === 'overview'"><path d="M3.5 10.5 12 3.8l8.5 6.7"/><path d="M5.5 9.5v10.8h13V9.5"/><path d="M9.5 20.3v-6h5v6"/></g>
-    <g t-elif="item.id === 'sales_finance'"><path d="M4 20V12M10 20V7M16 20V10M22 20H2M3.5 8l5-3 5 2 6-4"/></g>
-    <g t-elif="item.id === 'inventory_waste'"><path d="m12 3 8 4.2v9.6L12 21l-8-4.2V7.2Z"/><path d="m4.3 7.3 7.7 4.1 7.7-4.1M12 11.5V21"/></g>
-    <g t-elif="item.id === 'purchasing'"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 4h2l2.1 11.2a2 2 0 0 0 2 1.6h9.5a2 2 0 0 0 1.9-1.5L22 8H6"/></g>
-    <g t-elif="item.id === 'branches'"><path d="M4 21V4.5h11V21M15 10h5v11M2 21h20"/><path d="M7.5 8h4M7.5 12h4M7.5 16h4M17 14h1.5M17 17h1.5"/></g>
-    <g t-elif="item.id === 'people'"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1.4a6 6 0 0 1 12 0V20Z"/><path d="M16 5.5a3 3 0 0 1 0 5.8M18 14a5 5 0 0 1 3 4.6V20h-4"/></g>
-    <g t-elif="item.id === 'tasks_issues'"><rect x="5" y="4.5" width="14" height="17" rx="2"/><path d="M9 4.5v-2h6v2M8 11l2 2 4-4M8 17h8"/></g>
-    <g t-elif="item.id === 'reports'"><path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></g>
-    <g t-elif="item.id === 'configuration'"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="11" cy="18" r="2" fill="currentColor" stroke="none"/></g>
-</svg>
-                            <span class="o_sm_nav_label"><t t-esc="item.label"/></span>
-                        </button>
+                    <t t-foreach="this.sidebarPrimary" t-as="item" t-key="item.id">
+                        <t t-call="strategic_management.NavigationButton"/>
+                    </t>
+                    <div class="o_sm_navigation_more_label">More</div>
+                    <t t-foreach="this.sidebarMore" t-as="item" t-key="item.id">
+                        <t t-call="strategic_management.NavigationButton"/>
                     </t>
                 </nav>
             </aside>
 
             <main class="o_sm_workspace">
                 <t t-if="this.state.activeSection === 'overview'">
-    <div class="o_sm_overview_command_center">
-        <header class="o_sm_ov_header">
-            <div class="o_sm_ov_heading">
-                <h1>Business Overview</h1>
-                <p><t t-esc="this.state.data ? this.state.data.scope_label : 'Your café chain at a glance'"/> · Focus on what changed and what needs attention.</p>
+    <t t-set="rq" t-value="this.state.requestsData"/>
+    <t t-set="rx" t-value="this.state.reqExpanded"/>
+    <div class="o_sm_requests">
+        <header class="o_sm_req_header">
+            <div>
+                <h1>Welcome back!</h1>
+                <p>Here's what needs your attention today.</p>
             </div>
-            <div class="o_sm_ov_filters">
-                <label class="o_sm_ov_date_filter" title="Reporting period">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>
-                    <input type="date" t-att-value="this.state.dateStart" t-att-max="this.state.todayDate" t-on-change="onStartDateChanged" aria-label="Start date"/>
-                    <span>to</span>
-                    <input type="date" t-att-value="this.state.dateEnd" t-att-max="this.state.todayDate" t-on-change="onEndDateChanged" aria-label="End date"/>
-                </label>
-                <select t-if="this.state.data and this.state.data.role === 'head_office'" class="o_sm_ov_branch_filter" t-att-value="branchSelectValue" t-on-change="onWarehouseChanged" aria-label="Branch filter">
-                    <option value="all">All Branches</option>
-                    <option t-foreach="this.state.data.branch_options || []" t-as="branchOption" t-key="branchOption.id" t-att-value="branchOption.id"><t t-esc="branchOption.name"/></option>
-                </select>
-                <span t-elif="this.state.data and this.state.data.role === 'branch_manager'" class="o_sm_ov_scope"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V4h11v17M15 10h5v11M2 21h20"/></svg><t t-esc="this.state.data.scope_label"/></span>
-            </div>
+            <label t-if="rq and rq.role === 'head_office'" class="o_sm_req_filter"><span>Branch</span>
+                <select t-att-value="this.branchSelectValue" t-on-change="this.onWarehouseChanged" aria-label="Branch filter"><option value="all">All Branches</option><t t-foreach="rq.branch_options" t-as="branch" t-key="branch.id"><option t-att-value="branch.id"><t t-esc="branch.name"/></option></t></select>
+            </label>
         </header>
 
-        <div t-if="this.state.loading" class="o_sm_ov_state"><span class="o_sm_ov_spinner"/> Loading business overview…</div>
-        <div t-elif="this.state.error" class="o_sm_ov_error"><strong>Overview could not be loaded.</strong><span><t t-esc="this.state.error"/></span></div>
-        <t t-elif="this.state.data">
-            <div t-if="this.state.data.messages and this.state.data.messages.length" class="o_sm_ov_note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5h.01"/></svg><t t-esc="this.state.data.messages[0]"/></div>
-            <t t-set="ox" t-value="this.state.overviewExtras"/>
-            <t t-set="prev" t-value="ox and ox.comparison"/>
+        <div t-if="this.state.requestsLoading and !rq" class="o_sm_req_notice">Loading objective requests…</div>
+        <div t-foreach="(rq and !rq.available and rq.messages) || []" t-as="message" t-key="message_index" class="o_sm_req_notice"><t t-esc="message"/></div>
 
-            <t t-if="this.state.data.role !== 'employee'">
-            <section class="o_sm_ov_metrics" aria-label="Business health at a glance">
-                <article class="o_sm_ov_metric">
-                    <div class="o_sm_ov_metric_icon o_sm_ov_blue"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V12M10 20V7M16 20V10M22 20H2M3.5 8l5-3 5 2 6-4"/></svg></div>
-                    <div class="o_sm_ov_metric_copy"><span>Total Sales (excl. tax)</span><strong><t t-esc="this.state.data.sales === false ? 'Not Available' : this.formatCurrency(this.state.data.sales)"/></strong><small><t t-esc="this.comparisonText(this.state.data.sales, prev and prev.sales)"/></small></div>
-                </article>
-                <article class="o_sm_ov_metric">
-                    <div class="o_sm_ov_metric_icon o_sm_ov_green"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18v13H3zM3 10h18M7 4v3M17 4v3"/><path d="m8 15 2.2 2.2L16 12"/></svg></div>
-                    <div class="o_sm_ov_metric_copy"><span>Net Profit</span><strong><t t-esc="this.state.data.financial_available ? this.formatCurrency(this.state.data.net_profit) : 'Not Available'"/></strong><small><t t-if="this.state.data.financial_available" t-esc="this.comparisonText(this.state.data.net_profit, prev and prev.net_profit)"/><t t-elif="ox and ox.branches and ox.branches.summary.contribution !== false">Branch contribution: <t t-esc="this.formatBranchValue(ox.branches.summary.contribution, 'currency')"/></t><t t-else="">Company-wide posted entries only</t></small></div>
-                </article>
-                <article class="o_sm_ov_metric">
-                    <div class="o_sm_ov_metric_icon o_sm_ov_blue"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 12h7M9 16h7"/></svg></div>
-                    <div class="o_sm_ov_metric_copy"><span>Total Orders</span><strong><t t-esc="this.state.data.order_count === false ? 'Not Available' : this.formatNumber(this.state.data.order_count)"/></strong><small><t t-esc="this.comparisonText(this.state.data.order_count, prev and prev.order_count)"/></small></div>
-                </article>
-                <article class="o_sm_ov_metric">
-                    <div class="o_sm_ov_metric_icon o_sm_ov_amber"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14l-1 14H6L5 7ZM9 7V4h6v3M3 7h18M9 11v6M15 11v6"/></svg></div>
-                    <div class="o_sm_ov_metric_copy"><span>Inventory Waste Cost</span><strong><t t-esc="this.state.data.waste_cost === false ? 'Not Available' : this.formatCurrency(this.state.data.waste_cost)"/></strong><small><t t-esc="this.comparisonText(this.state.data.waste_cost, prev and prev.waste_cost)"/></small></div>
-                </article>
-                <article class="o_sm_ov_metric">
-                    <div class="o_sm_ov_metric_icon o_sm_ov_red"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V4h11v17M15 10h5v11M2 21h20"/></svg></div>
-                    <div class="o_sm_ov_metric_copy"><span>Active Branches</span><strong><t t-esc="ox and ox.branches ? ox.branches.summary.active_branches : 'Not Available'"/></strong><small><t t-if="ox and ox.branches"><t t-esc="ox.branches.summary.meeting_target"/> meeting targets · <t t-esc="ox.branches.summary.below_target"/> below</t><t t-else="">Branch data unavailable</t></small></div>
-                </article>
+        <t t-if="rq and rq.available">
+            <section class="o_sm_req_card" aria-labelledby="o_sm_req_pending_title">
+                <div class="o_sm_req_card_head">
+                    <div><h2 id="o_sm_req_pending_title">Objective Requests</h2><p><t t-esc="rq.can_decide ? 'Review objectives proposed by branch managers.' : 'Objectives your branch has proposed, waiting for Head Office review.'"/></p></div>
+                    <div class="o_sm_req_head_actions">
+                        <span class="o_sm_req_count"><t t-esc="rq.pending.length"/> pending</span>
+                        <button t-if="rq.pending.length > 5" type="button" class="o_sm_req_link" t-on-click="() => this.toggleRequests('pending')"><t t-esc="rx.pending ? 'Show latest 5' : 'View All →'"/></button>
+                    </div>
+                </div>
+                <div t-if="rq.pending.length" class="o_sm_req_table_wrap"><table class="o_sm_req_table">
+                    <thead><tr><th>Objective</th><th>Branch</th><th>Proposed Target</th><th>Proposed By</th><th>Date</th><th>Status</th><th class="o_sm_req_actions_col">Actions</th></tr></thead>
+                    <tbody>
+                        <tr t-foreach="rx.pending ? this.pageRows('req_pending', rq.pending) : rq.pending.slice(0, 5)" t-as="row" t-key="row.objective_id">
+                            <td data-label="Objective" class="o_sm_req_objective"><strong t-att-title="row.name"><t t-esc="row.name"/></strong><small t-att-title="row.description or row.parent_objective"><t t-esc="row.description or ('Supports: ' + (row.parent_objective or '—'))"/></small></td>
+                            <td data-label="Branch"><t t-esc="row.branch"/></td>
+                            <td data-label="Proposed Target" class="o_sm_req_target" t-att-title="row.proposed_target"><t t-esc="row.proposed_target or 'No measured target yet'"/></td>
+                            <td data-label="Proposed By"><t t-esc="row.proposer"/></td>
+                            <td data-label="Date" class="o_sm_req_date"><t t-esc="this.formatRequestDate(row.submitted_at)"/></td>
+                            <td data-label="Status"><span class="o_sm_req_badge is-pending">Pending Review</span></td>
+                            <td data-label="Actions" class="o_sm_req_actions">
+                                <button type="button" class="o_sm_req_btn is-ghost" t-on-click="() => this.openRequestReview(row)">Review</button>
+                                <t t-if="rq.can_decide">
+                                    <button type="button" class="o_sm_req_btn is-approve" t-att-disabled="this.state.deciding" t-on-click="() => this.decideRequest(row, 'approve')">Approve</button>
+                                    <button type="button" class="o_sm_req_btn is-reject" t-att-disabled="this.state.deciding" t-on-click="() => this.openRejectRequest(row)">Reject</button>
+                                </t>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table></div>
+                <t t-if="rx.pending and rq.pending.length"><t t-call="strategic_management.ListPager" pagerKey="'req_pending'" pagerRows="rq.pending"/></t>
+                <div t-if="!rq.pending.length" class="o_sm_req_empty">
+                    <span class="o_sm_req_empty_icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13.5 7 5h10l3 8.5V19H4Z"/><path d="M4 13.5h5l1 2h4l1-2h5"/></svg></span>
+                    <strong>No pending objective requests</strong>
+                    <span>New proposals from branch managers will appear here.</span>
+                </div>
             </section>
 
-            <section class="o_sm_ov_primary_grid">
-                <article class="o_sm_ov_panel o_sm_ov_trend_panel">
-                    <div class="o_sm_ov_panel_heading"><div><h2>Sales &amp; Profit Trend</h2><p>POS sales<t t-if="this.state.data.financial_available"> and net profit</t> over the selected period</p></div><span class="o_sm_ov_legend"><i class="o_sm_ov_legend_dot"/> Sales <span t-if="this.state.data.financial_available"><i class="o_sm_ov_legend_dot o_sm_ov_profit_dot"/> Net profit</span></span></div>
-                    <t t-if="this.state.data.sales_trend and this.state.data.sales_trend.length">
-                        <svg class="o_sm_ov_line_chart" viewBox="0 0 520 190" preserveAspectRatio="none" role="img" aria-label="Sales and profit trend">
-                            <line x1="40" y1="30" x2="500" y2="30" class="o_sm_ov_gridline"/><line x1="40" y1="70" x2="500" y2="70" class="o_sm_ov_gridline"/><line x1="40" y1="110" x2="500" y2="110" class="o_sm_ov_gridline"/><line x1="40" y1="152" x2="500" y2="152" class="o_sm_ov_axis"/>
-                            <polyline t-att-points="this.trendPoints('sales')" class="o_sm_ov_sales_line"/>
-                            <polyline t-if="this.state.data.financial_available" t-att-points="this.trendPoints('profit')" class="o_sm_ov_profit_line"/>
-                            <t t-foreach="this.state.data.sales_trend || []" t-as="point" t-key="point.month_key"><circle t-att-cx="this.chartX(point_index, this.state.data.sales_trend.length)" t-att-cy="this.chartY(point.sales, 'sales')" r="3.5" class="o_sm_ov_sales_point"/><text t-if="point_index % this.trendLabelStep() === 0" t-att-x="this.chartX(point_index, this.state.data.sales_trend.length)" y="175" text-anchor="middle" class="o_sm_ov_axis_label"><t t-esc="point.label"/></text></t>
-                        </svg>
-                    </t>
-                    <div t-else="" class="o_sm_ov_empty">Not Available: no completed POS orders in this period.</div>
-                    <p t-if="!this.state.data.financial_available" class="o_sm_ov_empty o_sm_ov_empty_small">Net profit: Not Available for branch views or when posted income and expense entries are missing.</p>
-                </article>
-
-                <article class="o_sm_ov_panel o_sm_ov_attention_panel">
-                    <div class="o_sm_ov_panel_heading"><div><h2>Needs Immediate Attention</h2><p>Prioritized from branches, people and inventory</p></div><span class="o_sm_ov_count"><t t-esc="ox ? ox.attention.length : 0"/></span></div>
-                    <div t-if="ox and ox.attention.length" class="o_sm_ov_alert_list">
-                        <div t-foreach="ox.attention.slice(0, 6)" t-as="alert" t-key="alert_index" class="o_sm_ov_alert">
-                            <span t-att-class="'o_sm_ov_alert_icon o_sm_ov_sev_' + (alert.severity === 'critical' ? 'high' : 'medium')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 22 20H2Z"/><path d="M12 9v5M12 17h.01"/></svg></span>
-                            <div class="o_sm_ov_alert_text"><strong><t t-esc="alert.severity === 'critical' ? 'Critical · ' : 'Warning · '"/><t t-esc="alert.title"/></strong><span><t t-esc="alert.branch or alert.source"/> · <t t-esc="alert.evidence"/></span><small>Responsible: <t t-esc="alert.responsible or 'Not assigned'"/><t t-if="alert.deadline"> · Due <t t-esc="this.formatDate(alert.deadline)"/></t><t t-if="alert.action_status"> · <t t-esc="alert.action_status"/></t></small><span t-if="alert.res_model" class="o_sm_issue_actions"><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.openIssueRecord(alert)">Open</button><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.createIssueFollowup(alert)">Assign follow-up</button></span></div>
-                        </div>
+            <section class="o_sm_req_card" aria-labelledby="o_sm_req_history_title">
+                <div class="o_sm_req_card_head">
+                    <div><h2 id="o_sm_req_history_title">Objective Request History</h2><p>Recently reviewed objective proposals.</p></div>
+                    <div class="o_sm_req_head_actions">
+                        <select class="o_sm_req_status_filter" t-att-value="this.state.historyStatus" t-on-change="this.onHistoryStatusChanged" aria-label="Filter history by status">
+                            <option value="all">All Statuses</option><option value="approved">Approved</option><option value="rejected">Rejected</option>
+                        </select>
+                        <button t-if="this.filteredRequestHistory.length > 5" type="button" class="o_sm_req_link" t-on-click="() => this.toggleRequests('history')"><t t-esc="rx.history ? 'Show latest 5' : 'View All →'"/></button>
                     </div>
-                    <div t-elif="ox" class="o_sm_ov_empty o_sm_ov_empty_small">No measurable issues in this period.</div>
-                    <div t-else="" class="o_sm_ov_empty o_sm_ov_empty_small">Loading…</div>
-                    <button type="button" class="o_sm_ov_text_action" t-on-click="() => this.selectSection('branches')">View Branches <span>→</span></button>
-                </article>
-            </section>
-
-            <section class="o_sm_ov_secondary_grid">
-                <article class="o_sm_ov_panel">
-                    <div class="o_sm_ov_panel_heading"><div><h2>Sales by Branch</h2><p>POS sales and orders by location</p></div><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.selectSection('sales_finance')">Sales &amp; Finance <span>→</span></button></div>
-                    <div t-if="this.state.data.branch_performance and this.state.data.branch_performance.length" class="o_sm_ov_branch_list">
-                        <div t-foreach="this.state.data.branch_performance.slice(0, 6)" t-as="branch" t-key="branch.branch_id or branch_index" class="o_sm_ov_branch_row">
-                            <div class="o_sm_ov_branch_identity"><span class="o_sm_ov_branch_icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V4h11v17M15 10h5v11M2 21h20M7 8h2M11 8h1M7 12h2M11 12h1"/></svg></span><strong t-att-title="branch.name"><t t-esc="branch.name"/></strong></div>
-                            <div class="o_sm_ov_branch_bar"><span t-att-style="'width:' + this.branchBarWidth(branch) + '%'"/></div>
-                            <div class="o_sm_ov_branch_values"><strong><t t-esc="this.formatCurrency(branch.sales)"/></strong><small><t t-esc="this.formatNumber(branch.orders)"/> orders</small></div>
-                        </div>
-                    </div>
-                    <div t-else="" class="o_sm_ov_empty">Not Available: no POS sales mapped to branches in this period.</div>
-                </article>
-                <article class="o_sm_ov_panel">
-                    <div class="o_sm_ov_panel_heading"><div><h2>Sales by Category</h2><p>Net of refunds, tax excluded</p></div></div>
-                    <div class="o_sm_sf_donut_layout">
-                        <div class="o_sm_sf_donut o_sm_sf_category_donut" t-att-style="this.categoryDonutStyle()" role="img" aria-label="POS sales by product category"><div class="o_sm_sf_donut_hole"><strong><t t-esc="this.formatCurrency(this.categoryTotal())"/></strong><span>Category sales</span></div></div>
-                        <div class="o_sm_sf_donut_legend">
-                            <t t-if="(this.state.data.sales_by_category || []).length">
-                                <div t-foreach="this.state.data.sales_by_category.slice(0, 6)" t-as="category" t-key="category.category_id || category.name"><i t-att-style="'background:' + this.categoryColor(category_index)"/><span><t t-esc="category.name"/></span><b><t t-esc="this.formatNumber(category.percentage)"/>%</b><strong><t t-esc="this.formatCurrency(category.sales)"/></strong></div>
-                            </t>
-                            <p t-else="">Not Available: no POS category sales in this period.</p>
-                        </div>
-                    </div>
-                </article>
-            </section>
-
-            <section class="o_sm_ov_ops_grid" aria-label="Operational summaries">
-                <article class="o_sm_ov_panel">
-                    <div class="o_sm_ov_panel_heading"><div><h2>Inventory &amp; Waste</h2></div><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.selectSection('inventory_waste')">Open <span>→</span></button></div>
-                    <dl t-if="ox and ox.inventory" class="o_sm_ov_stats">
-                        <dt>Low-stock items</dt><dd><t t-esc="ox.inventory.low_stock_count === false ? 'Not Configured' : ox.inventory.low_stock_count"/></dd>
-                        <dt>Expiring soon</dt><dd><t t-esc="ox.inventory.expiring_soon_count === false ? 'Not Configured' : ox.inventory.expiring_soon_count"/></dd>
-                        <dt>Waste cost</dt><dd><t t-esc="ox.inventory.waste_cost === false ? 'Not Available' : this.formatCurrency(ox.inventory.waste_cost)"/></dd>
-                        <dt>Stock discrepancies</dt><dd><t t-esc="ox.inventory.discrepancy_count === false ? 'Not Available' : ox.inventory.discrepancy_count"/></dd>
-                    </dl>
-                    <p t-else="" class="o_sm_ov_empty o_sm_ov_empty_small">Not Available with your access rights.</p>
-                </article>
-                <article class="o_sm_ov_panel">
-                    <div class="o_sm_ov_panel_heading"><div><h2>Purchase Orders</h2></div><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.selectSection('purchasing')">Open <span>→</span></button></div>
-                    <dl t-if="ox and ox.purchasing" class="o_sm_ov_stats">
-                        <dt>Confirmed orders</dt><dd><t t-esc="ox.purchasing.purchase_order_count"/> · <t t-esc="this.formatCurrency(ox.purchasing.purchase_order_value)"/></dd>
-                        <dt>Pending deliveries</dt><dd><t t-esc="ox.purchasing.pending_delivery_count === false ? 'Not Available' : ox.purchasing.pending_delivery_count"/></dd>
-                        <dt>Overdue deliveries</dt><dd><t t-esc="ox.purchasing.overdue_delivery_count === false ? 'Not Available' : ox.purchasing.overdue_delivery_count"/></dd>
-                        <dt>On-time delivery</dt><dd><t t-esc="this.formatPurchaseRate(ox.purchasing.on_time_delivery_rate)"/></dd>
-                    </dl>
-                    <p t-else="" class="o_sm_ov_empty o_sm_ov_empty_small">Not Available with your access rights.</p>
-                </article>
-                <article class="o_sm_ov_panel">
-                    <div class="o_sm_ov_panel_heading"><div><h2>Branch Performance</h2></div><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.selectSection('branches')">Open <span>→</span></button></div>
-                    <dl t-if="ox and ox.branches" class="o_sm_ov_stats">
-                        <dt>Food cost %</dt><dd><t t-esc="this.formatBranchValue(ox.branches.summary.food_cost_pct, 'percent')"/></dd>
-                        <dt>Waste % of sales</dt><dd><t t-esc="this.formatBranchValue(ox.branches.summary.waste_pct_of_sales, 'percent')"/></dd>
-                        <dt>Branch contribution</dt><dd><t t-esc="this.formatBranchValue(ox.branches.summary.contribution, 'currency')"/></dd>
-                        <t t-foreach="ox.branches.rows.slice(0, 4)" t-as="row" t-key="row.warehouse_id"><dt t-att-title="row.manager"><t t-esc="row.name"/></dt><dd><span t-att-class="'o_sm_br_status ' + row.status_class"><t t-esc="row.status_label"/></span></dd></t>
-                    </dl>
-                    <p t-else="" class="o_sm_ov_empty o_sm_ov_empty_small">Not Available with your access rights.</p>
-                </article>
-                <article class="o_sm_ov_panel">
-                    <div class="o_sm_ov_panel_heading"><div><h2>People &amp; Staffing</h2></div><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.selectSection('people')">Open <span>→</span></button></div>
-                    <dl t-if="ox and ox.people" class="o_sm_ov_stats">
-                        <dt>Active employees</dt><dd><t t-esc="ox.people.summary.active_employees"/></dd>
-                        <dt>Attendance exceptions</dt><dd><t t-esc="ox.people.summary.attendance_exceptions === false ? 'Not Configured' : ox.people.summary.attendance_exceptions"/></dd>
-                        <dt>Branches needing cover</dt><dd><t t-esc="ox.people.summary.branches_needing_coverage === false ? 'Not Configured' : ox.people.summary.branches_needing_coverage"/></dd>
-                        <dt>Overdue staff tasks</dt><dd><t t-esc="ox.people.summary.overdue_tasks"/></dd>
-                    </dl>
-                    <p t-else="" class="o_sm_ov_empty o_sm_ov_empty_small">Not Available with your access rights.</p>
-                </article>
-            </section>
-
-            <section class="o_sm_ov_secondary_grid">
-                <article class="o_sm_ov_panel">
-                    <div class="o_sm_ov_panel_heading"><div><h2>Strategic Performance</h2><p>Approved KPI targets and active objectives in scope</p></div></div>
-                    <t t-if="ox and ox.strategy">
-                        <t t-foreach="[['KPI targets', ox.strategy.kpis, ox.strategy.kpi_total], ['Objectives', ox.strategy.objectives, ox.strategy.objective_total]]" t-as="group" t-key="group[0]">
-                            <div class="o_sm_ov_strategy_row">
-                                <div class="o_sm_ov_strategy_label"><strong><t t-esc="group[0]"/></strong><small><t t-esc="group[2]"/> total</small></div>
-                                <div class="o_sm_ov_strategy_bar" role="img" t-att-aria-label="group[0] + ' status'"><i class="o_sm_ov_on_track" t-att-style="'width:' + this.statusShare(group[1], 'on_track') + '%'"/><i class="o_sm_ov_at_risk" t-att-style="'width:' + this.statusShare(group[1], 'at_risk') + '%'"/><i class="o_sm_ov_not_evaluated" t-att-style="'width:' + this.statusShare(group[1], 'not_evaluated') + '%'"/></div>
-                                <div class="o_sm_ov_strategy_counts"><span class="o_sm_ov_on_track_text"><t t-esc="group[1].on_track"/> On Track</span><span class="o_sm_ov_at_risk_text"><t t-esc="group[1].at_risk"/> At Risk</span><span><t t-esc="group[1].not_evaluated"/> Not Evaluated</span></div>
-                            </div>
-                        </t>
-                        <p class="o_sm_ov_empty o_sm_ov_empty_small">Average KPI attainment: <t t-esc="ox.strategy.kpi_average_attainment === false ? 'Not Evaluated' : this.formatNumber(ox.strategy.kpi_average_attainment) + '%'"/>. Periods in progress are measured live from operational data.</p>
-                        <div t-foreach="ox.strategy.objectives_at_risk" t-as="objective" t-key="objective_index" class="o_sm_ov_task_row">
-                            <span class="o_sm_ov_task_mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 22 20H2Z"/><path d="M12 9v5M12 17h.01"/></svg></span>
-                            <div class="o_sm_ov_task_text"><strong><t t-esc="objective.name"/></strong><span><t t-esc="objective.branch"/> · <t t-esc="objective.owner"/> · score <t t-esc="objective.score"/>%<t t-if="objective.overdue"> · overdue</t></span></div>
-                            <time><t t-esc="this.formatDate(objective.deadline)"/></time>
-                        </div>
-                    </t>
-                    <p t-else="" class="o_sm_ov_empty">Not Available.</p>
-                </article>
-                <article class="o_sm_ov_panel">
-                    <div class="o_sm_ov_panel_heading"><div><h2>Recent Activities</h2><p>POS, purchasing, inventory, attendance and objective changes</p></div></div>
-                    <div t-if="ox and ox.activities.length" class="o_sm_ov_task_list">
-                        <div t-foreach="ox.activities" t-as="activity" t-key="activity_index" class="o_sm_ov_task_row">
-                            <span class="o_sm_ov_task_mark"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/></svg></span>
-                            <div class="o_sm_ov_task_text"><strong><t t-esc="activity.title"/></strong><span><t t-esc="activity.branch"/> · <t t-esc="activity.detail"/></span></div>
-                            <time><t t-esc="this.formatDate(activity.date)"/></time>
-                        </div>
-                    </div>
-                    <div t-else="" class="o_sm_ov_empty">No recorded activity in this period.</div>
-                </article>
-            </section>
-            </t>
-
-            <section t-else="" class="o_sm_ov_secondary_grid">
-                <article class="o_sm_ov_panel">
-                    <div class="o_sm_ov_panel_heading"><div><h2>Your Follow-ups</h2><p>Activities assigned to you</p></div></div>
-                    <div t-if="this.state.data.tasks and this.state.data.tasks.length" class="o_sm_ov_task_list">
-                        <div t-foreach="this.state.data.tasks" t-as="task" t-key="task_index" class="o_sm_ov_task_row">
-                            <span class="o_sm_ov_task_mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg></span>
-                            <div class="o_sm_ov_task_text"><strong><t t-esc="task.name"/></strong><span><t t-esc="task.record"/></span></div>
-                            <time><t t-esc="this.formatDate(task.due_date)"/></time>
-                        </div>
-                    </div>
-                    <div t-else="" class="o_sm_ov_empty">No follow-ups are assigned to you.</div>
-                </article>
-                <article class="o_sm_ov_panel">
-                    <div class="o_sm_ov_panel_heading"><div><h2>Your Overdue Tasks</h2><p>From your People summary</p></div><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.selectSection('people')">Open <span>→</span></button></div>
-                    <p class="o_sm_ov_empty"><t t-esc="ox and ox.people ? ox.people.summary.overdue_tasks + ' overdue' : 'Not Available'"/></p>
-                </article>
+                </div>
+                <t t-set="historyRows" t-value="this.filteredRequestHistory"/>
+                <div t-if="historyRows.length" class="o_sm_req_table_wrap"><table class="o_sm_req_table">
+                    <thead><tr><th>Objective</th><th>Branch</th><th>Proposed Target</th><th>Proposed By</th><th>Date</th><th>Status</th><th>Reviewed By</th><th class="o_sm_req_actions_col">Action</th></tr></thead>
+                    <tbody>
+                        <tr t-foreach="rx.history ? this.pageRows('req_history', historyRows) : historyRows.slice(0, 5)" t-as="row" t-key="row.review_id">
+                            <td data-label="Objective" class="o_sm_req_objective"><strong t-att-title="row.name"><t t-esc="row.name"/></strong><small t-if="row.decision === 'rejected' and row.reason" t-att-title="row.reason">Reason: <t t-esc="row.reason"/></small></td>
+                            <td data-label="Branch"><t t-esc="row.branch"/></td>
+                            <td data-label="Proposed Target" class="o_sm_req_target" t-att-title="row.proposed_target"><t t-esc="row.proposed_target or '—'"/></td>
+                            <td data-label="Proposed By"><t t-esc="row.proposer"/></td>
+                            <td data-label="Date" class="o_sm_req_date"><t t-esc="this.formatRequestDate(row.submitted_at)"/></td>
+                            <td data-label="Status"><span t-att-class="'o_sm_req_badge ' + (row.decision === 'approved' ? 'is-approved' : 'is-rejected')"><t t-esc="row.status"/></span></td>
+                            <td data-label="Reviewed By"><t t-esc="row.reviewer"/><small class="o_sm_req_sub"><t t-esc="this.formatRequestDate(row.decided_at)"/></small></td>
+                            <td data-label="Action" class="o_sm_req_actions"><button type="button" class="o_sm_req_btn is-ghost" t-on-click="() => this.openRequestReview(row)">View</button></td>
+                        </tr>
+                    </tbody>
+                </table></div>
+                <t t-if="rx.history and historyRows.length"><t t-call="strategic_management.ListPager" pagerKey="'req_history'" pagerRows="historyRows"/></t>
+                <div t-if="!historyRows.length" class="o_sm_req_empty">
+                    <span class="o_sm_req_empty_icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></span>
+                    <t t-if="(rq.history || []).length"><strong>No requests with this status</strong><span>Choose All Statuses to see every reviewed proposal.</span></t>
+                    <t t-else=""><strong>No request history yet</strong><span>Reviewed proposals will appear here.</span></t>
+                </div>
             </section>
         </t>
-        <div t-else="" class="o_sm_ov_state">No business data is available for the selected period.</div>
+
+        <div t-if="this.reviewRequest" class="o_sm_req_overlay" t-on-click="() => this.closeRequestReview()">
+            <t t-set="item" t-value="this.reviewRequest"/>
+            <section class="o_sm_req_dialog" role="dialog" aria-modal="true" aria-labelledby="o_sm_req_review_title" t-on-click.stop="() => {}">
+                <header class="o_sm_req_dialog_head">
+                    <div><span class="o_sm_req_kicker">Objective request</span><h2 id="o_sm_req_review_title"><t t-esc="item.name"/></h2></div>
+                    <button type="button" class="o_sm_req_close" aria-label="Close" t-on-click="() => this.closeRequestReview()">×</button>
+                </header>
+                <div class="o_sm_req_dialog_body">
+                    <div class="o_sm_req_dialog_status">
+                        <span t-if="!item.review_id" class="o_sm_req_badge is-pending">Pending Review</span>
+                        <span t-else="" t-att-class="'o_sm_req_badge ' + (item.decision === 'approved' ? 'is-approved' : 'is-rejected')"><t t-esc="item.status"/></span>
+                        <span>Submitted <t t-esc="this.formatRequestDate(item.submitted_at)"/></span>
+                    </div>
+                    <p t-if="item.description" class="o_sm_req_description"><t t-esc="item.description"/></p>
+                    <dl class="o_sm_req_details">
+                        <div><dt>Branch</dt><dd><t t-esc="item.branch or '—'"/></dd></div>
+                        <div><dt>Proposed by</dt><dd><t t-esc="item.proposer or '—'"/></dd></div>
+                        <div class="is-wide"><dt>Proposed target</dt><dd><t t-esc="item.proposed_target or 'No measured target yet'"/></dd></div>
+                        <t t-if="!item.review_id">
+                            <div><dt>Supports</dt><dd><t t-esc="item.parent_objective or '—'"/></dd></div>
+                            <div><dt>Strategic plan</dt><dd><t t-esc="item.plan or '—'"/></dd></div>
+                            <div><dt>Measure</dt><dd><t t-esc="item.measure or 'Not chosen'"/></dd></div>
+                            <div><dt>Target</dt><dd><t t-esc="item.target or 'Not set'"/></dd></div>
+                            <div><dt>Measurement period</dt><dd><t t-if="item.period_start"><t t-esc="this.formatRequestDate(item.period_start)"/> – <t t-esc="this.formatRequestDate(item.period_end)"/></t><t t-else="">Not set</t></dd></div>
+                            <div><dt>Deadline</dt><dd><t t-esc="this.formatRequestDate(item.deadline)"/></dd></div>
+                            <div t-if="item.goal_type"><dt>Goal type</dt><dd><t t-esc="item.goal_type"/></dd></div>
+                            <div t-if="item.area"><dt>Business area</dt><dd><t t-esc="item.area"/></dd></div>
+                        </t>
+                        <t t-else="">
+                            <div><dt>Reviewed by</dt><dd><t t-esc="item.reviewer"/></dd></div>
+                            <div><dt>Decided on</dt><dd><t t-esc="this.formatRequestDate(item.decided_at)"/></dd></div>
+                            <div t-if="item.reason" class="is-wide"><dt>Rejection reason</dt><dd><t t-esc="item.reason"/></dd></div>
+                        </t>
+                    </dl>
+                    <div t-if="!item.review_id and item.readiness and item.readiness.length" class="o_sm_req_readiness">
+                        <h3>Measurement set-up</h3>
+                        <div t-foreach="item.readiness" t-as="step" t-key="step_index" t-att-class="'o_sm_req_check' + (step.ok ? ' is-ok' : '')"><span><t t-esc="step.ok ? '✓' : '•'"/></span><div><strong><t t-esc="step.label"/></strong><small t-if="step.message"><t t-esc="step.message"/></small></div></div>
+                    </div>
+                </div>
+                <footer class="o_sm_req_dialog_foot">
+                    <t t-if="!item.review_id and rq and rq.can_decide">
+                        <button type="button" class="o_sm_req_btn is-reject" t-att-disabled="this.state.deciding" t-on-click="() => this.openRejectRequest(item)">Reject</button>
+                        <button type="button" class="o_sm_req_btn is-approve" t-att-disabled="this.state.deciding" t-on-click="() => this.decideRequest(item, 'approve')">Approve</button>
+                    </t>
+                    <button t-if="item.review_id and item.objective_id and item.decision === 'approved'" type="button" class="o_sm_req_btn is-ghost" t-on-click="() => this.openRequestObjective(item.objective_id)">Open objective</button>
+                    <button type="button" class="o_sm_req_btn is-ghost" t-on-click="() => this.closeRequestReview()">Close</button>
+                </footer>
+            </section>
+        </div>
+
+        <div t-if="this.rejectRequest" class="o_sm_req_overlay is-top" t-on-click="() => this.closeRejectRequest()">
+            <t t-set="item" t-value="this.rejectRequest"/>
+            <section class="o_sm_req_dialog is-small" role="dialog" aria-modal="true" aria-labelledby="o_sm_req_reject_title" t-on-click.stop="() => {}">
+                <header class="o_sm_req_dialog_head">
+                    <div><span class="o_sm_req_kicker">Reject request</span><h2 id="o_sm_req_reject_title"><t t-esc="item.name"/></h2></div>
+                    <button type="button" class="o_sm_req_close" aria-label="Close" t-on-click="() => this.closeRejectRequest()">×</button>
+                </header>
+                <div class="o_sm_req_dialog_body">
+                    <label class="o_sm_req_reason"><span>Reason <small>(shared with <t t-esc="item.proposer"/>)</small></span>
+                        <textarea rows="3" maxlength="500" t-att-value="this.state.rejectReason" t-on-input="this.onRejectReasonInput" placeholder="Why is this proposal rejected?"/></label>
+                    <small class="o_sm_req_hint">The objective goes back to draft so the branch can revise and resubmit it.</small>
+                </div>
+                <footer class="o_sm_req_dialog_foot">
+                    <button type="button" class="o_sm_req_btn is-ghost" t-att-disabled="this.state.deciding" t-on-click="() => this.closeRejectRequest()">Cancel</button>
+                    <button type="button" class="o_sm_req_btn is-reject is-solid" t-att-disabled="this.state.deciding or !this.state.rejectReason.trim()" t-on-click="() => this.decideRequest(item, 'reject')">Reject request</button>
+                </footer>
+            </section>
+        </div>
     </div>
 </t>
                 <t t-elif="this.state.activeSection === 'sales_finance'">
@@ -269,6 +209,7 @@
     </label>
 </div>
 </header>
+        <t t-call="strategic_management.AreaGoals" areaKey="'sales_finance'"/>
 
         <section class="o_sm_sf_summary" aria-label="Sales summary preview">
             <article class="o_sm_sf_metric">
@@ -319,7 +260,7 @@
     <span><i class="o_sm_sf_legend_current"/>POS sales for the selected period</span>
 </div>
                 <svg class="o_sm_sf_trend_chart" viewBox="0 0 600 190"
-     preserveAspectRatio="none" role="img" aria-label="Monthly POS sales trend">
+     role="img" aria-label="Monthly POS sales trend">
     <line x1="48" y1="25" x2="590" y2="25"/>
     <line x1="48" y1="62" x2="590" y2="62"/>
     <line x1="48" y1="99" x2="590" y2="99"/>
@@ -336,7 +277,7 @@
         <circle t-att-cx="this.salesTrendX(point_index, this.state.data.sales_trend.length)"
                 t-att-cy="this.salesTrendY(point.sales)" r="3.5"
                 class="o_sm_sf_sales_point"/>
-        <text t-if="point_index === 0 || point_index === this.state.data.sales_trend.length - 1 || point_index % this.trendLabelStep() === 0" t-att-x="this.salesTrendX(point_index, this.state.data.sales_trend.length)" y="181" text-anchor="middle"><t t-esc="point.label"/></text>
+        <text t-if="point_index === 0 || point_index === this.state.data.sales_trend.length - 1 || (point_index % this.trendLabelStep() === 0 and this.state.data.sales_trend.length - 1 - point_index >= this.trendLabelStep() / 2)" t-att-x="this.salesTrendX(point_index, this.state.data.sales_trend.length)" y="181" text-anchor="middle"><t t-esc="point.label"/></text>
     </t>
 </svg>
             </article>
@@ -427,55 +368,112 @@
     </div>
 </t>
 <t t-elif="this.state.activeSection === 'inventory_waste'">
+    <t t-set="iv" t-value="this.state.inventoryData"/>
+    <t t-set="ix" t-value="this.state.invExpanded"/>
+    <t t-set="isHead" t-value="this.state.data and this.state.data.role === 'head_office'"/>
     <div class="o_sm_inventory_waste">
         <header class="o_sm_iw_header">
             <div class="o_sm_iw_title_block">
                 <h1>Inventory &amp; Waste</h1>
-                <p>Monitor current stock, recorded waste, expiry risk, and stock-count variances.</p>
-                <span t-if="this.state.inventoryData and this.state.inventoryData.available" class="o_sm_iw_preview_badge">Live Odoo Inventory data</span>
+                <p>Stock levels, waste and expiry risks across your branches.</p>
+                <div class="o_sm_iw_header_meta">
+                    <span t-if="iv and iv.available" class="o_sm_iw_preview_badge"><i class="o_sm_iw_live_dot"/> Live Odoo Inventory data</span>
+                    <button type="button" class="o_sm_iw_link" t-on-click="() => this.toggleInventory('goals')"><t t-esc="ix.goals ? 'Hide goals' : 'View goals →'"/></button>
+                </div>
             </div>
             <div class="o_sm_iw_filters">
-                <label class="o_sm_iw_filter">From <input type="date" t-att-value="this.state.dateStart" t-on-change="this.onStartDateChanged" aria-label="Inventory start date"/></label>
-                <label class="o_sm_iw_filter">To <input type="date" t-att-value="this.state.dateEnd" t-on-change="this.onEndDateChanged" aria-label="Inventory end date"/></label>
-                <label class="o_sm_iw_filter">Branch <select t-att-value="this.branchSelectValue" t-on-change="this.onWarehouseChanged" aria-label="Inventory branch filter"><option value="all">All Branches</option><t t-foreach="(this.state.inventoryData &amp;&amp; this.state.inventoryData.branch_options) || []" t-as="branch" t-key="branch.id"><option t-att-value="branch.id"><t t-esc="branch.name"/></option></t></select></label>
+                <label class="o_sm_iw_filter"><span>From</span><input type="date" t-att-value="this.state.dateStart" t-on-change="this.onStartDateChanged" aria-label="Inventory start date"/></label>
+                <label class="o_sm_iw_filter"><span>To</span><input type="date" t-att-value="this.state.dateEnd" t-on-change="this.onEndDateChanged" aria-label="Inventory end date"/></label>
+                <label class="o_sm_iw_filter"><span>Branch</span><select t-att-value="this.branchSelectValue" t-on-change="this.onWarehouseChanged" aria-label="Inventory branch filter"><option value="all">All Branches</option><t t-foreach="(iv &amp;&amp; iv.branch_options) || []" t-as="branch" t-key="branch.id"><option t-att-value="branch.id"><t t-esc="branch.name"/></option></t></select></label>
             </div>
         </header>
+        <t t-if="ix.goals"><t t-call="strategic_management.AreaGoals" areaKey="'inventory_waste'"/></t>
 
-        <div t-if="this.state.inventoryLoading" class="o_sm_iw_panel_note">Loading live stock, expiry, and waste data...</div>
-        <div t-if="!this.state.inventoryLoading &amp;&amp; !(this.state.inventoryData &amp;&amp; this.state.inventoryData.available)" class="o_sm_iw_panel_note"><t t-esc="(this.state.inventoryData &amp;&amp; this.state.inventoryData.messages &amp;&amp; this.state.inventoryData.messages[0]) || 'Inventory data is unavailable for this user or warehouse scope.'"/></div>
-        <div t-if="this.state.inventoryData &amp;&amp; this.state.inventoryData.available &amp;&amp; this.state.inventoryData.messages &amp;&amp; this.state.inventoryData.messages.length" class="o_sm_iw_panel_note"><t t-foreach="this.state.inventoryData.messages" t-as="message" t-key="message_index"><div><t t-esc="message"/></div></t></div>
+        <div t-if="this.state.inventoryLoading" class="o_sm_iw_panel_note">Loading live stock, expiry and waste data…</div>
+        <div t-if="!this.state.inventoryLoading &amp;&amp; !(iv &amp;&amp; iv.available)" class="o_sm_iw_panel_note"><t t-esc="(iv &amp;&amp; iv.messages &amp;&amp; iv.messages[0]) || 'Inventory data is unavailable for this user or warehouse scope.'"/></div>
 
-        <section class="o_sm_iw_summary" aria-label="Live inventory summary">
-            <article class="o_sm_iw_metric"><div class="o_sm_iw_metric_icon o_sm_iw_green"><span>ST</span></div><div class="o_sm_iw_metric_copy"><span>Low-stock items</span><strong><t t-esc="this.inventoryMetricValue(this.state.inventoryData &amp;&amp; this.state.inventoryData.summary ? this.state.inventoryData.summary.low_stock_count : false)"/></strong><small>Based on configured replenishment rules</small></div></article>
-            <article class="o_sm_iw_metric"><div class="o_sm_iw_metric_icon o_sm_iw_amber"><span>EX</span></div><div class="o_sm_iw_metric_copy"><span>Expiring soon</span><strong><t t-esc="this.inventoryMetricValue(this.state.inventoryData &amp;&amp; this.state.inventoryData.summary ? this.state.inventoryData.summary.expiring_soon_count : false)"/></strong><small>Tracked lots expiring in the next 7 days</small></div></article>
-            <article class="o_sm_iw_metric"><div class="o_sm_iw_metric_icon o_sm_iw_red"><span>W</span></div><div class="o_sm_iw_metric_copy"><span>Recorded waste cost</span><strong><t t-esc="this.formatInventoryCurrency(this.state.inventoryData &amp;&amp; this.state.inventoryData.summary ? this.state.inventoryData.summary.waste_cost : false)"/></strong><small>Validated scrap with supported valuation</small></div></article>
-            <article class="o_sm_iw_metric"><div class="o_sm_iw_metric_icon o_sm_iw_purple"><span>!</span></div><div class="o_sm_iw_metric_copy"><span>Stock discrepancies</span><strong><t t-esc="this.inventoryMetricValue(this.state.inventoryData &amp;&amp; this.state.inventoryData.summary ? this.state.inventoryData.summary.discrepancy_count : false)"/></strong><small>Unapplied physical-count differences</small></div></article>
+        <t t-set="summary" t-value="iv and iv.summary"/>
+        <t t-set="expiredLots" t-value="this.inventoryExpiredLotCount"/>
+        <section class="o_sm_iw_summary" aria-label="Inventory summary">
+            <article class="o_sm_iw_metric"><span class="o_sm_iw_metric_icon is-orange"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 4.2v9.6L12 21l-8-4.2V7.2Z"/><path d="m4.3 7.3 7.7 4.1 7.7-4.1M12 11.5V21"/></svg></span><div class="o_sm_iw_metric_copy"><span>Low-stock items</span><strong><t t-esc="this.inventoryMetricValue(summary ? summary.low_stock_count : false)"/></strong><small title="Products below their configured reorder minimum"><t t-esc="summary and summary.low_stock_count === false ? 'Needs readable reorder rules' : 'Below reorder level'"/></small></div></article>
+            <article class="o_sm_iw_metric"><span class="o_sm_iw_metric_icon is-red"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div class="o_sm_iw_metric_copy"><span>Expiring soon</span><strong><t t-esc="this.inventoryMetricValue(summary ? summary.expiring_soon_count : false)"/></strong><small title="Tracked lots with stock expiring in the next 7 days or already expired" t-att-class="expiredLots ? 'is-bad' : ''"><t t-esc="expiredLots ? expiredLots + (expiredLots === 1 ? ' expired lot' : ' expired lots') : (iv and iv.expiry_tracking_available === false ? 'Expiry tracking not set up' : 'Next 7 days')"/></small></div></article>
+            <article class="o_sm_iw_metric"><span class="o_sm_iw_metric_icon is-purple"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14l-1 14H6L5 7ZM9 7V4h6v3M3 7h18M10 11v6M14 11v6"/></svg></span><div class="o_sm_iw_metric_copy"><span>Recorded waste</span><strong><t t-esc="this.formatInventoryCurrency(summary ? summary.waste_cost : false)"/></strong><small title="Validated scrap at Odoo's stock cost. Products without a cost count as free, so check product costs before relying on this figure.">Recorded scrap value</small></div></article>
+            <article class="o_sm_iw_metric"><span class="o_sm_iw_metric_icon is-green"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 21.5 20h-19Z"/><path d="M12 10v4.5M12 17.2h.01"/></svg></span><div class="o_sm_iw_metric_copy"><span>Stock issues</span><strong><t t-esc="this.inventoryMetricValue(summary ? summary.discrepancy_count : false)"/></strong><small title="Unapplied physical-count differences">Requires review</small></div></article>
         </section>
 
-        <section class="o_sm_iw_grid o_sm_iw_top_grid">
-            <article class="o_sm_iw_panel">
-                <div class="o_sm_iw_panel_heading"><div><h2>Stock Health</h2><p>Products below configured reorder minimums</p></div><button t-if="this.state.data and this.state.data.role === 'head_office'" type="button" class="o_sm_iw_panel_tag" t-on-click="() => this.openAction('stock.action_orderpoint')">Live reorder rules</button><span t-else="" class="o_sm_iw_panel_tag">Live reorder rules</span></div>
+        <section class="o_sm_iw_grid">
+            <article t-att-class="'o_sm_iw_panel' + (ix.stock ? ' is-expanded' : '')">
+                <div class="o_sm_iw_panel_heading"><div><h2>Stock Health</h2><p>Products below reorder level</p></div>
+                    <button t-if="(iv &amp;&amp; iv.stock_health &amp;&amp; iv.stock_health.length) > 4" type="button" class="o_sm_iw_link" t-on-click="() => this.toggleInventory('stock')"><t t-esc="ix.stock ? 'Show top 4' : 'See all →'"/></button>
+                    <button t-if="isHead" type="button" class="o_sm_iw_link" t-on-click="() => this.openAction('stock.action_orderpoint')">View inventory →</button></div>
                 <div class="o_sm_iw_stock_list">
-                    <t t-foreach="(this.state.inventoryData &amp;&amp; this.state.inventoryData.stock_health) || []" t-as="item" t-key="item.product_id + '-' + item.warehouse_id">
-                        <div class="o_sm_iw_stock_row"><div class="o_sm_iw_product_mark o_sm_iw_milk"><span>ST</span></div><div class="o_sm_iw_stock_name"><strong><t t-esc="item.name"/></strong><small><t t-esc="item.branch_name"/> - <t t-esc="this.formatInventoryQuantity(item.available_quantity, item.unit)"/> available; forecast <t t-esc="this.formatInventoryQuantity(item.forecast_quantity, item.unit)"/> / minimum <t t-esc="this.formatInventoryQuantity(item.minimum_quantity, item.unit)"/></small><div class="o_sm_iw_stock_track"><span t-att-class="item.status === 'critical' ? 'o_sm_iw_fill_critical' : 'o_sm_iw_fill_low'" t-att-style="'width:' + this.inventoryStockWidth(item) + '%'"/></div></div><span t-att-class="'o_sm_iw_status ' + (item.status === 'critical' ? 'o_sm_iw_status_critical' : 'o_sm_iw_status_low')"><t t-esc="item.status_label"/></span></div>
+                    <t t-foreach="ix.stock ? this.pageRows('iw_stock', (iv &amp;&amp; iv.stock_health) || []) : ((iv &amp;&amp; iv.stock_health) || []).slice(0, 4)" t-as="item" t-key="item.product_id + '-' + item.warehouse_id">
+                        <div class="o_sm_iw_stock_row">
+                            <div class="o_sm_iw_stock_name"><strong t-att-title="item.name"><t t-esc="item.name"/></strong><small><t t-esc="item.branch_name"/> · Available <t t-esc="this.formatInventoryQuantity(item.available_quantity, item.unit)"/> · Forecast <t t-esc="this.formatInventoryQuantity(item.forecast_quantity, item.unit)"/> · Min <t t-esc="this.formatInventoryQuantity(item.minimum_quantity, item.unit)"/></small><div class="o_sm_iw_stock_track"><span t-att-class="item.status === 'critical' ? 'o_sm_iw_fill_critical' : 'o_sm_iw_fill_low'" t-att-style="'width:' + this.inventoryStockWidth(item) + '%'"/></div></div>
+                            <span t-att-class="'o_sm_iw_status ' + (item.status === 'critical' ? 'o_sm_iw_status_critical' : 'o_sm_iw_status_low')"><t t-esc="item.status_label"/></span>
+                        </div>
                     </t>
-                    <div t-if="!(this.state.inventoryData &amp;&amp; this.state.inventoryData.stock_health &amp;&amp; this.state.inventoryData.stock_health.length)" class="o_sm_iw_panel_note">No low-stock items are available to show. Verify that replenishment rules are configured for the selected warehouses.</div>
+                    <div t-if="!(iv &amp;&amp; iv.stock_health &amp;&amp; iv.stock_health.length)" class="o_sm_iw_empty"><t t-esc="summary and summary.low_stock_count === false ? 'Low stock cannot be judged without readable reorder rules for this scope.' : 'No products are below their reorder level.'"/></div>
+                    <t t-if="ix.stock"><t t-call="strategic_management.ListPager" pagerKey="'iw_stock'" pagerRows="(iv &amp;&amp; iv.stock_health) || []"/></t>
                 </div>
             </article>
-            <article class="o_sm_iw_panel">
-                <div class="o_sm_iw_panel_heading"><div><h2>Waste by Ingredient</h2><p>Recorded scrap valuation by product</p></div><span class="o_sm_iw_panel_tag">Selected period</span></div>
-                <div class="o_sm_iw_waste_layout">
-                    <div class="o_sm_iw_donut" t-att-style="this.inventoryWasteDonutStyle()" role="img" aria-label="Recorded waste cost by ingredient"><div class="o_sm_iw_donut_hole"><strong><t t-esc="this.formatInventoryCurrency(this.state.inventoryData &amp;&amp; this.state.inventoryData.summary ? this.state.inventoryData.summary.waste_cost : false)"/></strong><small>Recorded waste</small></div></div>
-                    <div class="o_sm_iw_legend">
-                        <t t-foreach="(this.state.inventoryData &amp;&amp; this.state.inventoryData.waste_by_product) || []" t-as="waste" t-key="waste.product_id"><div class="o_sm_iw_legend_row"><i t-att-style="'background-color:' + this.inventoryColor(waste_index)"/><span><t t-esc="waste.product"/></span><strong><t t-esc="this.formatInventoryCurrency(waste.cost)"/></strong></div></t>
-                        <div t-if="!(this.state.inventoryData &amp;&amp; this.state.inventoryData.waste_by_product &amp;&amp; this.state.inventoryData.waste_by_product.length)" class="o_sm_iw_panel_note"><t t-esc="this.state.inventoryData &amp;&amp; this.state.inventoryData.waste_breakdown_available ? 'No validated waste cost was recorded for this period.' : 'Breakdown requires supported scrap reasons and inventory valuation data.'"/></div>
-                    </div>
+            <article t-att-class="'o_sm_iw_panel' + (ix.waste ? ' is-expanded' : '')">
+                <div class="o_sm_iw_panel_heading"><div><h2>Recorded Waste</h2><p>Recorded scrap value by product</p></div>
+                    <button t-if="(iv &amp;&amp; iv.waste_by_product &amp;&amp; iv.waste_by_product.length) > 5" type="button" class="o_sm_iw_link" t-on-click="() => this.toggleInventory('waste')"><t t-esc="ix.waste ? 'Show top 5' : 'View waste details →'"/></button></div>
+                <div class="o_sm_iw_waste_bars" role="list" aria-label="Recorded waste cost by product">
+                    <t t-foreach="ix.waste ? ((iv &amp;&amp; iv.waste_by_product) || []) : ((iv &amp;&amp; iv.waste_by_product) || []).slice(0, 5)" t-as="waste" t-key="waste.product_id"><div class="o_sm_iw_waste_bar" role="listitem"><span class="o_sm_iw_waste_name" t-att-title="waste.product"><t t-esc="waste.product"/></span><div class="o_sm_iw_stock_track"><span t-att-style="'width:' + this.inventoryWasteWidth(waste) + '%'"/></div><strong><t t-esc="this.formatInventoryCurrency(waste.cost)"/></strong></div></t>
+                    <div t-if="!(iv &amp;&amp; iv.waste_by_product &amp;&amp; iv.waste_by_product.length)" class="o_sm_iw_empty"><t t-esc="iv &amp;&amp; iv.waste_breakdown_available ? 'No validated waste cost was recorded for this period.' : 'Breakdown needs supported scrap reasons and inventory valuation.'"/></div>
+                    <small t-if="iv &amp;&amp; iv.waste_by_product &amp;&amp; iv.waste_by_product.length" class="o_sm_iw_hint">At Odoo's stock cost; products without a cost count as free.</small>
                 </div>
             </article>
         </section>
 
-        <section class="o_sm_iw_grid o_sm_iw_middle_grid">
+        <section class="o_sm_iw_grid">
+            <article t-att-class="'o_sm_iw_panel' + (ix.attention ? ' is-expanded' : '')">
+                <div class="o_sm_iw_panel_heading"><div><h2 class="is-warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 21.5 20h-19Z"/><path d="M12 10v4.5M12 17.2h.01"/></svg>Needs Attention</h2><p>Current stock and expiry issues</p></div>
+                    <button t-if="(iv &amp;&amp; iv.attention &amp;&amp; iv.attention.length) > 3" type="button" class="o_sm_iw_link" t-on-click="() => this.toggleInventory('attention')"><t t-esc="ix.attention ? 'Show top 3' : 'See all alerts →'"/></button></div>
+                <div class="o_sm_iw_attention_list">
+                    <t t-foreach="ix.attention ? this.pageRows('iw_attention', (iv &amp;&amp; iv.attention) || []) : ((iv &amp;&amp; iv.attention) || []).slice(0, 3)" t-as="item" t-key="item.kind + '-' + item.title + '-' + item_index">
+                        <div class="o_sm_iw_attention_row">
+                            <span t-att-class="'o_sm_iw_attention_icon ' + (item.severity === 'high' ? 'is-critical' : item.severity === 'medium' ? 'is-warn' : 'is-review')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 21.5 20h-19Z"/><path d="M12 10v4.5M12 17.2h.01"/></svg></span>
+                            <div class="o_sm_iw_attention_text"><strong t-att-title="item.title"><t t-esc="item.title"/></strong><small t-att-title="item.detail"><t t-esc="item.detail"/><t t-if="item.date"> · <t t-esc="this.formatDate(item.date)"/></t></small></div>
+                            <span t-att-class="'o_sm_iw_status ' + (item.severity === 'high' ? 'o_sm_iw_status_critical' : item.severity === 'medium' ? 'o_sm_iw_status_low' : 'o_sm_iw_status_ok')"><t t-esc="item.severity === 'high' ? 'High' : item.severity === 'medium' ? 'Medium' : 'Review'"/></span>
+                            <button t-if="isHead and item.res_model and item.res_id" type="button" class="o_sm_iw_item_action" t-on-click="() => this.openIssueRecord(item)">View</button>
+                        </div>
+                    </t>
+                    <div t-if="!(iv &amp;&amp; iv.attention &amp;&amp; iv.attention.length)" class="o_sm_iw_empty">No stock or expiry issues for this scope.</div>
+                    <t t-if="ix.attention"><t t-call="strategic_management.ListPager" pagerKey="'iw_attention'" pagerRows="(iv &amp;&amp; iv.attention) || []"/></t>
+                </div>
+            </article>
             <article class="o_sm_iw_panel">
+                <div class="o_sm_iw_panel_heading"><div><h2>Inventory by Branch</h2><p>Low-stock items by branch</p></div><button type="button" class="o_sm_iw_link" t-on-click="() => this.selectSection('branches')">View branch details →</button></div>
+                <t t-set="branchRows" t-value="(iv &amp;&amp; iv.branch_comparison) || []"/>
+                <div class="o_sm_iw_branch_bars">
+                    <div t-foreach="branchRows.slice(0, 6)" t-as="branch" t-key="branch.warehouse_id" class="o_sm_iw_waste_bar">
+                        <span class="o_sm_iw_waste_name" t-att-title="branch.branch"><t t-esc="branch.branch"/></span>
+                        <div class="o_sm_iw_stock_track"><span t-att-style="'width:' + this.inventoryBranchWidth(branch) + '%'"/></div>
+                        <strong><t t-esc="branch.low_stock_count === false ? 'N/A' : this.inventoryMetricValue(branch.low_stock_count)"/></strong>
+                    </div>
+                    <div t-if="!branchRows.length" class="o_sm_iw_empty">No authorized branch data is available.</div>
+                    <small t-if="branchRows.length > 6" class="o_sm_iw_hint">Showing 6 of <t t-esc="branchRows.length"/> branches; open Detailed reports below for all.</small>
+                </div>
+            </article>
+        </section>
+
+        <section t-if="iv &amp;&amp; iv.available &amp;&amp; iv.messages &amp;&amp; iv.messages.length" class="o_sm_iw_validation" role="note">
+            <span class="o_sm_iw_validation_icon">i</span>
+            <div><strong>Some inventory measures need validation</strong><small><t t-esc="iv.messages[0]"/><t t-if="iv.messages.length > 1"> (+<t t-esc="iv.messages.length - 1"/> more)</t></small>
+                <details t-if="iv.messages.length > 1" class="o_sm_iw_validation_more"><summary>Show all</summary><div t-foreach="iv.messages" t-as="message" t-key="message_index"><t t-esc="message"/></div></details></div>
+        </section>
+
+        <section class="o_sm_iw_details_bar" aria-label="Detailed reports">
+            <span>Detailed reports</span>
+            <button type="button" t-att-class="ix.movement ? 'is-active' : ''" t-on-click="() => this.toggleInventory('movement')">Inventory movement</button>
+            <button type="button" t-att-class="ix.expiring ? 'is-active' : ''" t-on-click="() => this.toggleInventory('expiring')">Expiring stock</button>
+            <button type="button" t-att-class="ix.branches ? 'is-active' : ''" t-on-click="() => this.toggleInventory('branches')">Branch comparison</button>
+        </section>
+        <section t-if="ix.movement or ix.expiring or ix.branches" class="o_sm_iw_details">
+            <article t-if="ix.movement" class="o_sm_iw_panel is-expanded">
                 <div class="o_sm_iw_panel_heading"><div><h2>Inventory Movement</h2><p>Stock movement for a selected product and reporting period</p></div><select class="o_sm_iw_select_preview" t-att-value="this.state.inventoryProductId || (this.state.inventoryData &amp;&amp; this.state.inventoryData.selected_product_id) || 'all'" t-on-change="this.onInventoryProductChanged" aria-label="Product for inventory movement"><option value="all">Select product</option><t t-foreach="(this.state.inventoryData &amp;&amp; this.state.inventoryData.inventory_products) || []" t-as="product" t-key="product.id"><option t-att-value="product.id"><t t-esc="product.name"/></option></t></select></div>
                 <t t-set="movement" t-value="this.state.inventoryData &amp;&amp; this.state.inventoryData.movement ? this.state.inventoryData.movement : false"/>
                 <div class="o_sm_iw_movement_grid">
@@ -487,95 +485,166 @@
                 </div>
                 <div class="o_sm_iw_closing_row"><div><span>Expected closing stock</span><strong><t t-esc="this.formatInventoryQuantity(movement ? movement.expected_closing_stock : false, movement ? movement.unit : '')"/></strong></div><div><span>Physical count</span><strong><t t-esc="this.formatInventoryQuantity(movement ? movement.physical_count : false, movement ? movement.unit : '')"/></strong></div><div class="o_sm_iw_variance"><span>Unexplained variance</span><strong><t t-esc="this.formatInventoryQuantity(movement ? movement.variance : false, movement ? movement.unit : '')"/></strong></div></div>
                 <div class="o_sm_iw_panel_note"><t t-esc="movement ? movement.message : 'Select a product with accessible stock movements.'"/></div>
-                <div t-if="movement and movement.recipe_consumption_note" class="o_sm_iw_panel_note"><strong t-if="movement.recipe_consumption_quantity !== false"><t t-esc="this.formatInventoryQuantity(movement.recipe_consumption_quantity, movement.unit)"/> · </strong><t t-esc="movement.recipe_consumption_note"/></div>
-            </article>
-            <article class="o_sm_iw_panel">
-                <div class="o_sm_iw_panel_heading"><div><h2>Needs Your Attention</h2><p>Current stock, expiry, and count exceptions</p></div><span class="o_sm_iw_alert_count"><t t-esc="(this.state.inventoryData &amp;&amp; this.state.inventoryData.attention) ? this.state.inventoryData.attention.length : 0"/></span></div>
-                <div class="o_sm_iw_attention_list">
-                    <t t-foreach="(this.state.inventoryData &amp;&amp; this.state.inventoryData.attention) || []" t-as="item" t-key="item.kind + '-' + item.title + '-' + item_index"><div class="o_sm_iw_attention_row"><span t-att-class="'o_sm_iw_attention_icon ' + (item.severity === 'high' ? 'o_sm_iw_attention_red' : item.severity === 'medium' ? 'o_sm_iw_attention_amber' : 'o_sm_iw_attention_purple')">!</span><div><strong><t t-esc="item.title"/></strong><small><t t-esc="item.detail"/><t t-if="item.date"> - <t t-esc="this.formatDate(item.date)"/></t></small></div><span t-att-class="'o_sm_iw_status ' + (item.severity === 'high' ? 'o_sm_iw_status_critical' : item.severity === 'medium' ? 'o_sm_iw_status_low' : 'o_sm_iw_status_ok')"><t t-esc="item.severity === 'high' ? 'High' : item.severity === 'medium' ? 'Medium' : 'Review'"/></span></div></t>
-                    <div t-if="!(this.state.inventoryData &amp;&amp; this.state.inventoryData.attention &amp;&amp; this.state.inventoryData.attention.length)" class="o_sm_iw_panel_note">No inventory exceptions were returned for the selected scope.</div>
+                <div t-if="movement and movement.recipe_consumption_note" class="o_sm_iw_recipe_callout">
+                    <div class="o_sm_iw_recipe_summary">
+                        <span class="o_sm_iw_recipe_icon" aria-hidden="true">i</span>
+                        <div class="o_sm_iw_recipe_copy">
+                            <strong><t t-if="movement.recipe_consumption_quantity === false">Recipe estimate unavailable</t><t t-else="">Estimated recipe consumption</t></strong>
+                            <small><t t-if="movement.recipe_consumption_quantity === false">Historical recipe data needs review. Actual stock movements above are shown separately.</t><t t-else=""><t t-esc="this.formatInventoryQuantity(movement.recipe_consumption_quantity, movement.unit)"/> · estimate only; not added to recorded stock movements.</t></small>
+                        </div>
+                    </div>
+                    <details class="o_sm_iw_recipe_details">
+                        <summary>View explanation details</summary>
+                        <p><t t-esc="movement.recipe_consumption_note"/></p>
+                    </details>
                 </div>
             </article>
-        </section>
-
-        <section class="o_sm_iw_grid o_sm_iw_bottom_grid">
-            <article class="o_sm_iw_panel">
+            <article t-if="ix.expiring" class="o_sm_iw_panel is-expanded">
                 <div class="o_sm_iw_panel_heading"><div><h2>Expiring Stock</h2><p>Tracked lots with stock on hand expiring within seven days or already expired</p></div><span class="o_sm_iw_panel_tag">Live lot data</span></div>
                 <div class="o_sm_iw_table_wrap"><table class="o_sm_iw_table"><thead><tr><th>Product / Lot</th><th>Branch</th><th>Expiry</th><th>Quantity</th><th>Value at cost</th><th>Status</th></tr></thead><tbody>
-                    <t t-foreach="(this.state.inventoryData &amp;&amp; this.state.inventoryData.expiring_stock) || []" t-as="item" t-key="item.lot_id + '-' + item.warehouse_id"><tr><td><strong><t t-esc="item.product"/></strong><small> - <t t-esc="item.lot_name"/></small></td><td><t t-esc="item.branch"/></td><td><t t-esc="this.formatDate(item.expiry_date)"/></td><td><t t-esc="this.formatInventoryQuantity(item.quantity, item.unit)"/></td><td><t t-esc="this.formatInventoryCurrency(item.value_at_cost)"/></td><td><span t-att-class="'o_sm_iw_status ' + (item.days_left &lt; 0 ? 'o_sm_iw_status_critical' : item.days_left &lt;= 2 ? 'o_sm_iw_status_low' : 'o_sm_iw_status_ok')"><t t-esc="item.status"/></span></td></tr></t>
+                    <t t-foreach="this.pageRows('iw_expiring', (this.state.inventoryData &amp;&amp; this.state.inventoryData.expiring_stock) || [])" t-as="item" t-key="item.lot_id + '-' + item.warehouse_id"><tr><td><strong><t t-esc="item.product"/></strong><small> - <t t-esc="item.lot_name"/></small></td><td><t t-esc="item.branch"/></td><td><t t-esc="this.formatDate(item.expiry_date)"/></td><td><t t-esc="this.formatInventoryQuantity(item.quantity, item.unit)"/></td><td><t t-esc="this.formatInventoryCurrency(item.value_at_cost)"/></td><td><span t-att-class="'o_sm_iw_status ' + (item.days_left &lt; 0 ? 'o_sm_iw_status_critical' : item.days_left &lt;= 2 ? 'o_sm_iw_status_low' : 'o_sm_iw_status_ok')"><t t-esc="item.status"/></span></td></tr></t>
                     <tr t-if="!(this.state.inventoryData &amp;&amp; this.state.inventoryData.expiring_stock &amp;&amp; this.state.inventoryData.expiring_stock.length)"><td colspan="6"><t t-esc="this.state.inventoryData &amp;&amp; this.state.inventoryData.expiry_tracking_available === false ? 'Expiry tracking is not configured or available.' : 'No tracked stock is expiring within the current window.'"/></td></tr>
-                </tbody></table></div>
+                </tbody></table></div><t t-call="strategic_management.ListPager" pagerKey="'iw_expiring'" pagerRows="(this.state.inventoryData &amp;&amp; this.state.inventoryData.expiring_stock) || []"/>
             </article>
-            <article class="o_sm_iw_panel">
+            <article t-if="ix.branches" class="o_sm_iw_panel is-expanded">
                 <div class="o_sm_iw_panel_heading"><div><h2>Branch Inventory Comparison</h2><p>Compare low stock, recorded waste cost, and count variances</p></div><span class="o_sm_iw_panel_tag">Authorized warehouses</span></div>
                 <div class="o_sm_iw_table_wrap"><table class="o_sm_iw_table"><thead><tr><th>Branch</th><th>Low stock</th><th>Waste cost</th><th>Variance items</th></tr></thead><tbody>
-                    <t t-foreach="(this.state.inventoryData &amp;&amp; this.state.inventoryData.branch_comparison) || []" t-as="branch" t-key="branch.warehouse_id"><tr><td><t t-esc="branch.branch"/></td><td><t t-esc="this.inventoryMetricValue(branch.low_stock_count)"/></td><td><t t-esc="this.formatInventoryCurrency(branch.waste_cost)"/></td><td><t t-esc="this.inventoryMetricValue(branch.variance_count)"/></td></tr></t>
+                    <t t-foreach="this.pageRows('iw_branches', (this.state.inventoryData &amp;&amp; this.state.inventoryData.branch_comparison) || [])" t-as="branch" t-key="branch.warehouse_id"><tr><td><t t-esc="branch.branch"/></td><td><t t-esc="this.inventoryMetricValue(branch.low_stock_count)"/></td><td><t t-esc="this.formatInventoryCurrency(branch.waste_cost)"/></td><td><t t-esc="this.inventoryMetricValue(branch.variance_count)"/></td></tr></t>
                     <tr t-if="!(this.state.inventoryData &amp;&amp; this.state.inventoryData.branch_comparison &amp;&amp; this.state.inventoryData.branch_comparison.length)"><td colspan="4">No authorized warehouse comparison data is available.</td></tr>
-                </tbody></table></div>
+                </tbody></table></div><t t-call="strategic_management.ListPager" pagerKey="'iw_branches'" pagerRows="(this.state.inventoryData &amp;&amp; this.state.inventoryData.branch_comparison) || []"/>
             </article>
         </section>
     </div>
 </t>
                 <t t-elif="this.state.activeSection === 'purchasing'">
+    <t t-set="pd" t-value="this.state.purchasingData"/>
+    <t t-set="ex" t-value="this.state.purExpanded"/>
     <div class="o_sm_purchasing_ui">
         <header class="o_sm_pur_header">
             <div class="o_sm_pur_title_block">
                 <h1>Purchasing</h1>
-                <p>Actual purchase orders, supplier deliveries, and purchasing costs from Odoo.</p>
-                <span class="o_sm_pur_preview_badge"><svg class="o_sm_pur_icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5h.01"/></svg> Live Odoo Purchase data</span>
+                <p>Purchasing performance and supplier deliveries.</p>
+                <span class="o_sm_pur_preview_badge"><i class="o_sm_pur_live_dot"/> Live Odoo Purchase data</span>
             </div>
             <div class="o_sm_pur_filters">
-                <label class="o_sm_pur_filter">From <input type="date" t-att-value="this.state.dateStart" t-on-change="this.onStartDateChanged" aria-label="Purchasing start date"/></label>
-                <label class="o_sm_pur_filter">To <input type="date" t-att-value="this.state.dateEnd" t-on-change="this.onEndDateChanged" aria-label="Purchasing end date"/></label>
-                <label class="o_sm_pur_filter">Branch <select t-att-value="this.branchSelectValue" t-on-change="this.onWarehouseChanged" aria-label="Purchasing branch filter"><option value="all">All Branches</option><t t-foreach="(this.state.purchasingData ? this.state.purchasingData.branch_options : [])" t-as="branch" t-key="branch.id"><option t-att-value="branch.id"><t t-esc="branch.name"/></option></t></select></label>
+                <label class="o_sm_pur_filter"><span>From</span><input type="date" t-att-value="this.state.dateStart" t-on-change="this.onStartDateChanged" aria-label="Purchasing start date"/></label>
+                <label class="o_sm_pur_filter"><span>To</span><input type="date" t-att-value="this.state.dateEnd" t-on-change="this.onEndDateChanged" aria-label="Purchasing end date"/></label>
+                <label class="o_sm_pur_filter"><span>Branch</span><select t-att-value="this.branchSelectValue" t-on-change="this.onWarehouseChanged" aria-label="Purchasing branch filter"><option value="all">All Branches</option><t t-foreach="(pd ? pd.branch_options : [])" t-as="branch" t-key="branch.id"><option t-att-value="branch.id"><t t-esc="branch.name"/></option></t></select></label>
             </div>
         </header>
 
+        <section class="o_sm_pur_goals_strip" aria-label="Purchasing goals">
+            <t t-set="goalSummary" t-value="this.purchasingGoalSummary"/>
+            <span class="o_sm_pur_strip_icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg></span>
+            <strong>Purchasing goals</strong>
+            <t t-if="goalSummary and goalSummary.total">
+                <span class="o_sm_pur_strip_count"><b><t t-esc="goalSummary.total"/></b> goals</span>
+                <span class="o_sm_pur_pill is-good"><t t-esc="goalSummary.onTrack"/> on track</span>
+                <span class="o_sm_pur_pill is-warn"><t t-esc="goalSummary.attention"/> need attention</span>
+                <span class="o_sm_pur_pill is-neutral"><t t-esc="goalSummary.other"/> in setup or waiting</span>
+            </t>
+            <span t-elif="goalSummary" class="o_sm_pur_strip_count">No purchasing goals yet</span>
+            <span t-else="" class="o_sm_pur_strip_count">Loading goals…</span>
+            <button t-if="goalSummary and goalSummary.total" type="button" class="o_sm_pur_link" t-on-click="() => this.togglePurchasing('goals')"><t t-esc="ex.goals ? 'Hide goals' : 'View goals →'"/></button>
+        </section>
+        <t t-if="ex.goals"><t t-call="strategic_management.AreaGoals" areaKey="'purchasing'"/></t>
+
         <div t-if="this.state.purchasingLoading" class="o_sm_pur_notice">Loading live purchasing data…</div>
-        <div t-if="!this.state.purchasingLoading &amp;&amp; !(this.state.purchasingData &amp;&amp; this.state.purchasingData.available)" class="o_sm_pur_notice"><t t-esc="(this.state.purchasingData &amp;&amp; this.state.purchasingData.messages &amp;&amp; this.state.purchasingData.messages[0]) || 'Purchasing data is not available yet. Check that Odoo Purchase is installed and that you have access to purchase records.'"/></div>
-        <div t-if="!this.state.purchasingLoading &amp;&amp; this.state.purchasingData &amp;&amp; this.state.purchasingData.available &amp;&amp; this.state.purchasingData.messages &amp;&amp; this.state.purchasingData.messages.length" class="o_sm_pur_notice"><t t-esc="this.state.purchasingData.messages[0]"/></div>
+        <div t-if="!this.state.purchasingLoading &amp;&amp; !(pd &amp;&amp; pd.available)" class="o_sm_pur_notice"><t t-esc="(pd &amp;&amp; pd.messages &amp;&amp; pd.messages[0]) || 'Purchasing data is not available yet. Check that Odoo Purchase is installed and that you have access to purchase records.'"/></div>
+        <div t-if="!this.state.purchasingLoading &amp;&amp; pd &amp;&amp; pd.available &amp;&amp; pd.messages &amp;&amp; pd.messages.length" class="o_sm_pur_notice"><t t-esc="pd.messages[0]"/></div>
 
         <section class="o_sm_pur_summary" aria-label="Purchasing summary">
-            <article class="o_sm_pur_metric"><div class="o_sm_pur_metric_icon o_sm_pur_green"><svg class="o_sm_pur_metric_svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 12h7M9 16h7"/></svg></div><div class="o_sm_pur_metric_copy"><span>Purchase Orders (excl. tax)</span><strong><t t-esc="this.state.purchasingData ? this.formatNumber(this.state.purchasingData.purchase_order_count) : '—'"/></strong><b><t t-esc="this.state.purchasingData ? this.formatPurchaseCurrency(this.state.purchasingData.purchase_order_value) : '—'"/></b><small>Confirmed order value in company currency</small></div></article>
-            <article class="o_sm_pur_metric"><div class="o_sm_pur_metric_icon o_sm_pur_amber"><svg class="o_sm_pur_metric_svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h12v10H3zM15 10h4l3 3v4h-7"/><circle cx="7" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg></div><div class="o_sm_pur_metric_copy"><span>Pending Deliveries</span><strong><t t-esc="this.state.purchasingData ? this.formatNumber(this.state.purchasingData.pending_delivery_count) : '—'"/></strong><b><t t-esc="this.state.purchasingData ? this.formatPurchaseCurrency(this.state.purchasingData.pending_delivery_value) : '—'"/></b><small>Estimated value of unreceived quantities</small></div></article>
-            <article class="o_sm_pur_metric"><div class="o_sm_pur_metric_icon o_sm_pur_red"><svg class="o_sm_pur_metric_svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><div class="o_sm_pur_metric_copy"><span>Overdue Deliveries</span><strong><t t-esc="this.state.purchasingData ? this.formatNumber(this.state.purchasingData.overdue_delivery_count) : '—'"/></strong><b><t t-esc="this.state.purchasingData ? this.formatPurchaseCurrency(this.state.purchasingData.overdue_delivery_value) : '—'"/></b><small>Open incoming receipts past schedule</small></div></article>
-            <article class="o_sm_pur_metric"><div class="o_sm_pur_metric_icon o_sm_pur_blue"><svg class="o_sm_pur_metric_svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m7.5 12.5 3 3 6-7"/></svg></div><div class="o_sm_pur_metric_copy"><span>On-time Delivery</span><strong><t t-esc="this.state.purchasingData ? this.formatPurchaseRate(this.state.purchasingData.on_time_delivery_rate) : '—'"/></strong><small>Completed orders with recorded planned and receipt dates</small></div></article>
+            <article class="o_sm_pur_metric"><span class="o_sm_pur_metric_icon is-purple"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 12h7M9 16h7"/></svg></span><div class="o_sm_pur_metric_copy"><span>Purchase Orders</span><strong><t t-esc="pd ? this.formatNumber(pd.purchase_order_count) : '—'"/></strong><small title="Confirmed order value, excluding tax, in company currency"><t t-esc="pd ? this.formatPurchaseCurrency(pd.purchase_order_value) : '—'"/> confirmed (excl. tax)</small></div></article>
+            <article class="o_sm_pur_metric"><span class="o_sm_pur_metric_icon is-orange"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h12v10H3zM15 10h4l3 3v4h-7"/><circle cx="7" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg></span><div class="o_sm_pur_metric_copy"><span>Pending Deliveries</span><strong><t t-esc="pd ? this.formatNumber(pd.pending_delivery_count) : '—'"/></strong><small title="Estimated value of unreceived quantities"><t t-esc="pd ? this.formatPurchaseCurrency(pd.pending_delivery_value) : '—'"/> still to receive</small></div></article>
+            <article class="o_sm_pur_metric"><span class="o_sm_pur_metric_icon is-red"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div class="o_sm_pur_metric_copy"><span>Overdue Deliveries</span><strong><t t-esc="pd ? this.formatNumber(pd.overdue_delivery_count) : '—'"/></strong><small title="Open incoming receipts past their scheduled date" t-att-class="pd and pd.overdue_delivery_count ? 'is-bad' : ''"><t t-esc="pd ? this.formatPurchaseCurrency(pd.overdue_delivery_value) : '—'"/> past schedule</small></div></article>
+            <article class="o_sm_pur_metric"><span class="o_sm_pur_metric_icon is-green"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m7.5 12.5 3 3 6-7"/></svg></span><div class="o_sm_pur_metric_copy"><span>On-time Delivery</span><strong><t t-esc="pd ? this.formatPurchaseRate(pd.on_time_delivery_rate) : '—'"/></strong><small title="Completed orders with recorded planned and receipt dates">Of completed receipts</small></div></article>
         </section>
 
-        <section class="o_sm_pur_grid o_sm_pur_top_grid">
+        <section class="o_sm_pur_grid">
             <article class="o_sm_pur_panel">
-                <div class="o_sm_pur_panel_heading"><div><h2>Purchasing Expenditure Trend</h2><p>Current period compared with the preceding calendar-month period</p></div><span class="o_sm_pur_panel_tag"><t t-esc="this.state.purchasingData &amp;&amp; this.state.purchasingData.period ? this.formatPurchaseDate(this.state.purchasingData.period.start) + ' – ' + this.formatPurchaseDate(this.state.purchasingData.period.end) : ''"/></span></div>
+                <div class="o_sm_pur_panel_heading"><h2>Purchasing Expenditure Trend</h2><span class="o_sm_pur_panel_tag"><t t-esc="pd &amp;&amp; pd.period ? this.formatPurchaseDate(pd.period.start) + ' – ' + this.formatPurchaseDate(pd.period.end) : ''"/></span></div>
                 <div class="o_sm_pur_chart_legend"><span><i class="o_sm_pur_legend_current"/>This period</span><span><i class="o_sm_pur_legend_previous"/>Previous period</span></div>
                 <div class="o_sm_pur_line_chart" role="img" aria-label="Purchasing expenditure from confirmed purchase orders">
                     <div class="o_sm_pur_ylabels"><span><t t-esc="this.formatPurchaseCurrency(this.purchasingTrendMax())"/></span><span><t t-esc="this.formatPurchaseCurrency(this.purchasingTrendMax() * 0.75)"/></span><span><t t-esc="this.formatPurchaseCurrency(this.purchasingTrendMax() * 0.5)"/></span><span><t t-esc="this.formatPurchaseCurrency(this.purchasingTrendMax() * 0.25)"/></span><span>0</span></div>
-                    <svg viewBox="0 0 600 205" preserveAspectRatio="none" aria-hidden="true"><path class="o_sm_pur_gridline" d="M0 18H600M0 58H600M0 98H600M0 138H600M0 178H600"/><polyline class="o_sm_pur_previous_line" t-att-points="this.purchasingTrendPoints('previous')" fill="none"/><polyline class="o_sm_pur_current_line" t-att-points="this.purchasingTrendPoints('current')" fill="none"/><t t-foreach="this.state.purchasingData ? this.state.purchasingData.expenditure_trend : []" t-as="point" t-key="point.key"><g class="o_sm_pur_current_points"><circle t-att-cx="this.purchasingTrendX(point_index, this.state.purchasingData.expenditure_trend.length)" t-att-cy="this.purchasingTrendY(point.current)" r="3.8"/></g><text t-att-x="this.purchasingTrendX(point_index, this.state.purchasingData.expenditure_trend.length)" y="199" text-anchor="middle"><t t-esc="point.label"/></text></t></svg>
+                    <svg viewBox="0 0 600 205" preserveAspectRatio="none" aria-hidden="true"><path class="o_sm_pur_gridline" d="M0 18H600M0 58H600M0 98H600M0 138H600M0 178H600"/><polyline class="o_sm_pur_previous_line" t-att-points="this.purchasingTrendPoints('previous')" fill="none"/><polyline class="o_sm_pur_current_line" t-att-points="this.purchasingTrendPoints('current')" fill="none"/><t t-foreach="pd ? pd.expenditure_trend : []" t-as="point" t-key="point.key"><g class="o_sm_pur_current_points"><circle t-att-cx="this.purchasingTrendX(point_index, pd.expenditure_trend.length)" t-att-cy="this.purchasingTrendY(point.current)" r="3.8"/></g><text t-att-x="this.purchasingTrendX(point_index, pd.expenditure_trend.length)" y="199" text-anchor="middle"><t t-esc="point.label"/></text></t></svg>
                 </div>
             </article>
             <article class="o_sm_pur_panel">
-                <div class="o_sm_pur_panel_heading"><div><h2>Purchasing by Category</h2><p>Confirmed purchase-line value by product category</p></div></div>
-                <div class="o_sm_pur_category_layout"><div class="o_sm_pur_donut" t-att-style="this.purchasingCategoryDonutStyle()" role="img" aria-label="Purchase spend by product category"><div class="o_sm_pur_donut_hole"><strong><t t-esc="this.formatPurchaseCurrency(this.state.purchasingData ? this.state.purchasingData.purchase_category_total : false)"/></strong><small>Category spend</small></div></div><div class="o_sm_pur_category_legend"><t t-foreach="this.state.purchasingData ? this.state.purchasingData.purchase_categories : []" t-as="category" t-key="category.name"><div><i t-att-style="'background:' + this.purchasingCategoryColor(category_index)"/><span><t t-esc="category.name"/></span><b><t t-esc="category.share"/>%</b><strong><t t-esc="this.formatPurchaseCurrency(category.value)"/></strong></div></t><p t-if="!(this.state.purchasingData &amp;&amp; this.state.purchasingData.purchase_categories &amp;&amp; this.state.purchasingData.purchase_categories.length)">No categorized purchase lines are available for this period.</p></div></div>
+                <div class="o_sm_pur_panel_heading"><h2>Purchasing by Category</h2><button t-if="pd and pd.purchase_categories and pd.purchase_categories.length > 4" type="button" class="o_sm_pur_link" t-on-click="() => this.togglePurchasing('categories')"><t t-esc="ex.categories ? 'Show fewer' : 'See all categories →'"/></button></div>
+                <div class="o_sm_pur_category_layout">
+                    <div class="o_sm_pur_donut" t-att-style="this.purchasingCategoryDonutStyle()" role="img" aria-label="Purchase spend by product category"><div class="o_sm_pur_donut_hole"><strong><t t-esc="this.formatPurchaseCurrency(pd ? pd.purchase_category_total : false)"/></strong><small>Category spend</small></div></div>
+                    <div class="o_sm_pur_category_legend">
+                        <t t-foreach="pd ? (ex.categories ? pd.purchase_categories : pd.purchase_categories.slice(0, 4)) : []" t-as="category" t-key="category.name"><div><i t-att-style="'background:' + this.purchasingCategoryColor(category_index)"/><span t-att-title="category.name"><t t-esc="category.name"/></span><b><t t-esc="category.share"/>%</b><strong><t t-esc="this.formatPurchaseCurrency(category.value)"/></strong></div></t>
+                        <p t-if="!(pd &amp;&amp; pd.purchase_categories &amp;&amp; pd.purchase_categories.length)">No categorized purchase lines in this period.</p>
+                    </div>
+                </div>
             </article>
         </section>
 
-        <section class="o_sm_pur_grid o_sm_pur_middle_grid">
-            <article class="o_sm_pur_panel">
-                <div class="o_sm_pur_panel_heading"><div><h2>Supplier Performance</h2><p>Completed purchase orders with recorded planned and receipt dates</p></div><span class="o_sm_pur_panel_tag">Odoo receipt history</span></div>
-                <div class="o_sm_pur_supplier_list"><t t-foreach="this.state.purchasingData ? this.state.purchasingData.supplier_performance : []" t-as="supplier" t-key="supplier.name"><div class="o_sm_pur_supplier_row"><span><t t-esc="supplier.name"/></span><div class="o_sm_pur_bar_track"><i t-att-class="this.purchaseSupplierBarClass(supplier.rate)" t-att-style="'width:' + supplier.rate + '%'"/></div><b><t t-esc="this.formatPurchaseRate(supplier.rate)"/></b></div></t><p t-if="!(this.state.purchasingData &amp;&amp; this.state.purchasingData.supplier_performance &amp;&amp; this.state.purchasingData.supplier_performance.length)">No completed receipts with recorded expected dates are available for this period.</p></div>
+        <section class="o_sm_pur_grid">
+            <article t-att-class="'o_sm_pur_panel' + (ex.attention ? ' is-expanded' : '')">
+                <div class="o_sm_pur_panel_heading"><h2 class="is-warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 21.5 20h-19Z"/><path d="M12 10v4.5M12 17.2h.01"/></svg>Needs Attention <span class="o_sm_pur_count"><t t-esc="pd ? pd.orders_attention.length : 0"/></span></h2><button t-if="pd and pd.orders_attention.length > 3" type="button" class="o_sm_pur_link" t-on-click="() => this.togglePurchasing('attention')"><t t-esc="ex.attention ? 'Show top 3' : 'See all orders →'"/></button></div>
+                <t t-if="!ex.attention">
+                    <div class="o_sm_pur_items">
+                        <div t-foreach="pd ? pd.orders_attention.slice(0, 3) : []" t-as="order" t-key="order.name" class="o_sm_pur_item">
+                            <div class="o_sm_pur_item_text"><strong><t t-esc="order.name"/> · <t t-esc="order.supplier"/></strong><span t-att-title="order.issue"><t t-esc="order.issue"/> · expected <t t-esc="this.formatPurchaseDate(order.expected_date)"/><t t-if="order.branch"> · <t t-esc="order.branch"/></t></span></div>
+                            <span t-att-class="'o_sm_pur_status ' + this.purchaseStatusClass(order.status_class)"><t t-esc="order.status"/></span>
+                            <button t-if="this.canOpenPurchaseOrders" type="button" class="o_sm_pur_item_action" t-on-click="() => this.openPurchaseOrder(order)">Open</button>
+                        </div>
+                        <p t-if="!(pd &amp;&amp; pd.orders_attention &amp;&amp; pd.orders_attention.length)" class="o_sm_pur_empty">No purchase orders need follow-up in this period.</p>
+                    </div>
+                </t>
+                <t t-else="">
+                    <div class="o_sm_pur_table_wrap"><table class="o_sm_pur_table"><thead><tr><th>Order</th><th>Supplier</th><th>Branch</th><th>Issue</th><th>Expected date</th><th>Status</th><th t-if="this.canOpenPurchaseOrders"/></tr></thead><tbody><t t-foreach="this.pageRows('pur_attention', pd ? pd.orders_attention : [])" t-as="order" t-key="order.name"><tr><td><t t-esc="order.name"/></td><td><t t-esc="order.supplier"/></td><td><t t-esc="order.branch"/></td><td t-att-class="order.status === 'Overdue' ? 'o_sm_pur_text_bad' : 'o_sm_pur_text_warn'"><t t-esc="order.issue"/></td><td><t t-esc="this.formatPurchaseDate(order.expected_date)"/></td><td><span t-att-class="'o_sm_pur_status ' + this.purchaseStatusClass(order.status_class)"><t t-esc="order.status"/></span></td><td t-if="this.canOpenPurchaseOrders"><button type="button" class="o_sm_pur_link" t-on-click="() => this.openPurchaseOrder(order)">Open</button></td></tr></t></tbody></table></div>
+                    <t t-call="strategic_management.ListPager" pagerKey="'pur_attention'" pagerRows="pd ? pd.orders_attention : []"/>
+                </t>
             </article>
-            <article class="o_sm_pur_panel">
-                <div class="o_sm_pur_panel_heading"><div><h2>Orders Needing Attention</h2><p>Overdue, partial, awaiting approval or confirmation</p></div><span class="o_sm_pur_count"><t t-esc="this.state.purchasingData ? this.state.purchasingData.orders_attention.length : 0"/></span></div>
-                <div class="o_sm_pur_table_wrap"><table class="o_sm_pur_table"><thead><tr><th>Order</th><th>Supplier</th><th>Branch</th><th>Issue</th><th>Expected date</th><th>Status</th></tr></thead><tbody><t t-foreach="this.state.purchasingData ? this.state.purchasingData.orders_attention : []" t-as="order" t-key="order.name"><tr><td><t t-esc="order.name"/></td><td><t t-esc="order.supplier"/></td><td><t t-esc="order.branch"/></td><td t-att-class="order.status === 'Overdue' ? 'o_sm_pur_text_bad' : 'o_sm_pur_text_warn'"><t t-esc="order.issue"/></td><td><t t-esc="this.formatPurchaseDate(order.expected_date)"/></td><td><span t-att-class="'o_sm_pur_status ' + this.purchaseStatusClass(order.status_class)"><t t-esc="order.status"/></span></td></tr></t><tr t-if="!(this.state.purchasingData &amp;&amp; this.state.purchasingData.orders_attention &amp;&amp; this.state.purchasingData.orders_attention.length)"><td colspan="6">No purchase orders currently require follow-up for this period.</td></tr></tbody></table></div>
+            <article t-att-class="'o_sm_pur_panel' + (ex.suppliers ? ' is-expanded' : '')">
+                <div class="o_sm_pur_panel_heading"><h2>Supplier Performance</h2><button t-if="pd and pd.supplier_performance.length > 4" type="button" class="o_sm_pur_link" t-on-click="() => this.togglePurchasing('suppliers')"><t t-esc="ex.suppliers ? 'Show top 4' : 'See more →'"/></button></div>
+                <span class="o_sm_pur_panel_sub">On-time delivery of completed orders</span>
+                <div class="o_sm_pur_supplier_list">
+                    <t t-foreach="ex.suppliers ? this.pageRows('pur_suppliers', pd ? pd.supplier_performance : []) : (pd ? pd.supplier_performance.slice(0, 4) : [])" t-as="supplier" t-key="supplier.name"><div class="o_sm_pur_supplier_row"><span t-att-title="supplier.name"><t t-esc="supplier.name"/></span><div class="o_sm_pur_bar_track"><i t-att-class="this.purchaseSupplierBarClass(supplier.rate)" t-att-style="'width:' + supplier.rate + '%'"/></div><b><t t-esc="this.formatPurchaseRate(supplier.rate)"/></b></div></t>
+                    <p t-if="!(pd &amp;&amp; pd.supplier_performance &amp;&amp; pd.supplier_performance.length)" class="o_sm_pur_empty">No completed receipts with expected dates in this period.</p>
+                </div>
+                <t t-if="ex.suppliers"><t t-call="strategic_management.ListPager" pagerKey="'pur_suppliers'" pagerRows="pd ? pd.supplier_performance : []"/></t>
             </article>
         </section>
 
-        <section class="o_sm_pur_grid o_sm_pur_bottom_grid">
-            <article class="o_sm_pur_panel">
-                <div class="o_sm_pur_panel_heading"><div><h2>Recent Purchase Orders</h2><p>Actual purchase orders in the selected period</p></div><span class="o_sm_pur_panel_link"><t t-esc="this.state.purchasingData ? this.state.purchasingData.recent_orders.length : 0"/> orders</span></div>
-                <div class="o_sm_pur_table_wrap"><table class="o_sm_pur_table"><thead><tr><th>Order</th><th>Supplier</th><th>Branch</th><th>Order date</th><th>Amount</th><th>Status</th></tr></thead><tbody><t t-foreach="this.state.purchasingData ? this.state.purchasingData.recent_orders : []" t-as="order" t-key="order.id"><tr><td><t t-esc="order.name"/></td><td><t t-esc="order.supplier"/></td><td><t t-esc="order.branch"/></td><td><t t-esc="this.formatPurchaseDate(order.date)"/></td><td><t t-esc="this.formatPurchaseCurrency(order.amount)"/></td><td><span t-att-class="'o_sm_pur_status ' + this.purchaseStatusClass(order.status_class)"><t t-esc="order.status"/></span></td></tr></t><tr t-if="!(this.state.purchasingData &amp;&amp; this.state.purchasingData.recent_orders &amp;&amp; this.state.purchasingData.recent_orders.length)"><td colspan="6">No purchase orders match the selected period.</td></tr></tbody></table></div>
+        <section class="o_sm_pur_grid">
+            <article t-att-class="'o_sm_pur_panel' + (ex.recent ? ' is-expanded' : '')">
+                <div class="o_sm_pur_panel_heading"><h2>Recent Purchase Orders</h2><button t-if="pd and pd.recent_orders.length > 3" type="button" class="o_sm_pur_link" t-on-click="() => this.togglePurchasing('recent')"><t t-esc="ex.recent ? 'Show latest 3' : 'See all orders →'"/></button></div>
+                <t t-if="!ex.recent">
+                    <div class="o_sm_pur_items">
+                        <div t-foreach="pd ? pd.recent_orders.slice(0, 3) : []" t-as="order" t-key="order.id" class="o_sm_pur_item">
+                            <div class="o_sm_pur_item_text"><strong><t t-esc="order.name"/> · <t t-esc="order.supplier"/></strong><span><t t-esc="this.formatPurchaseDate(order.date)"/><t t-if="order.branch"> · <t t-esc="order.branch"/></t></span></div>
+                            <b class="o_sm_pur_item_amount"><t t-esc="this.formatPurchaseCurrency(order.amount)"/></b>
+                            <span t-att-class="'o_sm_pur_status ' + this.purchaseStatusClass(order.status_class)"><t t-esc="order.status"/></span>
+                            <button t-if="this.canOpenPurchaseOrders" type="button" class="o_sm_pur_item_action" t-on-click="() => this.openPurchaseOrder(order)">Open</button>
+                        </div>
+                        <p t-if="!(pd &amp;&amp; pd.recent_orders &amp;&amp; pd.recent_orders.length)" class="o_sm_pur_empty">No purchase orders in this period.</p>
+                    </div>
+                </t>
+                <t t-else="">
+                    <div class="o_sm_pur_table_wrap"><table class="o_sm_pur_table"><thead><tr><th>Order</th><th>Supplier</th><th>Branch</th><th>Order date</th><th>Amount</th><th>Status</th><th t-if="this.canOpenPurchaseOrders"/></tr></thead><tbody><t t-foreach="this.pageRows('pur_recent', pd ? pd.recent_orders : [])" t-as="order" t-key="order.id"><tr><td><t t-esc="order.name"/></td><td><t t-esc="order.supplier"/></td><td><t t-esc="order.branch"/></td><td><t t-esc="this.formatPurchaseDate(order.date)"/></td><td><t t-esc="this.formatPurchaseCurrency(order.amount)"/></td><td><span t-att-class="'o_sm_pur_status ' + this.purchaseStatusClass(order.status_class)"><t t-esc="order.status"/></span></td><td t-if="this.canOpenPurchaseOrders"><button type="button" class="o_sm_pur_link" t-on-click="() => this.openPurchaseOrder(order)">Open</button></td></tr></t></tbody></table></div>
+                    <t t-call="strategic_management.ListPager" pagerKey="'pur_recent'" pagerRows="pd ? pd.recent_orders : []"/>
+                </t>
             </article>
-            <article class="o_sm_pur_panel">
-                <div class="o_sm_pur_panel_heading"><div><h2>Ingredient Price Trend</h2><p>Weighted unit purchase prices from actual purchase lines</p></div></div>
-                <div class="o_sm_pur_table_wrap"><table class="o_sm_pur_table o_sm_pur_price_table"><thead><tr><th>Product</th><th>Unit</th><t t-foreach="this.state.purchasingData ? this.state.purchasingData.price_months : []" t-as="month" t-key="month.key"><th><t t-esc="month.label"/></th></t><th>Trend</th></tr></thead><tbody><t t-foreach="this.state.purchasingData ? this.state.purchasingData.ingredient_price_trend : []" t-as="product" t-key="product.product_id"><tr><td><t t-esc="product.name"/></td><td><t t-esc="product.unit"/></td><t t-foreach="product.monthly_prices" t-as="monthPrice" t-key="monthPrice.key"><td><t t-esc="monthPrice.value === false ? '—' : this.formatPurchaseCurrency(monthPrice.value)"/></td></t><td><t t-esc="product.trend"/></td></tr></t><tr t-if="!(this.state.purchasingData &amp;&amp; this.state.purchasingData.ingredient_price_trend &amp;&amp; this.state.purchasingData.ingredient_price_trend.length)"><td t-att-colspan="3 + (this.state.purchasingData ? this.state.purchasingData.price_months.length : 0)">No historical purchase prices are available for this period.</td></tr></tbody></table></div>
+            <article t-att-class="'o_sm_pur_panel' + (ex.prices ? ' is-expanded' : '')">
+                <div class="o_sm_pur_panel_heading"><h2>Ingredient Price Trend</h2><button t-if="pd and pd.ingredient_price_trend.length" type="button" class="o_sm_pur_link" t-on-click="() => this.togglePurchasing('prices')"><t t-esc="ex.prices ? 'Show summary' : 'See price history →'"/></button></div>
+                <t t-if="!ex.prices">
+                    <div class="o_sm_pur_items">
+                        <div t-foreach="pd ? pd.ingredient_price_trend.slice(0, 3) : []" t-as="product" t-key="product.product_id" class="o_sm_pur_item">
+                            <div class="o_sm_pur_item_text"><strong><t t-esc="product.name"/></strong><span><t t-if="product.unit">per <t t-esc="product.unit"/> · </t>latest month price</span></div>
+                            <t t-set="latestPrice" t-value="product.monthly_prices.filter((price) => price.value !== false).at(-1)"/>
+                            <b class="o_sm_pur_item_amount"><t t-esc="latestPrice ? this.formatPurchaseCurrency(latestPrice.value) : '—'"/></b>
+                            <span class="o_sm_pur_trend_tag"><t t-esc="product.trend"/></span>
+                        </div>
+                        <p t-if="!(pd &amp;&amp; pd.ingredient_price_trend &amp;&amp; pd.ingredient_price_trend.length)" class="o_sm_pur_empty">No purchase prices in this period.</p>
+                    </div>
+                </t>
+                <t t-else="">
+                    <div class="o_sm_pur_table_wrap"><table class="o_sm_pur_table o_sm_pur_price_table"><thead><tr><th>Product</th><th>Unit</th><t t-foreach="pd ? pd.price_months : []" t-as="month" t-key="month.key"><th><t t-esc="month.label"/></th></t><th>Trend</th></tr></thead><tbody><t t-foreach="pd ? pd.ingredient_price_trend : []" t-as="product" t-key="product.product_id"><tr><td><t t-esc="product.name"/></td><td><t t-esc="product.unit"/></td><t t-foreach="product.monthly_prices" t-as="monthPrice" t-key="monthPrice.key"><td><t t-esc="monthPrice.value === false ? '—' : this.formatPurchaseCurrency(monthPrice.value)"/></td></t><td><t t-esc="product.trend"/></td></tr></t></tbody></table></div>
+                </t>
             </article>
         </section>
     </div>
@@ -583,108 +652,161 @@
 <t t-elif="this.state.activeSection === 'branches'">
     <div class="o_sm_branches_ui">
         <t t-set="br" t-value="this.state.branchesData"/>
+        <t t-set="bx" t-value="this.state.brExpanded"/>
         <header class="o_sm_br_header">
             <div class="o_sm_br_title_block">
                 <h1>Branches</h1>
                 <p t-if="br and br.role === 'branch_manager'">Your branch's results, targets and items needing attention.</p>
                 <p t-else="">Compare branch performance and see where attention is needed.</p>
-                <span class="o_sm_br_preview_note"><svg class="o_sm_br_icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5h.01"/></svg> Live Odoo data · updates automatically</span>
+                <span t-if="br and br.available" class="o_sm_br_live_badge"><i class="o_sm_br_live_dot"/> Live Odoo data · updates automatically</span>
             </div>
             <div class="o_sm_pur_filters">
-                <label class="o_sm_pur_filter">From <input type="date" t-att-value="this.state.dateStart" t-att-max="this.state.todayDate" t-on-change="this.onStartDateChanged" aria-label="Branches start date"/></label>
-                <label class="o_sm_pur_filter">To <input type="date" t-att-value="this.state.dateEnd" t-att-max="this.state.todayDate" t-on-change="this.onEndDateChanged" aria-label="Branches end date"/></label>
-                <label t-if="br and br.role === 'head_office'" class="o_sm_pur_filter">Branch <select t-att-value="this.branchSelectValue" t-on-change="this.onWarehouseChanged" aria-label="Branch filter"><option value="all">All Branches</option><t t-foreach="br.branch_options" t-as="branch" t-key="branch.id"><option t-att-value="branch.id"><t t-esc="branch.name"/></option></t></select></label>
+                <label class="o_sm_pur_filter"><span>From</span><input type="date" t-att-value="this.state.dateStart" t-att-max="this.state.todayDate" t-on-change="this.onStartDateChanged" aria-label="Branches start date"/></label>
+                <label class="o_sm_pur_filter"><span>To</span><input type="date" t-att-value="this.state.dateEnd" t-att-max="this.state.todayDate" t-on-change="this.onEndDateChanged" aria-label="Branches end date"/></label>
+                <label t-if="br and br.role === 'head_office'" class="o_sm_pur_filter"><span>Branch</span><select t-att-value="this.branchSelectValue" t-on-change="this.onWarehouseChanged" aria-label="Branch filter"><option value="all">All Branches</option><t t-foreach="br.branch_options" t-as="branch" t-key="branch.id"><option t-att-value="branch.id"><t t-esc="branch.name"/></option></t></select></label>
             </div>
         </header>
 
         <div t-if="this.state.branchesLoading" class="o_sm_br_notice">Loading live branch data…</div>
-        <t t-if="!this.state.branchesLoading and br">
+        <t t-if="!this.state.branchesLoading and br and !br.available">
             <div t-foreach="br.messages or []" t-as="message" t-key="message_index" class="o_sm_br_notice"><t t-esc="message"/></div>
         </t>
+        <details t-if="!this.state.branchesLoading and br and br.available and br.messages and br.messages.length" class="o_sm_br_data_note">
+            <summary><span class="o_sm_br_note_icon" aria-hidden="true">i</span><span class="o_sm_br_note_text"><t t-foreach="br.messages" t-as="message" t-key="message_index"><t t-if="message_index"> · </t><t t-esc="this.branchNoteHeadline(message)"/></t></span><span class="o_sm_br_note_more">Details</span></summary>
+            <p t-foreach="br.messages" t-as="message" t-key="message_index"><t t-esc="message"/></p>
+        </details>
 
         <t t-if="br and br.available">
             <section class="o_sm_br_summary" aria-label="Branch summary">
                 <article class="o_sm_br_metric">
-                    <div class="o_sm_br_metric_icon o_sm_br_blue"><svg class="o_sm_br_metric_svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="11" height="18" rx="1.5"/><path d="M14 9h7v12h-7M6.5 7h4M6.5 11h4M6.5 15h4M17 13h1M17 17h1"/></svg></div>
-                    <div class="o_sm_br_metric_copy"><span>Active Branches</span><strong><t t-esc="br.summary.active_branches"/></strong><small>Warehouses in your scope</small></div>
+                    <span class="o_sm_br_metric_icon is-purple"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="11" height="18" rx="1.5"/><path d="M14 9h7v12h-7M6.5 7h4M6.5 11h4M6.5 15h4"/></svg></span>
+                    <div class="o_sm_br_metric_copy"><span>Active Branches</span><strong><t t-esc="br.summary.active_branches"/></strong><small>Branches in your scope</small></div>
                 </article>
                 <article class="o_sm_br_metric">
-                    <div class="o_sm_br_metric_icon o_sm_br_green"><svg class="o_sm_br_metric_svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m7.5 12.5 3 3 6-7"/></svg></div>
-                    <div class="o_sm_br_metric_copy"><span>Meeting Targets</span><strong><t t-esc="br.summary.meeting_target"/></strong><small>All evaluated KPI targets met</small></div>
+                    <span class="o_sm_br_metric_icon is-green"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m7.5 12.5 3 3 6-7"/></svg></span>
+                    <div class="o_sm_br_metric_copy"><span>Meeting Targets</span><strong><t t-esc="br.summary.meeting_target"/></strong><small title="Branches whose evaluated KPI targets are all met">Evaluated targets met</small></div>
                 </article>
                 <article class="o_sm_br_metric">
-                    <div class="o_sm_br_metric_icon o_sm_br_amber"><svg class="o_sm_br_metric_svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 22 20H2Z"/><path d="M12 9v5M12 17h.01"/></svg></div>
-                    <div class="o_sm_br_metric_copy"><span>Below Target</span><strong><t t-esc="br.summary.below_target"/></strong><small><t t-esc="br.summary.not_evaluated"/> not evaluated</small></div>
+                    <span class="o_sm_br_metric_icon is-orange"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 21.5 20h-19Z"/><path d="M12 10v4.5M12 17.2h.01"/></svg></span>
+                    <div class="o_sm_br_metric_copy"><span>Below Target</span><strong><t t-esc="br.summary.below_target"/></strong><small t-att-title="'Branches with an evaluated KPI target below target. Not counted here: ' + br.summary.not_evaluated + ' branch(es) not evaluated.'">Evaluated targets not met</small></div>
                 </article>
                 <article class="o_sm_br_metric">
-                    <div class="o_sm_br_metric_icon o_sm_br_red"><svg class="o_sm_br_metric_svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/></svg></div>
-                    <div class="o_sm_br_metric_copy"><span>Critical Issues</span><strong><t t-esc="br.summary.critical_issues"/></strong><small>Unresolved, need prompt action</small></div>
+                    <span class="o_sm_br_metric_icon is-red"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/></svg></span>
+                    <div class="o_sm_br_metric_copy"><span>Critical Issues</span><strong><t t-esc="br.summary.critical_issues"/></strong><small title="Unresolved critical branch issues">Needs attention</small></div>
                 </article>
             </section>
 
-            <section class="o_sm_br_top_grid">
+            <section class="o_sm_br_grid">
+                <article class="o_sm_br_panel">
+                    <div class="o_sm_br_panel_heading"><div><h2>Sales by Branch</h2><p>Paid POS sales excl. tax, net of refunds</p></div></div>
+                    <div class="o_sm_br_hbars" role="list" aria-label="Sales by branch">
+                        <div t-foreach="this.branchSalesRows" t-as="row" t-key="row.id" class="o_sm_br_hbar" role="listitem">
+                            <span class="o_sm_br_hbar_name" t-att-title="row.name"><t t-esc="row.name"/></span>
+                            <div class="o_sm_br_track"><i class="is-purple" t-att-style="'width:' + row.width + '%'"/></div>
+                            <strong t-att-class="row.value === false ? 'is-muted' : ''"><t t-esc="this.formatBranchValue(row.value, 'currency')"/></strong>
+                        </div>
+                        <div t-if="!br.branches.length" class="o_sm_br_empty">No branches in your scope.</div>
+                    </div>
+                </article>
+                <article class="o_sm_br_panel">
+                    <div class="o_sm_br_panel_heading"><div><h2>KPI Target Attainment</h2><p>Mean of evaluated branch KPI targets</p></div></div>
+                    <div class="o_sm_br_hbars" role="list" aria-label="KPI target attainment by branch">
+                        <div t-foreach="br.branches" t-as="row" t-key="row.warehouse_id" class="o_sm_br_hbar" role="listitem">
+                            <span class="o_sm_br_hbar_name" t-att-title="row.name"><t t-esc="row.name"/></span>
+                            <div class="o_sm_br_track"><i t-att-class="row.status === 'below_target' ? 'is-orange' : 'is-green'" t-att-style="'width:' + this.branchAttainmentWidth(row) + '%'"/></div>
+                            <strong t-att-class="row.attainment === false ? 'is-muted' : ''"><t t-esc="this.formatBranchValue(row.attainment, 'percent')"/></strong>
+                        </div>
+                        <div t-if="!br.branches.length" class="o_sm_br_empty">No branches in your scope.</div>
+                    </div>
+                </article>
+            </section>
+
+            <section class="o_sm_br_grid">
+                <article class="o_sm_br_panel">
+                    <div class="o_sm_br_panel_heading"><div><h2>Branch Health</h2><p>Status from evaluated KPI targets</p></div><button type="button" class="o_sm_br_link" t-on-click="() => this.scrollToBranchTable()">View details →</button></div>
+                    <div class="o_sm_br_health_list">
+                        <div t-foreach="br.branches.slice(0, 5)" t-as="row" t-key="row.warehouse_id" class="o_sm_br_health_row">
+                            <i t-att-class="'o_sm_br_dot is-' + row.status"/>
+                            <div class="o_sm_br_health_text"><strong t-att-title="row.name"><t t-esc="row.name"/></strong><small><t t-if="row.kpi_total"><t t-esc="row.kpi_met"/> of <t t-esc="row.kpi_evaluated"/> evaluated targets met</t><t t-else="">No approved targets</t></small></div>
+                            <span t-att-class="'o_sm_br_status ' + row.status_class"><t t-esc="row.status_label"/></span>
+                        </div>
+                        <small t-if="br.branches.length > 5" class="o_sm_br_hint">Showing 5 of <t t-esc="br.branches.length"/> branches; all are in Branch Performance below.</small>
+                    </div>
+                </article>
+                <article t-att-class="'o_sm_br_panel' + (bx.attention ? ' is-expanded' : '')">
+                    <div class="o_sm_br_panel_heading"><div><h2 class="is-warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 21.5 20h-19Z"/><path d="M12 10v4.5M12 17.2h.01"/></svg>Needs Attention</h2><p>Most important open branch issues</p></div>
+                        <button t-if="br.attention.length" type="button" class="o_sm_br_link" t-on-click="() => this.toggleBranches('attention')"><t t-esc="bx.attention ? 'Show top 3' : 'See all issues →'"/></button></div>
+                    <p t-if="!br.attention.length" class="o_sm_br_empty">No measurable issues: no KPI targets or objectives below target and no overdue supplier receipts.</p>
+                    <div t-elif="!bx.attention" class="o_sm_br_issue_items">
+                        <div t-foreach="br.attention.slice(0, 3)" t-as="item" t-key="item_index" class="o_sm_br_issue_item">
+                            <span t-att-class="'o_sm_br_status ' + (item.severity === 'critical' ? 'o_sm_br_status_critical' : 'o_sm_br_status_warn')"><t t-esc="item.severity === 'critical' ? 'Critical' : 'Warning'"/></span>
+                            <div class="o_sm_br_issue_copy"><strong t-att-title="item.title"><t t-esc="item.title"/></strong><small t-att-title="item.evidence"><t t-esc="item.branch"/> · <t t-esc="item.evidence"/></small></div>
+                            <button t-if="item.res_model" type="button" class="o_sm_br_item_action" t-on-click="() => this.openIssueRecord(item)">View</button>
+                        </div>
+                    </div>
+                    <t t-else="">
+                        <div class="o_sm_pur_table_wrap"><table class="o_sm_pur_table">
+                            <thead><tr><th>Severity</th><th>Issue</th><th>Branch</th><th>Evidence</th><th>Responsible</th><th>Deadline</th><th>Action status</th><th>Actions</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="this.pageRows('br_attention', br.attention)" t-as="item" t-key="item_index">
+                                    <td><span t-att-class="'o_sm_br_status ' + (item.severity === 'critical' ? 'o_sm_br_status_critical' : 'o_sm_br_status_warn')"><t t-esc="item.severity === 'critical' ? 'Critical' : 'Warning'"/></span></td>
+                                    <td><t t-esc="item.title"/></td>
+                                    <td><t t-esc="item.branch"/></td>
+                                    <td style="white-space:normal"><t t-esc="item.evidence"/></td>
+                                    <td><t t-esc="item.responsible"/></td>
+                                    <td><t t-esc="this.formatPurchaseDate(item.deadline)"/></td>
+                                    <td><t t-esc="item.action_status"/></td>
+                                    <td><span t-if="item.res_model" class="o_sm_issue_actions"><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.openIssueRecord(item)">Open</button><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.createIssueFollowup(item)">Assign follow-up</button></span></td>
+                                </tr>
+                            </tbody>
+                        </table></div><t t-call="strategic_management.ListPager" pagerKey="'br_attention'" pagerRows="br.attention"/>
+                    </t>
+                </article>
+            </section>
+
+            <article class="o_sm_br_panel o_sm_br_table_panel">
+                <div class="o_sm_br_panel_heading"><div><h2>Branch Performance</h2><p><t t-esc="this.formatPurchaseDate(br.period.start)"/> – <t t-esc="this.formatPurchaseDate(br.period.end)"/></p></div>
+                    <button type="button" class="o_sm_br_link" t-on-click="() => this.toggleBranches('charts')"><t t-esc="bx.charts ? 'Hide comparisons' : 'More comparisons →'"/></button></div>
+                <div class="o_sm_pur_table_wrap"><table class="o_sm_pur_table o_sm_br_table">
+                    <thead><tr><th>Branch</th><th>Sales</th><th>Orders</th><th>Food cost %</th><th>Waste</th><th>Waste % of sales</th><th>Contribution</th><th>KPI targets met</th><th>Attainment</th><th>Status</th><th>Responsible manager</th></tr></thead>
+                    <tbody>
+                        <tr t-foreach="this.pageRows('br_branches', br.branches)" t-as="row" t-key="row.warehouse_id">
+                            <td><strong><t t-esc="row.name"/></strong></td>
+                            <td><t t-esc="this.formatBranchValue(row.sales, 'currency')"/></td>
+                            <td><t t-esc="this.formatBranchValue(row.orders, 'number')"/></td>
+                            <td t-att-class="row.food_cost_pct === false ? 'is-muted' : ''"><t t-esc="this.formatBranchValue(row.food_cost_pct, 'percent')"/></td>
+                            <td t-att-class="row.waste_cost === false ? 'is-muted' : ''"><t t-esc="this.formatBranchValue(row.waste_cost, 'currency')"/></td>
+                            <td t-att-class="row.waste_pct_of_sales === false ? 'is-muted' : ''"><t t-esc="this.formatBranchValue(row.waste_pct_of_sales, 'percent')"/></td>
+                            <td t-att-class="row.contribution === false ? 'is-muted' : ''"><t t-esc="this.formatBranchValue(row.contribution, 'currency')"/><t t-if="row.contribution_pct !== false"> <small>(<t t-esc="this.formatBranchValue(row.contribution_pct, 'percent')"/>)</small></t></td>
+                            <td><t t-if="row.kpi_total"><span t-att-title="row.kpi_met + ' met of ' + row.kpi_evaluated + ' evaluated (' + row.kpi_total + ' targets)'"><t t-esc="row.kpi_met"/> / <t t-esc="row.kpi_evaluated"/> <small>of <t t-esc="row.kpi_total"/></small></span></t><span t-else="" class="is-muted">No approved targets</span></td>
+                            <td t-att-class="row.attainment === false ? 'is-muted' : ''"><t t-esc="this.formatBranchValue(row.attainment, 'percent')"/></td>
+                            <td><span t-att-class="'o_sm_br_status ' + row.status_class"><t t-esc="row.status_label"/></span></td>
+                            <td class="o_sm_br_manager" t-att-title="row.manager"><t t-esc="row.manager"/></td>
+                        </tr>
+                    </tbody>
+                </table></div><t t-call="strategic_management.ListPager" pagerKey="'br_branches'" pagerRows="br.branches"/>
+                <small class="o_sm_br_hint">KPI targets met: met / evaluated, of all approved targets. Not Evaluated means the value could not be measured; it is not zero.</small>
+            </article>
+
+            <section t-if="bx.charts" class="o_sm_br_grid o_sm_br_more">
                 <t t-foreach="[
-                    ['Actual Sales', 'sales', 'currency', 'o_sm_br_fill_blue', 'Paid POS orders, excl. tax, net of refunds'],
-                    ['Food Cost %', 'food_cost_pct', 'percent', 'o_sm_br_fill_amber', 'Recorded cost of goods sold ÷ POS sales; lower is better'],
-                    ['Waste % of Sales', 'waste_pct_of_sales', 'percent', 'o_sm_br_fill_purple', 'Valued scrap (Spoilage/Expiry, Damaged Goods) ÷ sales'],
-                    ['Branch Contribution', 'contribution', 'currency', 'o_sm_br_fill_green', 'Sales − cost of goods − waste; excludes rent, wages, overheads'],
-                    ['Open Stock Variances', 'stock_variance_count', 'number', 'o_sm_br_fill_purple', 'Counted quants differing from system quantity'],
-                    ['KPI Target Attainment', 'attainment', 'percent', 'o_sm_br_fill_green', 'Mean of evaluated branch KPI targets'],
+                    ['Food Cost %', 'food_cost_pct', 'percent', 'is-orange', 'Recorded cost of goods sold ÷ POS sales; lower is better'],
+                    ['Waste % of Sales', 'waste_pct_of_sales', 'percent', 'is-purple', 'Valued scrap (Spoilage/Expiry, Damaged Goods) ÷ sales'],
+                    ['Branch Contribution', 'contribution', 'currency', 'is-green', 'Sales − cost of goods − waste; excludes rent, wages, overheads'],
+                    ['Open Stock Variances', 'stock_variance_count', 'number', 'is-purple', 'Counted quants differing from system quantity'],
                 ]" t-as="chart" t-key="chart[1]">
                     <article class="o_sm_br_panel">
-                        <div class="o_sm_br_panel_heading"><h2><t t-esc="chart[0]"/></h2><span class="o_sm_br_panel_hint"><t t-esc="chart[4]"/></span></div>
-                        <div class="o_sm_br_bars" role="img" t-att-aria-label="chart[0] + ' by branch'" style="min-height:0">
-                            <div t-foreach="this.branchChartRows(chart[1])" t-as="row" t-key="row.id" class="o_sm_br_bar_row">
-                                <span class="o_sm_br_branch_label" t-att-title="row.name"><t t-esc="row.name"/></span>
-                                <div class="o_sm_br_bar_track"><i t-att-class="'o_sm_br_bar_fill ' + chart[3]" t-att-style="'width:' + row.width + '%'"/></div>
-                                <strong><t t-esc="this.formatBranchValue(row.value, chart[2])"/></strong>
+                        <div class="o_sm_br_panel_heading"><div><h2><t t-esc="chart[0]"/></h2><p><t t-esc="chart[4]"/></p></div></div>
+                        <div class="o_sm_br_hbars" role="list" t-att-aria-label="chart[0] + ' by branch'">
+                            <div t-foreach="this.branchChartRows(chart[1])" t-as="row" t-key="row.id" class="o_sm_br_hbar" role="listitem">
+                                <span class="o_sm_br_hbar_name" t-att-title="row.name"><t t-esc="row.name"/></span>
+                                <div class="o_sm_br_track"><i t-att-class="chart[3]" t-att-style="'width:' + row.width + '%'"/></div>
+                                <strong t-att-class="row.value === false ? 'is-muted' : ''"><t t-esc="this.formatBranchValue(row.value, chart[2])"/></strong>
                             </div>
                         </div>
                     </article>
                 </t>
             </section>
-
-            <article class="o_sm_br_panel">
-                <div class="o_sm_br_panel_heading"><h2>Branch Performance</h2><span class="o_sm_br_panel_hint"><t t-esc="this.formatPurchaseDate(br.period.start)"/> – <t t-esc="this.formatPurchaseDate(br.period.end)"/></span></div>
-                <div class="o_sm_pur_table_wrap"><table class="o_sm_pur_table">
-                    <thead><tr><th>Branch</th><th>Sales</th><th>Orders</th><th>Food cost %</th><th>Waste</th><th>Waste % of sales</th><th>Contribution</th><th>KPI targets met</th><th>Attainment</th><th>Status</th><th>Responsible manager</th></tr></thead>
-                    <tbody>
-                        <tr t-foreach="br.branches" t-as="row" t-key="row.warehouse_id">
-                            <td><t t-esc="row.name"/></td>
-                            <td><t t-esc="this.formatBranchValue(row.sales, 'currency')"/></td>
-                            <td><t t-esc="this.formatBranchValue(row.orders, 'number')"/></td>
-                            <td><t t-esc="this.formatBranchValue(row.food_cost_pct, 'percent')"/></td>
-                            <td><t t-esc="this.formatBranchValue(row.waste_cost, 'currency')"/></td>
-                            <td><t t-esc="this.formatBranchValue(row.waste_pct_of_sales, 'percent')"/></td>
-                            <td><t t-esc="this.formatBranchValue(row.contribution, 'currency')"/><t t-if="row.contribution_pct !== false"> (<t t-esc="this.formatBranchValue(row.contribution_pct, 'percent')"/>)</t></td>
-                            <td><t t-if="row.kpi_total"><t t-esc="row.kpi_met"/> / <t t-esc="row.kpi_evaluated"/> evaluated (<t t-esc="row.kpi_total"/> targets)</t><t t-else="">No approved targets</t></td>
-                            <td><t t-esc="this.formatBranchValue(row.attainment, 'percent')"/></td>
-                            <td><span t-att-class="'o_sm_br_status ' + row.status_class"><t t-esc="row.status_label"/></span></td>
-                            <td><t t-esc="row.manager"/></td>
-                        </tr>
-                    </tbody>
-                </table></div>
-            </article>
-
-            <article class="o_sm_br_panel">
-                <div class="o_sm_br_panel_heading"><h2>Branches Needing Attention</h2><span class="o_sm_br_count"><t t-esc="br.attention.length"/></span></div>
-                <p t-if="!br.attention.length" class="o_sm_br_panel_hint">No measurable issues: no KPI targets or objectives below target and no overdue supplier receipts.</p>
-                <div t-else="" class="o_sm_pur_table_wrap"><table class="o_sm_pur_table">
-                    <thead><tr><th>Severity</th><th>Issue</th><th>Branch</th><th>Evidence</th><th>Responsible</th><th>Deadline</th><th>Action status</th><th>Actions</th></tr></thead>
-                    <tbody>
-                        <tr t-foreach="br.attention" t-as="item" t-key="item_index">
-                            <td><span t-att-class="'o_sm_br_status ' + (item.severity === 'critical' ? 'o_sm_br_status_critical' : 'o_sm_br_status_warn')"><t t-esc="item.severity === 'critical' ? 'Critical' : 'Warning'"/></span></td>
-                            <td><t t-esc="item.title"/></td>
-                            <td><t t-esc="item.branch"/></td>
-                            <td style="white-space:normal"><t t-esc="item.evidence"/></td>
-                            <td><t t-esc="item.responsible"/></td>
-                            <td><t t-esc="this.formatPurchaseDate(item.deadline)"/></td>
-                            <td><t t-esc="item.action_status"/></td>
-                            <td><span t-if="item.res_model" class="o_sm_issue_actions"><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.openIssueRecord(item)">Open</button><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.createIssueFollowup(item)">Assign follow-up</button></span></td>
-                        </tr>
-                    </tbody>
-                </table></div>
-            </article>
         </t>
     </div>
 </t>
@@ -739,14 +861,14 @@
                 <article t-if="pp.role !== 'employee'" class="o_sm_people_panel">
                     <div class="o_sm_people_panel_heading"><h2>Staffing by Branch</h2><span class="o_sm_people_panel_hint">Actual vs planned staff</span></div>
                     <div class="o_sm_people_staff_list">
-                        <div t-foreach="pp.staffing" t-as="row" t-key="row.warehouse_id" class="o_sm_people_staff_row">
+                        <div t-foreach="this.pageRows('people_staffing', pp.staffing)" t-as="row" t-key="row.warehouse_id" class="o_sm_people_staff_row">
                             <div class="o_sm_people_staff_info"><strong><t t-esc="row.name"/></strong><span><t t-esc="row.actual"/> staff · <t t-esc="row.planned ? row.planned + ' planned' : 'planned staff not configured'"/> · <t t-esc="row.manager"/></span></div>
                             <div class="o_sm_people_staff_track"><span t-att-class="'o_sm_people_staff_fill ' + this.peopleStaffingClass(row.status)" t-att-style="'width:' + (row.planned ? Math.min(100, row.coverage_pct) : this.peopleBarWidth(row.actual, pp.staffing, 'actual')) + '%'"/></div>
                             <span t-if="row.status === 'covered'" class="o_sm_people_coverage o_sm_people_coverage_good">Covered</span>
                             <span t-elif="row.status === 'understaffed'" class="o_sm_people_coverage o_sm_people_coverage_critical"><t t-esc="row.gap"/> short</span>
                             <span t-else="" class="o_sm_people_coverage o_sm_people_coverage_warn">Not Configured</span>
                         </div>
-                    </div>
+                    </div><t t-call="strategic_management.ListPager" pagerKey="'people_staffing'" pagerRows="pp.staffing"/>
                     <p class="o_sm_people_panel_note">Planned staff is set per branch warehouse (Inventory › Configuration › Warehouses). Shift-level coverage needs the Planning app, which is not available in Odoo Community.</p>
                 </article>
 
@@ -754,12 +876,12 @@
                     <div class="o_sm_people_panel_heading"><h2>Needs Attention</h2><span class="o_sm_people_count"><t t-esc="pp.attention.length"/> items</span></div>
                     <p t-if="!pp.attention.length" class="o_sm_people_panel_note">No understaffing, repeated late arrivals, absences or overdue follow-ups in this period.</p>
                     <div class="o_sm_people_issue_list">
-                        <div t-foreach="pp.attention" t-as="item" t-key="item_index" class="o_sm_people_issue_row">
+                        <div t-foreach="this.pageRows('people_attention', pp.attention)" t-as="item" t-key="item_index" class="o_sm_people_issue_row">
                             <div t-att-class="'o_sm_people_issue_icon ' + (item.severity === 'critical' ? 'o_sm_people_issue_red' : 'o_sm_people_issue_amber')"><svg class="o_sm_people_icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 22 20H2Z"/><path d="M12 9v5M12 17h.01"/></svg></div>
                             <div class="o_sm_people_issue_copy"><strong><t t-esc="item.title"/></strong><span><t t-esc="item.branch"/> · <t t-esc="item.evidence"/> · Responsible: <t t-esc="item.responsible"/></span></div>
                             <span t-att-class="'o_sm_people_badge ' + (item.severity === 'critical' ? 'o_sm_people_badge_high' : 'o_sm_people_badge_medium')"><t t-esc="item.severity === 'critical' ? 'High' : 'Medium'"/></span>
                         </div>
-                    </div>
+                    </div><t t-call="strategic_management.ListPager" pagerKey="'people_attention'" pagerRows="pp.attention"/>
                 </article>
             </section>
 
@@ -795,7 +917,7 @@
                     <table class="o_sm_people_table">
                         <thead><tr><th>Task</th><th>Record</th><th>Assigned</th><th>Branch</th><th>Due / Done</th><th>Status</th></tr></thead>
                         <tbody>
-                            <tr t-foreach="pp.actions" t-as="action" t-key="action_index">
+                            <tr t-foreach="this.pageRows('people_actions', pp.actions)" t-as="action" t-key="action_index">
                                 <td><t t-esc="action.task"/></td>
                                 <td><t t-esc="action.record"/></td>
                                 <td><t t-esc="action.assigned"/></td>
@@ -805,7 +927,7 @@
                             </tr>
                         </tbody>
                     </table>
-                </div>
+                </div><t t-call="strategic_management.ListPager" pagerKey="'people_actions'" pagerRows="pp.actions"/>
             </section>
         </t>
     </div>
@@ -840,14 +962,14 @@
             <p t-if="ox and !ox.attention.length" class="o_sm_br_panel_hint">No measurable issues in this period.</p>
             <div t-elif="ox" class="o_sm_pur_table_wrap"><table class="o_sm_pur_table">
                 <thead><tr><th>Severity</th><th>Issue</th><th>Branch</th><th>Evidence</th><th>Responsible</th><th>Deadline</th><th>Action status</th><th>Actions</th></tr></thead>
-                <tbody><tr t-foreach="ox.attention" t-as="item" t-key="item_index">
+                <tbody><tr t-foreach="this.pageRows('task_issues', ox.attention)" t-as="item" t-key="item_index">
                     <td><span t-att-class="'o_sm_br_status ' + (item.severity === 'critical' ? 'o_sm_br_status_critical' : 'o_sm_br_status_warn')"><t t-esc="item.severity === 'critical' ? 'Critical' : 'Warning'"/></span></td>
                     <td><t t-esc="item.title"/></td><td><t t-esc="item.branch or '—'"/></td><td style="white-space:normal"><t t-esc="item.evidence"/></td>
                     <td><t t-esc="item.responsible or 'Not assigned'"/></td><td><t t-esc="item.deadline ? this.formatPurchaseDate(item.deadline) : '—'"/></td><td><t t-esc="item.action_status or '—'"/></td>
                     <td><span t-if="item.res_model" class="o_sm_issue_actions"><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.openIssueRecord(item)">Open</button><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.createIssueFollowup(item)">Assign follow-up</button></span></td>
                 </tr></tbody>
             </table></div>
-            <p t-else="" class="o_sm_br_panel_hint">Loading…</p>
+            <p t-else="" class="o_sm_br_panel_hint">Loading…</p><t t-call="strategic_management.ListPager" pagerKey="'task_issues'" pagerRows="ox and ox.attention"/>
         </article>
 
         <article class="o_sm_br_panel">
@@ -855,13 +977,60 @@
             <p t-if="pp and !pp.actions.length" class="o_sm_br_panel_hint">No tasks found.</p>
             <div t-elif="pp" class="o_sm_pur_table_wrap"><table class="o_sm_pur_table">
                 <thead><tr><th>Task</th><th>Record</th><th>Assigned</th><th>Branch</th><th>Due / Done</th><th>Status</th></tr></thead>
-                <tbody><tr t-foreach="pp.actions" t-as="action" t-key="action_index">
+                <tbody><tr t-foreach="this.pageRows('task_actions', pp.actions)" t-as="action" t-key="action_index">
                     <td><t t-esc="action.task"/></td><td><t t-esc="action.record"/></td><td><t t-esc="action.assigned"/></td><td><t t-esc="action.branch"/></td>
                     <td><t t-esc="this.formatPurchaseDate(action.due_date)"/></td><td><span t-att-class="'o_sm_people_task_status ' + this.peopleTaskClass(action.status)"><t t-esc="action.status"/></span></td>
                 </tr></tbody>
             </table></div>
-            <p t-else="" class="o_sm_br_panel_hint">Loading…</p>
+            <p t-else="" class="o_sm_br_panel_hint">Loading…</p><t t-call="strategic_management.ListPager" pagerKey="'task_actions'" pagerRows="pp and pp.actions"/>
         </article>
+    </div>
+</t>
+<t t-elif="this.state.activeSection === 'app_dependencies'">
+    <div class="o_sm_appdep_page">
+        <header class="o_sm_appdep_header">
+            <div>
+                <h1>App Dependencies</h1>
+                <p>See which Odoo apps Strategic Management uses and what each one enables.</p>
+            </div>
+            <button type="button" class="o_sm_appdep_refresh" t-on-click="() => this.loadAppDependencies()"><i class="oi" data-icon="refresh" aria-hidden="true"/> Refresh status</button>
+        </header>
+        <div class="o_sm_appdep_intro"><i class="oi" data-icon="info" aria-hidden="true"/><span>Installation status is read directly from Odoo. An installed app may still need setup or usable business data. This page never installs or changes apps.</span></div>
+        <div t-if="this.state.appDependenciesLoading" class="o_sm_appdep_state">Checking Odoo app status…</div>
+        <div t-elif="this.state.appDependenciesError" class="o_sm_appdep_state o_sm_appdep_error">
+            <strong>App status could not be loaded.</strong><span><t t-esc="this.state.appDependenciesError"/></span>
+            <button type="button" class="o_sm_appdep_refresh" t-on-click="() => this.loadAppDependencies()">Try again</button>
+        </div>
+        <t t-elif="this.state.appDependenciesData">
+            <div class="o_sm_appdep_totals">
+                <div class="o_sm_appdep_total"><span>Apps checked</span><strong><t t-esc="this.state.appDependenciesData.summary.total_count"/></strong></div>
+                <div class="o_sm_appdep_total"><span>Installed</span><strong class="o_sm_appdep_total_installed"><t t-esc="this.state.appDependenciesData.summary.installed_count"/></strong></div>
+                <div class="o_sm_appdep_total"><span>Not installed</span><strong class="o_sm_appdep_total_missing"><t t-esc="this.state.appDependenciesData.summary.not_installed_count"/></strong></div>
+            </div>
+            <section class="o_sm_appdep_list" aria-label="Odoo app dependencies">
+                <article t-foreach="this.state.appDependenciesData.apps" t-as="app" t-key="app.id" class="o_sm_appdep_row">
+                    <div class="o_sm_appdep_row_main">
+                        <div t-att-class="'o_sm_appdep_icon' + (app.icon_url ? ' o_sm_appdep_icon_app' : '')"><img t-if="app.icon_url" t-att-src="app.icon_url" alt="" loading="lazy"/><i t-else="" class="oi" t-att-data-icon="app.icon" aria-hidden="true"/></div>
+                        <div class="o_sm_appdep_name"><strong><t t-esc="app.name"/></strong><small><t t-esc="app.requirement_label"/></small></div>
+                        <span t-att-class="'o_sm_appdep_status ' + (app.installed ? 'is-installed' : 'is-missing')"><i class="oi" t-att-data-icon="app.installed ? 'check_circle' : 'cancel'" aria-hidden="true"/> <t t-esc="app.status_label"/></span>
+                        <button type="button" class="o_sm_appdep_expand" t-att-aria-expanded="this.state.expandedDependencyId === app.id ? 'true' : 'false'" t-att-aria-label="(this.state.expandedDependencyId === app.id ? 'Hide details for ' : 'Show details for ') + app.name" t-on-click="() => this.toggleAppDependency(app.id)">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path t-if="this.state.expandedDependencyId === app.id" d="m6 14 6-6 6 6"/><path t-else="" d="m6 9 6 6 6-6"/></svg>
+                        </button>
+                    </div>
+                    <div t-if="this.state.expandedDependencyId === app.id" class="o_sm_appdep_details">
+                        <div><h3>What it supports</h3><p><t t-esc="app.purpose"/></p></div>
+                        <div><h3>Setup to check</h3><p><t t-esc="app.setup"/></p></div>
+                        <div class="o_sm_appdep_modules">
+                            <strong>Odoo modules checked</strong>
+                            <div t-foreach="app.modules" t-as="module" t-key="module.name" class="o_sm_appdep_module">
+                                <span><t t-esc="module.label"/> (<code><t t-esc="module.name"/></code>)</span>
+                                <span t-att-class="'o_sm_appdep_module_state ' + (module.installed ? 'is-installed' : 'is-missing')"><t t-esc="module.state_label"/></span>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            </section>
+        </t>
     </div>
 </t>
 <t t-elif="this.state.activeSection === 'reports' or this.state.activeSection === 'configuration'">
@@ -884,12 +1053,64 @@
 <t t-else="">
                     <header class="o_sm_section_header"><h1><t t-esc="this.activeItem.label"/></h1><div class="o_sm_subtitle">Strategic Management / <t t-esc="this.activeItem.label"/></div></header>
                     <section class="o_sm_section_placeholder">
-                        <div class="o_sm_placeholder_icon"><i t-att-class="'fa ' + this.activeItem.icon" aria-hidden="true"/></div>
+                        <div class="o_sm_placeholder_icon"><i class="oi" t-att-data-icon="this.activeItem.icon" aria-hidden="true"/></div>
                         <h2><t t-esc="this.activeItem.label"/></h2>
                         <p>This section will be connected to its business records in the next implementation step. The overview already reads available figures from your Odoo database.</p>
                     </section>
                 </t>
             </main>
         </div>
+    </t>
+    <t t-name="strategic_management.NavigationButton">
+        <button type="button"
+                t-att-class="this.state.activeSection === item.id ? 'o_sm_nav_item active' : 'o_sm_nav_item'"
+                t-att-aria-current="this.state.activeSection === item.id ? 'page' : false"
+                t-on-click="() => this.openNavItem(item)">
+            <svg class="o_sm_nav_svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+    <g t-if="item.id === 'overview'"><path d="M3.5 10.5 12 3.8l8.5 6.7"/><path d="M5.5 9.5v10.8h13V9.5"/><path d="M9.5 20.3v-6h5v6"/></g>
+    <g t-elif="item.id === 'sales_finance'"><path d="M5 20v-7M10 20V8M15 20v-9M20 20V4"/></g>
+    <g t-elif="item.id === 'inventory_waste'"><path d="m12 3 8 4.2v9.6L12 21l-8-4.2V7.2Z"/><path d="m4.3 7.3 7.7 4.1 7.7-4.1M12 11.5V21"/></g>
+    <g t-elif="item.id === 'purchasing'"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 4h2l2.1 11.2a2 2 0 0 0 2 1.6h9.5a2 2 0 0 0 1.9-1.5L22 8H6"/></g>
+    <g t-elif="item.id === 'business_goals'"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></g>
+    <g t-elif="item.id === 'branches'"><path d="M4 21V4.5h11V21M15 10h5v11M2 21h20"/><path d="M7.5 8h4M7.5 12h4M7.5 16h4M17 14h1.5M17 17h1.5"/></g>
+    <g t-elif="item.id === 'people'"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1.4a6 6 0 0 1 12 0V20Z"/><path d="M16 5.5a3 3 0 0 1 0 5.8M18 14a5 5 0 0 1 3 4.6V20h-4"/></g>
+    <g t-elif="item.id === 'tasks_issues'"><rect x="5" y="4.5" width="14" height="17" rx="2"/><path d="M9 4.5v-2h6v2M8 11l2 2 4-4M8 17h8"/></g>
+    <g t-elif="item.id === 'reports'"><path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></g>
+    <g t-elif="item.id === 'app_dependencies'"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><path d="M16.5 13.5v6M13.5 16.5h6"/></g>
+    <g t-elif="item.id === 'configuration'"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></g>
+</svg>
+            <span class="o_sm_nav_label"><t t-esc="item.label"/></span>
+        </button>
+    </t>
+    <t t-name="strategic_management.ListPager">
+        <t t-set="pagerCount" t-value="this.pageCount(pagerRows)"/>
+        <div t-if="pagerCount > 1" class="o_sm_pager">
+            <span><t t-esc="(pagerRows || []).length"/> items · Page <t t-esc="this.pageOf(pagerKey, pagerRows)"/> of <t t-esc="pagerCount"/></span>
+            <button type="button" t-att-disabled="this.pageOf(pagerKey, pagerRows) &lt;= 1" t-on-click="() => this.setPage(pagerKey, this.pageOf(pagerKey, pagerRows) - 1)" aria-label="Previous page">‹ Prev</button>
+            <button type="button" t-att-disabled="this.pageOf(pagerKey, pagerRows) >= pagerCount" t-on-click="() => this.setPage(pagerKey, this.pageOf(pagerKey, pagerRows) + 1)" aria-label="Next page">Next ›</button>
+        </div>
+    </t>
+    <t t-name="strategic_management.AreaGoals">
+        <section class="o_sm_area_goals" aria-label="Goals in this area">
+            <div class="o_sm_area_goals_head"><h2>Goals in this area</h2><span>Same goals as Business Goals</span></div>
+            <t t-set="areaGoalRows" t-value="this.state.areaGoals[areaKey]"/>
+            <p t-if="!areaGoalRows" class="o_sm_area_goals_empty">Loading goals…</p>
+            <p t-elif="!areaGoalRows.length" class="o_sm_area_goals_empty">No goals for this area yet. Create one in Business Goals.</p>
+            <t t-else="">
+                <div class="o_sm_pur_table_wrap"><table class="o_sm_pur_table">
+                    <thead><tr><th>Goal</th><th>Current result</th><th>Target</th><th>Period / deadline</th><th>Responsible</th><th>Status</th><th/></tr></thead>
+                    <tbody><tr t-foreach="this.pageRows('area_goals_' + areaKey, areaGoalRows)" t-as="goal" t-key="goal.objective_id">
+                        <td style="white-space:normal"><strong t-esc="goal.title"/><div t-if="goal.measure_label" class="o_sm_area_goals_sub" t-esc="goal.measure_label"/></td>
+                        <td t-att-title="goal.current_note" t-esc="goal.current"/>
+                        <td t-esc="goal.target or '—'"/>
+                        <td><t t-if="goal.period_start"><t t-esc="this.formatPurchaseDate(goal.period_start)"/> – <t t-esc="this.formatPurchaseDate(goal.period_end)"/></t><t t-else="">Due <t t-esc="this.formatPurchaseDate(goal.deadline)"/></t></td>
+                        <td t-esc="goal.owner"/>
+                        <td><span t-att-class="'o_sm_area_goal_status is-' + goal.tone" t-esc="goal.status"/></td>
+                        <td><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.openObjective(goal.objective_id)">Open</button></td>
+                    </tr></tbody>
+                </table></div>
+                <t t-call="strategic_management.ListPager" pagerKey="'area_goals_' + areaKey" pagerRows="areaGoalRows"/>
+            </t>
+        </section>
     </t>
 </templates>

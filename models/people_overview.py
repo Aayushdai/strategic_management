@@ -14,6 +14,8 @@ from zoneinfo import ZoneInfo
 
 from odoo import api, fields, models
 
+from .business_overview import _LIST_LIMIT
+
 
 LATE_GRACE_MINUTES = 10
 _WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -279,7 +281,7 @@ class StrategicPerformanceDashboardPeople(models.AbstractModel):
             ("author_id", "in", staff_users.partner_id.ids),
             ("date", ">=", start_utc),
             ("date", "<", end_utc),
-        ], order="date desc", limit=10)
+        ], order="date desc", limit=_LIST_LIMIT)
         partner_users = {user.partner_id.id: user for user in staff_users}
         for message in done:
             user = partner_users.get(message.author_id.id)

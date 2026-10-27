@@ -1,6 +1,6 @@
 """Authorized, on-demand entry point for operational KPI source adapters."""
 
-from odoo import models, _
+from odoo import fields, models, _
 from odoo.exceptions import AccessError, ValidationError
 
 from ..services.kpi_sources import (
@@ -18,8 +18,16 @@ _SOURCE_ADAPTERS = {
     "accounting": {
         "accounting_net_profit",
         "accounting_net_profit_margin_pct",
+        "accounting_overdue_supplier_bills_amount",
+        "accounting_total_expenses",
+        "accounting_expense_to_income_pct",
     },
     "pos": {
+        "pos_net_sales",
+        "pos_sales_growth_pct",
+        "pos_average_order_value",
+        "pos_product_net_sales",
+        "pos_average_unit_price",
         "pos_sold_quantity",
         "pos_recipe_consumption_estimate",
     },
@@ -27,6 +35,15 @@ _SOURCE_ADAPTERS = {
         "purchase_ordered_quantity",
         "purchase_received_quantity",
         "supplier_on_time_delivery_pct",
+        "purchase_confirmed_amount",
+        "purchase_product_quantity_limit",
+        "purchase_unit_price_change_pct",
+        "purchase_top_supplier_share_pct",
+        "purchase_outstanding_amount",
+        "purchase_average_receipt_lead_days",
+        "purchase_on_time_delivery_count_pct",
+        "purchase_average_delivery_delay_days",
+        "purchase_average_unit_price",
     },
     "inventory": {
         "inventory_recorded_waste_quantity",
@@ -38,7 +55,28 @@ _SOURCE_ADAPTERS = {
         "inventory_transfer_out_quantity",
         "inventory_adjustment_quantity",
         "inventory_unexplained_variance_quantity",
+        "inventory_waste_cost_amount",
+        "inventory_waste_cost_to_sales_pct",
+        "inventory_count_difference_quantity",
+        "inventory_recorded_waste_cost",
+        "inventory_closing_stock_value",
+        "inventory_recipe_coverage_pct",
+        "inventory_count_plan_completion_pct",
+        "inventory_waste_recording_pct",
+        "inventory_ingredient_use_difference_quantity",
     },
+}
+# Limits judged over the whole period: an interim value must not be stored as the result.
+_FINAL_ONLY_CALCULATIONS = {
+    "purchase_confirmed_amount", "purchase_product_quantity_limit", "purchase_unit_price_change_pct",
+    "purchase_top_supplier_share_pct", "purchase_outstanding_amount", "purchase_average_receipt_lead_days",
+    "purchase_on_time_delivery_count_pct", "purchase_average_delivery_delay_days", "accounting_overdue_supplier_bills_amount",
+    "inventory_waste_cost_amount", "inventory_waste_cost_to_sales_pct", "inventory_count_difference_quantity",
+    "inventory_recorded_waste_cost", "purchase_average_unit_price",
+}
+# Calculations scored by the supplier-delivery collector (promised-date baseline cohort).
+DELIVERY_CALCULATIONS = {
+    "supplier_on_time_delivery_pct", "purchase_on_time_delivery_count_pct", "purchase_average_delivery_delay_days",
 }
 _SOURCE_COLLECTORS = {
     "accounting": collect_accounting_result,
@@ -52,7 +90,7 @@ def source_collector_for(version):
     """Return the operational collector for a definition version, or False."""
     collector = (
         collect_supplier_delivery_result
-        if version.calculation_type == "supplier_on_time_delivery_pct"
+        if version.calculation_type in DELIVERY_CALCULATIONS
         else _SOURCE_COLLECTORS.get(version.source_type)
     )
     if not collector or version.calculation_type not in _SOURCE_ADAPTERS.get(version.source_type, set()):
@@ -82,6 +120,12 @@ class StrategicKpiTarget(models.Model):
                 raise AccessError(_("Branch Managers may evaluate only targets for their own branch."))
 
         version = self.kpi_id._get_definition_version_for_period(self.date_start, self.date_end)
+        if version.calculation_type in _FINAL_ONLY_CALCULATIONS:
+            company_today = fields.Date.context_today(self.with_context(tz=self.company_id.partner_id.tz or "UTC"))
+            if self.date_end >= company_today:
+                raise ValidationError(_(
+                    "This limit is judged on the whole period. The final result can be calculated after %s; "
+                    "until then the goal shows spending so far.", self.date_end))
         collector = source_collector_for(version)
         if not collector:
             raise ValidationError(_("The approved KPI definition version does not select an operational source adapter supported by this release."))

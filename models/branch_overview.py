@@ -10,10 +10,12 @@ from collections import defaultdict
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, ValidationError
 
+from .business_overview import _LIST_LIMIT
 from .kpi_source_adapter import source_collector_for
+from ..services.kpi_sources.pos import POS_SALE_STATES
 
 
-_POS_STATES = ["paid", "done", "invoiced"]
+_POS_STATES = POS_SALE_STATES  # Odoo 20 has no "invoiced" POS state; same population as the sales KPIs
 _BELOW_TARGET = {"not_achieved", "almost_met"}
 _MEETS_TARGET = {"achieved", "exceeded"}
 _STATUS = {
@@ -139,7 +141,7 @@ class StrategicPerformanceDashboardBranches(models.AbstractModel):
 
         contribution_known = totals["cost_known"] and totals["waste_known"]
         result["branches"] = rows
-        result["attention"] = attention[:15]
+        result["attention"] = attention[:_LIST_LIMIT]
         result["summary"] = {
             "active_branches": len(rows),
             "meeting_target": sum(1 for row in rows if row["status"] == "meeting_target"),

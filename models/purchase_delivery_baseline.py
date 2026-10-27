@@ -5,6 +5,8 @@ import math
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
+from ..services.kpi_sources.common import units_compatible
+
 
 _BASELINE_FIELDS = {
     "strategic_otd_baseline_captured",
@@ -69,6 +71,8 @@ class PurchaseOrderLine(models.Model):
             quantity = 0.0
             if product and product.uom_id and line.uom_id:
                 try:
+                    if not units_compatible(line.uom_id, product.uom_id):
+                        raise ValidationError("unrelated units")
                     quantity = line.uom_id._compute_quantity(
                         line.product_qty, product.uom_id, rounding_method="HALF-UP"
                     )

@@ -12,6 +12,8 @@ from datetime import timedelta
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 
+from .business_overview import _LIST_LIMIT
+
 
 _logger = logging.getLogger(__name__)
 _ON_TRACK = {"achieved", "exceeded"}
@@ -154,7 +156,7 @@ class StrategicPerformanceDashboardOverview(models.AbstractModel):
                           "res_model": item.get("res_model"), "res_id": item.get("res_id"),
                           "severity": _SEVERITY.get(item["severity"], "warning")})
         items.sort(key=lambda item: (item["severity"] != "critical", item["deadline"] or "9999-12-31"))
-        items = items[:10]
+        items = items[:_LIST_LIMIT]
         today = fields.Date.context_today(self)
         Activity = self.env["mail.activity"].sudo()
         for item in items:
@@ -230,7 +232,7 @@ class StrategicPerformanceDashboardOverview(models.AbstractModel):
             ("company_id", "=", company.id), ("state", "in", ["paid", "done"]),
             ("date_order", ">=", start_utc), ("date_order", "<", end_utc),
             ("config_id.picking_type_id.warehouse_id", "in", warehouses.ids),
-        ], order="date_order desc", limit=5)) or []
+        ], order="date_order desc", limit=_LIST_LIMIT)) or []
         for order in orders:
             add("pos", "POS %s %s" % ("refund" if order.is_refund else "order", order.name),
                 "%s %s excl. tax" % (order.currency_id.symbol or "", "%.2f" % (order.amount_total - order.amount_tax)),
@@ -239,7 +241,7 @@ class StrategicPerformanceDashboardOverview(models.AbstractModel):
             purchases = self._overview_safe(lambda: self.env["purchase.order"].search([
                 ("company_id", "=", company.id), ("write_date", ">=", start_utc), ("write_date", "<", end_utc),
                 ("picking_type_id.warehouse_id", "in", warehouses.ids),
-            ], order="write_date desc", limit=5)) or []
+            ], order="write_date desc", limit=_LIST_LIMIT)) or []
             for order in purchases:
                 add("purchase", "Purchase order %s" % order.name,
                     "%s · %s" % (order.partner_id.display_name or "Supplier", dict(order._fields["state"].selection).get(order.state)),
@@ -248,7 +250,7 @@ class StrategicPerformanceDashboardOverview(models.AbstractModel):
             ("company_id", "=", company.id), ("state", "=", "done"), ("is_inventory", "=", True),
             ("date", ">=", start_utc), ("date", "<", end_utc),
             "|", ("location_id.warehouse_id", "in", warehouses.ids), ("location_dest_id.warehouse_id", "in", warehouses.ids),
-        ], order="date desc", limit=5)) or []
+        ], order="date desc", limit=_LIST_LIMIT)) or []
         for move in adjustments:
             sign = 1 if move.location_dest_id.warehouse_id in warehouses else -1
             add("inventory", "Inventory adjustment: %s" % move.product_id.display_name,
@@ -259,7 +261,7 @@ class StrategicPerformanceDashboardOverview(models.AbstractModel):
             attendances = self.env["hr.attendance"].sudo().search([
                 ("employee_id.user_id.strategic_branch_warehouse_id", "in", warehouses.ids),
                 ("check_in", ">=", start_utc), ("check_in", "<", end_utc),
-            ], order="write_date desc", limit=5)
+            ], order="write_date desc", limit=_LIST_LIMIT)
             for attendance in attendances:
                 add("attendance", "Attendance: %s" % attendance.employee_id.name,
                     "Checked out" if attendance.check_out else "Checked in",
@@ -268,10 +270,10 @@ class StrategicPerformanceDashboardOverview(models.AbstractModel):
         objectives = self.env["strategic.objective"].sudo().search([
             ("company_id", "=", company.id), ("write_date", ">=", start_utc), ("write_date", "<", end_utc),
             "|", ("scope", "=", "organization"), ("warehouse_id", "in", warehouses.ids),
-        ], order="write_date desc", limit=5)
+        ], order="write_date desc", limit=_LIST_LIMIT)
         for objective in objectives:
             add("objective", "Objective updated: %s" % objective.name,
                 dict(objective._fields["state"].selection).get(objective.state),
                 objective.warehouse_id.display_name or "Organization", objective.write_date)
         activities.sort(key=lambda item: item["date"], reverse=True)
-        return activities[:12]
+        return activities[:_LIST_LIMIT]

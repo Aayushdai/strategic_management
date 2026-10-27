@@ -1,13 +1,23 @@
 """Requirement-aligned, quantity-weighted supplier on-time delivery adapter."""
 
+from datetime import datetime, timedelta
 import math
+
+import pytz
 
 from odoo import fields
 from odoo.exceptions import UserError, ValidationError
 
-from .common import DATA_QUALITY, NOT_EVALUATED, VALID, reporting_period_utc, source_result, validate_scope
+from .common import (DATA_QUALITY, NOT_EVALUATED, VALID, quantity_to_product_uom, reporting_period_utc, source_result,
+                     units_compatible, validate_scope)
 
-SUPPORTED_CALCULATIONS = {"supplier_on_time_delivery_pct"}
+SUPPORTED_CALCULATIONS = {
+    "supplier_on_time_delivery_pct",
+    # Same cohort and fail-closed rules, scored differently (business-goal measures).
+    "purchase_on_time_delivery_count_pct",
+    "purchase_average_delivery_delay_days",
+}
+_UNITS = {"purchase_average_delivery_delay_days": "days"}
 
 
 def _weighted_on_time_delivery_percentage(due_and_on_time_quantities):
@@ -54,10 +64,11 @@ def collect_supplier_delivery_result(target, version):
             "Supplier on-time delivery requires the Purchase source and supplier_on_time_delivery_pct calculation.",
             "purchase.order.line", Line.browse(),
         )
-    if (version.unit or "").strip() != "%" or version.source_product_id:
+    expected_unit = _UNITS.get(version.calculation_type, "%")
+    if (version.unit or "").strip() != expected_unit or version.source_product_id:
         return source_result(
             target, version, DATA_QUALITY, None,
-            "Supplier on-time delivery requires unit '%' and no single tracked source product.",
+            "Supplier on-time delivery requires unit '%s' and no single tracked source product." % expected_unit,
             "purchase.order.line", Line.browse(),
         )
     issue = validate_scope(target)
@@ -177,6 +188,8 @@ def collect_supplier_delivery_result(target, version):
         if current_warehouse != line.strategic_otd_baseline_warehouse_id:
             changed_lines.append("line %s receipt warehouse changed" % line.id)
         try:
+            if not units_compatible(line.uom_id, line.strategic_otd_baseline_product_id.uom_id):
+                raise ValidationError("unrelated units")
             current_quantity = line.uom_id._compute_quantity(
                 line.product_qty, line.strategic_otd_baseline_product_id.uom_id,
                 rounding_method="HALF-UP",
@@ -243,15 +256,23 @@ def collect_supplier_delivery_result(target, version):
 
     due_and_on_time = []
     notes = []
+    delays = []  # per line: days late at completion, None while not fully received
     for line in lines:
         baseline_date = fields.Datetime.to_datetime(line.strategic_otd_baseline_date)
         due_quantity = line.strategic_otd_baseline_quantity
-        timely_moves = receipt_moves.filtered(
+        line_moves = receipt_moves.filtered(
             lambda move: move.purchase_line_id == line
             and move.product_id == line.strategic_otd_baseline_product_id
-            and fields.Datetime.to_datetime(move.date) <= baseline_date
             and (target.scope != "branch" or move.location_dest_id.warehouse_id == target.warehouse_id)
         )
+        timely_moves = line_moves.filtered(lambda move: fields.Datetime.to_datetime(move.date) <= baseline_date)
+        cumulative, completed_at = 0.0, None
+        for move in line_moves.sorted(lambda move: (move.date, move.id)):
+            cumulative += move.quantity_product_uom
+            if cumulative >= due_quantity - 1e-6:
+                completed_at = fields.Datetime.to_datetime(move.date)
+                break
+        delays.append(None if completed_at is None else max(0.0, (completed_at - baseline_date).total_seconds() / 86400.0))
         received_by_baseline = sum(timely_moves.mapped("quantity_product_uom"))
         if not math.isfinite(received_by_baseline) or received_by_baseline < 0:
             return source_result(
@@ -269,6 +290,32 @@ def collect_supplier_delivery_result(target, version):
                 due_quantity, line.strategic_otd_baseline_product_id.uom_id.name,
                 on_time_quantity, line.strategic_otd_baseline_product_id.uom_id.name,
             )
+        )
+
+    if version.calculation_type == "purchase_on_time_delivery_count_pct":
+        # A delivery (PO line) is on time only when its full due quantity arrived by the original promised date.
+        on_time = sum(1 for due, timely in due_and_on_time if timely >= due - 1e-6)
+        return source_result(
+            target, version, VALID, round(100.0 * on_time / len(due_and_on_time), 4),
+            "%s of %s deliveries due in this period arrived in full by the original promised date. "
+            "A partly on-time delivery counts as late." % (on_time, len(due_and_on_time)),
+            "purchase.order.line+stock.move", lines.mapped("order_id"), lines, receipt_moves,
+        )
+    if version.calculation_type == "purchase_average_delivery_delay_days":
+        # Population: deliveries due in this period that are fully received; outstanding ones are reported, not averaged.
+        completed = [delay for delay in delays if delay is not None]
+        outstanding = len(delays) - len(completed)
+        if not completed:
+            return source_result(
+                target, version, NOT_EVALUATED, None,
+                "No delivery due in this period has been fully received yet (%s outstanding)." % outstanding,
+                "purchase.order.line+stock.move", lines.mapped("order_id"), lines, receipt_moves,
+            )
+        return source_result(
+            target, version, VALID, round(sum(completed) / len(completed), 4),
+            "Average days late (0 if early) at full receipt, over %s completed deliveries; %s still outstanding are not included." % (
+                len(completed), outstanding),
+            "purchase.order.line+stock.move", lines.mapped("order_id"), lines, receipt_moves,
         )
 
     percentage = _weighted_on_time_delivery_percentage(due_and_on_time)
@@ -293,3 +340,113 @@ def collect_supplier_delivery_result(target, version):
         target, version, VALID, float(percentage), reason,
         "purchase.order.line+stock.move", lines.mapped("order_id"), lines, receipt_moves,
     )
+
+
+# ---------------------------------------------------------------- supplier performance (purchasing monitoring)
+def delivery_performance_facts(env, company, date_from, date_to, warehouses, partner=False, product=False, category=False):
+    """Confirmed order lines due on a day of the period, once that day has fully passed, with their receipts.
+
+    Due day = the promised date captured when the order was confirmed (strategic_otd_baseline_date), as a calendar
+    day in the company time zone; due quantity = the quantity captured then, in the product's base unit. Receipts =
+    completed moves from a supplier into stock for the line (draft, waiting and cancelled receipts do not count),
+    each kept with its own date and quantity, so partial deliveries are judged shipment by shipment. Receipts after
+    the period still count as (late) deliveries of the period's lines. Returns to the supplier do not change when
+    goods arrived. Cancelled orders and RFQs are not due. Lines that cannot be judged are listed in ``excluded`` with
+    the reason, never dropped silently. Returns (facts, excluded, problem).
+    """
+    from .pos import period_bounds_utc                    # local: pos is a sibling source module
+    from .purchase_goals import _filter_domain
+
+    Line = env["purchase.order.line"].sudo()
+    Move = env["stock.move"].sudo()
+    if not company.partner_id.tz:
+        return [], [], "The company contact has no timezone configured, so delivery days cannot be determined safely."
+    if not warehouses:
+        return [], [], "No branch warehouse is configured, so purchase orders cannot be assigned to a branch."
+    timezone = pytz.timezone(company.partner_id.tz)
+    today = datetime.now(pytz.UTC).astimezone(timezone).date()
+    last_due_day = min(fields.Date.to_date(date_to), today - timedelta(days=1))
+    date_from = fields.Date.to_date(date_from)
+    if date_from > last_due_day:
+        return [], [], False
+    start_utc, end_utc, problem = period_bounds_utc(company, date_from, last_due_day)
+    if problem:
+        return [], [], problem
+    start_text, end_text = fields.Datetime.to_string(start_utc), fields.Datetime.to_string(end_utc)
+    lines = Line.search([
+        ("order_id.company_id", "=", company.id),
+        ("order_id.state", "in", ["purchase", "done"]),
+        ("order_id.picking_type_id.warehouse_id", "in", warehouses.ids),
+        ("display_type", "=", False),
+        ("product_id", "!=", False),
+        ("product_id.type", "!=", "service"),
+        "|",
+        "&", ("strategic_otd_baseline_date", ">=", start_text), ("strategic_otd_baseline_date", "<", end_text),
+        "&", "&", ("strategic_otd_baseline_date", "=", False), ("date_promised", ">=", start_text), ("date_promised", "<", end_text),
+    ] + _filter_domain("", partner, product, category), order="order_id, id")
+
+    def local_day(value):
+        return pytz.UTC.localize(fields.Datetime.to_datetime(value)).astimezone(timezone).date()
+
+    receipts = Move.search([
+        ("purchase_line_id", "in", lines.ids), ("state", "=", "done"), ("is_scrap", "=", False),
+        ("location_usage", "=", "supplier"), ("location_dest_usage", "=", "internal"), ("origin_returned_move_id", "=", False),
+    ], order="date, id")
+    facts, excluded = [], []
+    for line in lines:
+        order = line.order_id
+        reason = False
+        if not line.strategic_otd_baseline_date or line.strategic_otd_baseline_quantity <= 0:
+            reason = "no promised date was recorded when the order was confirmed"
+        elif line.product_id != line.strategic_otd_baseline_product_id or order.partner_id != line.strategic_otd_baseline_partner_id:
+            reason = "product or supplier changed after confirmation"
+        elif order.picking_type_id.warehouse_id != line.strategic_otd_baseline_warehouse_id:
+            reason = "receiving branch changed after confirmation"
+        else:
+            try:
+                current = quantity_to_product_uom(line.product_qty, line.uom_id, line.product_id)
+            except ValidationError as exc:
+                current, reason = None, str(exc)
+            if current is not None and abs(current - line.strategic_otd_baseline_quantity) > max(1e-6, abs(current) * 1e-6):
+                reason = "ordered quantity changed after confirmation"
+        if reason:
+            excluded.append({"order": order.name, "product": line.product_id.display_name, "reason": reason})
+            continue
+        expected = local_day(line.strategic_otd_baseline_date)
+        due = line.strategic_otd_baseline_quantity
+        shipments = [(local_day(move.date), move.quantity_product_uom) for move in receipts if move.purchase_line_id == line]
+        received = sum(quantity for _day, quantity in shipments)
+        facts.append({
+            "line": line, "order": order, "expected": expected, "due": due, "unit": line.product_id.uom_id.name or "",
+            "received": received, "on_time": min(due, sum(quantity for day, quantity in shipments if day <= expected)),
+            "undelivered": max(0.0, due - received), "receipts": [(day, quantity, (day - expected).days) for day, quantity in shipments],
+            "supplier": order.partner_id.commercial_partner_id.display_name or "No supplier",
+            "product": line.product_id.display_name, "category": line.product_id.categ_id.display_name or "No category",
+            "branch": order.picking_type_id.warehouse_id.display_name or "",
+        })
+    return facts, excluded, False
+
+
+def on_time_rates(facts):
+    """{unit: on-time %} = quantity received by the due day / quantity due x 100, per unit of measure.
+
+    Quantities in different units are never weighted against each other. Undelivered quantity counts as not on time.
+    """
+    totals = {}
+    for fact in facts:
+        due, on_time = totals.get(fact["unit"], (0.0, 0.0))
+        totals[fact["unit"]] = (due + fact["due"], on_time + fact["on_time"])
+    return {unit: on_time / due * 100.0 for unit, (due, on_time) in totals.items() if due > 0}
+
+
+def average_delays(facts):
+    """{unit: days} = sum(days after the due day x quantity received) / quantity received, per unit of measure.
+
+    Negative = early, 0 = on the due day, positive = late; each receipt weighs by its quantity. Undelivered quantity has
+    no delay yet and is reported apart, so a unit with no receipts has no average (not zero)."""
+    totals = {}
+    for fact in facts:
+        for _day, quantity, days in fact["receipts"]:
+            weighted, received = totals.get(fact["unit"], (0.0, 0.0))
+            totals[fact["unit"]] = (weighted + days * quantity, received + quantity)
+    return {unit: weighted / received for unit, (weighted, received) in totals.items() if received > 0}

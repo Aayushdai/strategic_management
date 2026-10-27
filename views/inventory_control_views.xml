@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Menu items that need a recipe: the list 'Ensure key menu items have approved recipes' is measured against. -->
+    <record id="product_template_form_strategic_recipe_required" model="ir.ui.view">
+        <field name="name">product.template.form.strategic.recipe.required</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="point_of_sale.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='pos']/field[@name='to_weight']" position="after">
+                <field name="strategic_recipe_required" groups="strategic_management.group_strategic_head_office_manager"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Planned stock counts: the schedule 'Complete planned stock counts' is measured against. -->
+    <record id="view_stock_count_plan_list" model="ir.ui.view">
+        <field name="name">strategic.stock.count.plan.list</field>
+        <field name="model">strategic.stock.count.plan</field>
+        <field name="arch" type="xml">
+            <list string="Planned Stock Counts">
+                <field name="name"/>
+                <field name="warehouse_id"/>
+                <field name="date_planned"/>
+                <field name="date_due"/>
+                <field name="user_id" optional="show"/>
+                <field name="product_ids" widget="many2many_tags"/>
+                <field name="count_status" widget="badge" decoration-success="count_status == 'done'"
+                       decoration-danger="count_status == 'missed'" decoration-muted="count_status == 'cancelled'"/>
+                <field name="company_id" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_stock_count_plan_form" model="ir.ui.view">
+        <field name="name">strategic.stock.count.plan.form</field>
+        <field name="model">strategic.stock.count.plan</field>
+        <field name="arch" type="xml">
+            <form string="Planned Stock Count">
+                <header>
+                    <button name="action_cancel" type="object" string="Cancel count" invisible="state == 'cancelled' or not id"
+                            groups="strategic_management.group_strategic_head_office_manager"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-info" role="status">
+                        A count is done only when every product below has a count applied in Inventory &gt; Physical
+                        Inventory at this branch between the planned and count-by dates. Plans cannot be changed or
+                        deleted after their count-by date.
+                    </div>
+                    <group>
+                        <group>
+                            <field name="warehouse_id"/>
+                            <field name="date_planned"/>
+                            <field name="date_due"/>
+                            <field name="user_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <field name="count_status"/>
+                            <field name="missing_product_ids" widget="many2many_tags" invisible="count_status in ('done', 'cancelled')"/>
+                            <field name="cancel_reason" readonly="state == 'cancelled'"/>
+                            <field name="cancelled_on" invisible="state != 'cancelled'"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="product_ids" widget="many2many_tags"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_strategic_stock_count_plan" model="ir.actions.act_window">
+        <field name="name">Planned Stock Counts</field>
+        <field name="res_model">strategic.stock.count.plan</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Plan the stock counts each branch must do</p>
+            <p>Each plan names the branch, the products and the day of the count. 'Complete planned stock counts'
+               measures how many were applied in Inventory on time.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_strategic_stock_count_plan"
+              name="Planned Stock Counts"
+              parent="menu_strategic_management_technical"
+              action="action_strategic_stock_count_plan"
+              sequence="30"
+              groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager"/>
+</odoo>

@@ -133,9 +133,61 @@ def source_result(target, version, status, value, reason, source_model, *records
     }
 
 
+def unit_price_unit(company, product):
+    """Unit of a price per unit: company currency per the product's base unit, e.g. "Rs/kg"."""
+    currency = company.currency_id
+    return "%s/%s" % (currency.symbol or currency.name or "", product.uom_id.name or "")
+
+
+def validate_unit_price_contract(target, version, expected_source_type):
+    """A price per unit needs its product and the "<currency>/<product unit>" unit; returns a problem or False."""
+    if version.source_type != expected_source_type:
+        return "Calculation type %s requires source type %s." % (version.calculation_type, expected_source_type)
+    product = version.source_product_id
+    if not product or not product.uom_id:
+        return "Choose the product whose price per unit is measured."
+    if product.company_id and product.company_id != target.company_id:
+        return "The tracked product must belong to the KPI company or be shared across companies."
+    expected = unit_price_unit(target.company_id, product)
+    if (version.unit or "").strip() != expected:
+        return "A price per unit must use the unit %s." % expected
+    return False
+
+
+def units_compatible(from_uom, to_uom):
+    """True when Odoo can convert between the units: the same unit, or units sharing a reference unit (g and kg).
+
+    Odoo 20 has no unit categories and would otherwise convert unrelated units (L and kg) 1:1.
+    """
+    if from_uom == to_uom:
+        return True
+    return not hasattr(from_uom, "_has_common_reference") or from_uom._has_common_reference(to_uom)
+
+
+def convert_quantity(quantity, from_uom, to_uom):
+    """Convert between compatible units with Odoo's rules; raise ValidationError for unrelated units."""
+    if not from_uom or not to_uom:
+        raise ValidationError("A quantity is missing its unit of measure.")
+    if not units_compatible(from_uom, to_uom):
+        raise ValidationError("%s cannot be converted to %s: they measure different things and no conversion is defined."
+                              % (from_uom.name, to_uom.name))
+    try:
+        converted = from_uom._compute_quantity(quantity, to_uom)
+    except (UserError, ValidationError, ZeroDivisionError, TypeError, ValueError) as exc:
+        raise ValidationError("%s could not be converted to %s: %s" % (from_uom.name, to_uom.name, exc))
+    if not math.isfinite(converted):
+        raise ValidationError("Unit conversion produced a non-finite value.")
+    return converted
+
+
 def quantity_to_product_uom(quantity, uom, product):
     if not uom or not product or not product.uom_id:
         raise ValidationError("Source quantity is missing its unit of measure or tracked product.")
+    # Odoo 20 has no unit categories and would convert e.g. litres into kilograms 1:1; only units sharing a
+    # reference unit (g and kg, mL and L) are converted.
+    if not units_compatible(uom, product.uom_id):
+        raise ValidationError("%s cannot be converted to %s: they measure different things and no conversion is defined."
+                              % (uom.name, product.uom_id.name))
     try:
         converted = uom._compute_quantity(quantity, product.uom_id)
     except (UserError, ValidationError, ZeroDivisionError, TypeError, ValueError) as exc:

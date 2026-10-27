@@ -1,3 +1,5 @@
+import psycopg2
+
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 
@@ -93,6 +95,7 @@ class StrategicObjective(models.Model):
         default=lambda self: self.env.user,
     )
     proposer_id = fields.Many2one("res.users", readonly=True, copy=False)
+    submitted_at = fields.Datetime(string="Submitted On", readonly=True, copy=False)
     approved_by_id = fields.Many2one("res.users", readonly=True, copy=False)
     completed_by_id = fields.Many2one("res.users", readonly=True, copy=False)
     closed_by_id = fields.Many2one("res.users", readonly=True, copy=False)
@@ -119,6 +122,12 @@ class StrategicObjective(models.Model):
     revision_ids = fields.One2many(
         "strategic.objective.revision",
         "objective_id",
+    )
+    review_ids = fields.One2many(
+        "strategic.objective.review",
+        "objective_id",
+        string="Review Decisions",
+        readonly=True,
     )
     is_primary = fields.Boolean(
         string="Current Primary Objective",
@@ -186,6 +195,7 @@ class StrategicObjective(models.Model):
         lifecycle_fields = {
             "state",
             "proposer_id",
+            "submitted_at",
             "approved_by_id",
             "completed_by_id",
             "closed_by_id",
@@ -392,11 +402,28 @@ class StrategicObjective(models.Model):
                 {
                     "state": "pending_approval",
                     "proposer_id": self.env.user.id,
+                    "submitted_at": fields.Datetime.now(),
                 }
             )
 
+    def _lock_for_review(self):
+        """Lock the rows and re-read their state, so concurrent or repeated decisions cannot both pass the state check."""
+        if not self:
+            return
+        try:
+            self.env.cr.execute(
+                "SELECT id FROM strategic_objective WHERE id IN %s FOR UPDATE NOWAIT",
+                [tuple(self.ids)],
+            )
+        except psycopg2.errors.LockNotAvailable:
+            raise UserError(
+                "This objective is being reviewed by someone else. Reload the page and try again."
+            )
+        self.invalidate_recordset(["state"])
+
     def action_approve(self):
         self._require_head_office()
+        self._lock_for_review()
 
         for objective in self:
             if objective.state != "pending_approval":
@@ -410,6 +437,60 @@ class StrategicObjective(models.Model):
                     "approved_by_id": self.env.user.id,
                 }
             )
+            objective._log_review("approved")
+
+    def action_reject(self, reason):
+        """Head Office rejects a pending proposal with a reason.
+
+        The objective returns to draft so its proposer can revise and resubmit it; the decision itself is kept
+        in strategic.objective.review and the reason is posted to the proposer.
+        """
+        self._require_head_office()
+        reason = (reason or "").strip()
+        if not reason:
+            raise ValidationError("Enter a reason for rejecting this objective.")
+        self._lock_for_review()
+
+        for objective in self:
+            if objective.state != "pending_approval":
+                raise ValidationError(
+                    "Only pending objectives can be rejected."
+                )
+
+            objective._log_review("rejected", reason)
+            objective._write_lifecycle({"state": "draft"})
+            proposer = objective.proposer_id
+            objective.message_post(
+                body="Objective proposal rejected by %s. Reason: %s" % (self.env.user.name, reason),
+                partner_ids=proposer.partner_id.ids if proposer else [],
+                subtype_xmlid="mail.mt_comment",
+            )
+        return True
+
+    def _log_review(self, decision, reason=False):
+        """Append the Head Office decision to the review log (users have no write access to the log)."""
+        self.ensure_one()
+        self.env["strategic.objective.review"].sudo().create(
+            {
+                "objective_id": self.id,
+                "objective_name": self.name,
+                "company_id": self.company_id.id,
+                "warehouse_id": self.warehouse_id.id,
+                "scope": self.scope,
+                "proposer_id": self.proposer_id.id,
+                "submitted_at": self.submitted_at,
+                "proposed_target": self._review_target_summary(),
+                "decision": decision,
+                "reason": reason or False,
+                "reviewer_id": self.env.user.id,
+                "decided_at": fields.Datetime.now(),
+            }
+        )
+
+    def _review_target_summary(self):
+        """Short text of what was proposed; the goal setup extends it with the measure and target."""
+        self.ensure_one()
+        return "Deadline %s" % self.deadline.strftime("%d %b %Y") if self.deadline else False
 
     def action_activate(self):
         self._require_head_office()
@@ -715,6 +796,7 @@ class StrategicObjective(models.Model):
         state_flow_fields = {
             "state",
             "proposer_id",
+            "submitted_at",
             "approved_by_id",
             "completed_by_id",
             "closed_by_id",
@@ -793,6 +875,41 @@ class StrategicObjectiveRevision(models.Model):
         required=True,
         readonly=True,
     )
+
+
+class StrategicObjectiveReview(models.Model):
+    """Append-only log of Head Office decisions on submitted objectives (approved or rejected)."""
+
+    _name = "strategic.objective.review"
+    _description = "Strategic Objective Review Decision"
+    _order = "decided_at desc, id desc"
+
+    objective_id = fields.Many2one(
+        "strategic.objective",
+        ondelete="set null",
+        index=True,
+        readonly=True,
+    )
+    # Snapshots taken at decision time, so the history stays as decided if the objective is revised later.
+    objective_name = fields.Char(required=True, readonly=True)
+    company_id = fields.Many2one("res.company", required=True, readonly=True, index=True)
+    warehouse_id = fields.Many2one("stock.warehouse", string="Branch Warehouse", readonly=True, index=True)
+    scope = fields.Selection(
+        [("organization", "Organization"), ("branch", "Branch")],
+        readonly=True,
+    )
+    proposer_id = fields.Many2one("res.users", readonly=True)
+    submitted_at = fields.Datetime(readonly=True)
+    proposed_target = fields.Char(readonly=True)
+    decision = fields.Selection(
+        [("approved", "Approved"), ("rejected", "Rejected")],
+        required=True,
+        readonly=True,
+        index=True,
+    )
+    reason = fields.Text(readonly=True)
+    reviewer_id = fields.Many2one("res.users", required=True, readonly=True)
+    decided_at = fields.Datetime(required=True, readonly=True, index=True)
 
 
 class StrategicObjectivePrimaryHistory(models.Model):
@@ -1063,6 +1180,24 @@ class StrategicKeyResult(models.Model):
         ],
         compute="_compute_scoring",
     )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        key_results = super().create(vals_list)
+        # A target must be approved before its Key Result exists, so it may already have
+        # evaluations; link the current one for this exact target (same rule as
+        # strategic.kpi.evaluation._sync_linked_key_result_evaluation).
+        # sudo: discovery only, limited to this Key Result's own target and KPI.
+        Evaluation = self.env["strategic.kpi.evaluation"].sudo()
+        for key_result in key_results.filtered(lambda kr: not kr.evaluation_id):
+            current = Evaluation.search([
+                ("target_id", "=", key_result.target_id.id),
+                ("kpi_id", "=", key_result.primary_kpi_id.id),
+                ("superseded_by_id", "=", False),
+            ], order="evaluated_at desc, id desc", limit=1)
+            if current:
+                key_result.write({"evaluation_id": current.id})
+        return key_results
 
     @api.depends(
         "evaluation_id.status",

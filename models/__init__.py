@@ -12,7 +12,12 @@ from . import live_refresh
 from . import kpi_scheduler
 from . import dashboard
 from . import business_overview
+from . import app_dependencies
+from . import goal_setup
 from . import branch_overview
 from . import people_overview
 from . import overview_extras
+from . import objective_requests
 from . import stock_warehouse
+from . import product_template
+from . import stock_count_plan

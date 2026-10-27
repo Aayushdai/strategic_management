@@ -14,14 +14,18 @@ import pytz
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 
-from ..services.kpi_sources.pos import recipe_consumption
+from ..services.kpi_sources.inventory import waste_move_cost
+from ..services.kpi_sources.pos import POS_SALE_STATES, recipe_consumption
+from ..services.kpi_sources.purchase import confirmed_purchase_commitments
 
 
 _logger = logging.getLogger(__name__)
 
 _INCOME_TYPES = {"income", "income_other"}
 _EXPENSE_TYPES = {"expense", "expense_other", "expense_direct_cost", "expense_depreciation"}
-_POS_STATES = ["paid", "done", "invoiced"]
+_POS_STATES = POS_SALE_STATES  # Odoo 20 has no "invoiced" POS state; same population as the sales KPIs
+# Upper bound for dashboard record lists; the UI pages them five rows at a time.
+_LIST_LIMIT = 100
 
 
 class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
@@ -538,9 +542,9 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             received = float(getattr(line, "qty_received", 0.0) or 0.0)
             return max(0.0, ordered - received)
 
-        purchase_order_value = sum(
-            to_company_currency(order.amount_untaxed, order.currency_id if "currency_id" in order._fields else company_currency, order.date_order)
-            for order in confirmed
+        # Same calculation as the purchase_confirmed_amount KPI, so the page and goals agree.
+        _committed_orders, _committed_rows, purchase_order_value, committed_issue = confirmed_purchase_commitments(
+            self.env, company, start_utc, end_utc, Warehouse.browse(warehouse_ids)
         )
         pending_delivery_value = 0.0
         outstanding_by_order = {}
@@ -724,7 +728,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                     "rate": round(stats["on_time"] * 100.0 / stats["eligible"], 1),
                 })
         supplier_performance.sort(key=lambda row: (row["orders"], row["rate"]), reverse=True)
-        supplier_performance = supplier_performance[:5]
+        supplier_performance = supplier_performance[:_LIST_LIMIT]
 
         price_trends = []
         top_product_ids = [product_id for product_id, _ in sorted(product_totals.items(), key=lambda item: item[1], reverse=True)[:5]]
@@ -754,7 +758,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             })
 
         recent_orders = []
-        for order in orders[:10]:
+        for order in orders[:_LIST_LIMIT]:
             status_label, status_class = order_status(order)
             recent_orders.append({
                 "id": order.id,
@@ -774,7 +778,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             "branch_options": branch_options,
             "selected_warehouse_id": selected_warehouse.id if selected_warehouse else False,
             "purchase_order_count": len(confirmed),
-            "purchase_order_value": round(purchase_order_value, 2),
+            "purchase_order_value": round(purchase_order_value, 2) if purchase_order_value is not None else False,
             "pending_delivery_count": len(open_receipts) if receipts_available else False,
             "pending_delivery_value": round(pending_delivery_value, 2),
             "overdue_delivery_count": len(overdue_receipts) if receipts_available else False,
@@ -785,11 +789,11 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             "purchase_categories": category_rows,
             "purchase_category_total": round(category_total, 2),
             "supplier_performance": supplier_performance,
-            "orders_attention": sorted(orders_attention, key=lambda row: (row["status"] != "Overdue", row["expected_date"] or "9999-12-31"))[:8],
+            "orders_attention": sorted(orders_attention, key=lambda row: (row["status"] != "Overdue", row["expected_date"] or "9999-12-31"))[:_LIST_LIMIT],
             "recent_orders": recent_orders,
             "price_months": [{"key": key, "label": month_label_by_key[key]} for key in month_keys],
             "ingredient_price_trend": price_trends,
-            "messages": [] if orders else ["No purchase orders match the selected period and branch."],
+            "messages": ([] if orders else ["No purchase orders match the selected period and branch."]) + ([committed_issue] if committed_issue else []),
         }
 
     @api.model
@@ -1207,7 +1211,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                 })
         low_stock_all.sort(key=lambda item: (item["forecast_quantity"] / item["minimum_quantity"] if item["minimum_quantity"] else 0, item["name"]))
         low_stock_count = len(low_stock_all) if orderpoint_rows is not False and orderpoint_rows else (0 if orderpoint_rows is not False and orderpoint_rows is not None and len(orderpoint_rows) else False)
-        stock_health = low_stock_all[:10]
+        stock_health = low_stock_all[:_LIST_LIMIT]
 
         inventory_products = [{"id": pid, "name": meta.get("name") or product_labels.get(pid) or "Product", "unit": meta.get("uom") or ""}
                               for pid, meta in product_meta.items()]
@@ -1432,14 +1436,16 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             })
 
         attention = []
-        for item in low_stock_all[:4]:
+        for item in low_stock_all:
             attention.append({"kind": "stock", "severity": "high" if item["status"] == "critical" else "medium", "title": item["status_label"], "detail": "%s - %s - %s %s available" % (item["branch_name"], item["name"], item["available_quantity"], item["unit"]), "date": "", "res_model": "product.product", "res_id": item["product_id"]})
-        for item in expiring_stock[:4]:
+        for item in expiring_stock:
             if item["days_left"] <= 7:
                 attention.append({"kind": "expiry", "severity": "high" if item["days_left"] < 0 else "medium", "title": item["status"], "detail": "%s - %s - %s %s" % (item["branch"], item["product"], item["quantity"], item["unit"]), "date": item["expiry_date"], "res_model": "stock.lot", "res_id": item["lot_id"]})
-        for item in stock_discrepancies[:3]:
+        for item in stock_discrepancies:
             attention.append({"kind": "variance", "severity": "review", "title": "Unreconciled stock count", "detail": "%s - %s - variance %s %s" % (item["branch"], item["product"], item["variance"], item["unit"]), "date": "", "res_model": "product.product", "res_id": item["product_id"]})
-        attention = attention[:10]
+        severity_rank = {"high": 0, "medium": 1, "review": 2}
+        attention.sort(key=lambda item: severity_rank.get(item["severity"], 3))
+        attention = attention[:_LIST_LIMIT]
 
         messages = []
         if location_query_failed:
@@ -1566,11 +1572,12 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         makes the total incomplete, so no partial figure is returned.
         """
         Move = self.env["stock.move"]
-        if "value" in Move._fields and "is_valued" in Move._fields:
-            if not all(move.is_valued for move in moves):
+        if "value" in Move._fields and "is_out" in Move._fields:
+            # Same rule as the waste-cost KPI: valued outgoing moves only, sign-checked, never zero-cost stock.
+            costs = {move.id: waste_move_cost(move) for move in moves}
+            if any(cost is None or (move.quantity_product_uom > 0 and not cost) for move, cost in zip(moves, costs.values())):
                 return False
-            # Outgoing moves carry a negative value; the cost is the value lost.
-            return {move.id: abs(float(move.value or 0.0)) for move in moves}
+            return costs
         if "stock.valuation.layer" in self.env.registry.models:
             layers = self._overview_safe(lambda: self.env["stock.valuation.layer"].search([("stock_move_id", "in", moves.ids)]))
             if not layers:
@@ -1648,7 +1655,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         if own_only:
             domain.append(("user_id", "=", self.env.user.id))
         fields_to_read = [name for name in ("summary", "date_deadline", "user_id", "res_name", "res_model", "res_id", "activity_type_id") if name in Activity._fields]
-        rows = self._overview_safe(lambda: Activity.search_read(domain, fields_to_read, order="date_deadline asc, id asc", limit=5))
+        rows = self._overview_safe(lambda: Activity.search_read(domain, fields_to_read, order="date_deadline asc, id asc", limit=_LIST_LIMIT))
         if not rows:
             return []
         return [{

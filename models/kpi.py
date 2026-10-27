@@ -5,11 +5,24 @@ from odoo import api, fields, models
 from odoo.exceptions import AccessError, ValidationError
 from odoo.tools import float_is_zero
 
+from ..services.kpi_sources.common import unit_price_unit
+
 
 _ACCOUNTING_CALCULATIONS = {
     "accounting_net_profit",
     "accounting_net_profit_margin_pct",
 }
+# Business-goal measures that are not product quantities: unit rule and "no product" are enforced.
+_MONETARY_CALCULATIONS = {"purchase_confirmed_amount", "purchase_outstanding_amount", "accounting_overdue_supplier_bills_amount",
+                          "inventory_waste_cost_amount", "pos_net_sales", "pos_average_order_value", "accounting_total_expenses"}
+_PERCENT_CALCULATIONS = {"purchase_top_supplier_share_pct", "purchase_on_time_delivery_count_pct", "inventory_waste_cost_to_sales_pct",
+                         "pos_sales_growth_pct", "accounting_expense_to_income_pct", "inventory_recipe_coverage_pct",
+                         "inventory_count_plan_completion_pct"}
+# Amounts in company currency for one tracked product.
+_PRODUCT_MONEY_CALCULATIONS = {"inventory_recorded_waste_cost", "pos_product_net_sales", "inventory_closing_stock_value"}
+# Prices per unit: company currency per the product's base unit ("Rs/kg"); purchase cost and selling price stay separate.
+_UNIT_PRICE_CALCULATIONS = {"purchase_average_unit_price", "pos_average_unit_price"}
+_DAYS_CALCULATIONS = {"purchase_average_receipt_lead_days", "purchase_average_delivery_delay_days"}
 
 _SOURCE_CALCULATIONS = {
     "accounting_net_profit": "accounting",
@@ -19,6 +32,15 @@ _SOURCE_CALCULATIONS = {
     "purchase_ordered_quantity": "purchase",
     "purchase_received_quantity": "purchase",
     "supplier_on_time_delivery_pct": "purchase",
+    "purchase_confirmed_amount": "purchase",
+    "purchase_product_quantity_limit": "purchase",
+    "purchase_unit_price_change_pct": "purchase",
+    "purchase_top_supplier_share_pct": "purchase",
+    "purchase_outstanding_amount": "purchase",
+    "purchase_average_receipt_lead_days": "purchase",
+    "purchase_on_time_delivery_count_pct": "purchase",
+    "purchase_average_delivery_delay_days": "purchase",
+    "accounting_overdue_supplier_bills_amount": "accounting",
     "inventory_recorded_waste_quantity": "inventory",
     "inventory_validated_waste_quantity": "inventory",
     "inventory_opening_stock_quantity": "inventory",
@@ -28,6 +50,23 @@ _SOURCE_CALCULATIONS = {
     "inventory_transfer_out_quantity": "inventory",
     "inventory_adjustment_quantity": "inventory",
     "inventory_unexplained_variance_quantity": "inventory",
+    "inventory_waste_cost_amount": "inventory",
+    "inventory_waste_cost_to_sales_pct": "inventory",
+    "inventory_count_difference_quantity": "inventory",
+    "inventory_recorded_waste_cost": "inventory",
+    "pos_net_sales": "pos",
+    "pos_sales_growth_pct": "pos",
+    "pos_average_order_value": "pos",
+    "pos_product_net_sales": "pos",
+    "accounting_total_expenses": "accounting",
+    "accounting_expense_to_income_pct": "accounting",
+    "purchase_average_unit_price": "purchase",
+    "pos_average_unit_price": "pos",
+    "inventory_closing_stock_value": "inventory",
+    "inventory_recipe_coverage_pct": "inventory",
+    "inventory_count_plan_completion_pct": "inventory",
+    "inventory_waste_recording_pct": "inventory",
+    "inventory_ingredient_use_difference_quantity": "inventory",
 }
 
 
@@ -46,9 +85,53 @@ def _validate_calculation_contract(env, source_type, calculation_type, product_i
         if product_id:
             raise ValidationError("Supplier On-Time Delivery is calculated across eligible purchase lines and must not select one tracked product.")
         return
-    if calculation_type in _ACCOUNTING_CALCULATIONS:
+    if calculation_type in _PERCENT_CALCULATIONS or calculation_type in _DAYS_CALCULATIONS:
+        expected = "%" if calculation_type in _PERCENT_CALCULATIONS else "days"
         if product_id:
-            raise ValidationError("Accounting financial KPIs must not select a tracked source product.")
+            raise ValidationError("This measure covers all products and must not select a tracked source product.")
+        if (unit or "").strip() != expected:
+            raise ValidationError("This measure must use the '%s' unit." % expected)
+        return
+    if calculation_type == "purchase_unit_price_change_pct":
+        if not product_id:
+            raise ValidationError("Select the product whose purchase price is compared.")
+        if (unit or "").strip() != "%":
+            raise ValidationError("A price change is measured in '%'.")
+        return
+    if calculation_type == "inventory_waste_recording_pct":
+        if not product_id:
+            raise ValidationError("Select the product whose waste recording is checked.")
+        if (unit or "").strip() != "%":
+            raise ValidationError("Waste recording is measured in '%'.")
+        return
+    if calculation_type in _UNIT_PRICE_CALCULATIONS:
+        product = env["product.product"].browse(product_id).exists() if product_id else env["product.product"]
+        if not product:
+            raise ValidationError("Select the product whose price per unit is measured.")
+        company = env["res.company"].browse(company_id or env.company.id).exists()
+        if company and product.company_id and product.company_id != company:
+            raise ValidationError("The tracked product must belong to the KPI company or be shared across companies.")
+        expected = unit_price_unit(company, product)
+        if (unit or "").strip() != expected:
+            raise ValidationError("A price per unit must use the unit %s (currency per the product's unit)." % expected)
+        return
+    if calculation_type in _PRODUCT_MONEY_CALCULATIONS:
+        # Money for one product: the product is required, the unit is the company currency, never its quantity unit.
+        product = env["product.product"].browse(product_id).exists() if product_id else env["product.product"]
+        if not product:
+            raise ValidationError("Select the product for this measure.")
+        company = env["res.company"].browse(company_id or env.company.id).exists()
+        if company and product.company_id and product.company_id != company:
+            raise ValidationError("The tracked product must belong to the KPI company or be shared across companies.")
+        currency = company.currency_id if company else False
+        accepted_units = {(currency.symbol or "").strip(), (currency.name or "").strip()} - {""} if currency else set()
+        if (unit or "").strip() not in accepted_units:
+            raise ValidationError("This measure is an amount and must use the company currency unit (%s), not the product's unit."
+                                  % (currency.symbol or currency.name if currency else "the company currency"))
+        return
+    if calculation_type in _ACCOUNTING_CALCULATIONS or calculation_type in _MONETARY_CALCULATIONS:
+        if product_id:
+            raise ValidationError("Monetary KPIs are measured across products and must not select a tracked source product.")
         if calculation_type == "accounting_net_profit_margin_pct":
             if (unit or "").strip() != "%":
                 raise ValidationError("Net Profit Margin must use the % unit.")
@@ -63,7 +146,7 @@ def _validate_calculation_contract(env, source_type, calculation_type, product_i
             if (unit or "").strip() not in accepted_units:
                 expected = currency.symbol or currency.name if currency else "the company currency"
                 raise ValidationError(
-                    "Net Profit must use the company currency unit (%s)." % expected
+                    "Monetary KPIs must use the company currency unit (%s)." % expected
                 )
         return
     product = env["product.product"].browse(product_id).exists() if product_id else env["product.product"]
@@ -129,15 +212,41 @@ class StrategicKpiDefinition(models.Model):
             ("purchase_ordered_quantity", "Confirmed Purchase Order Quantity"),
             ("purchase_received_quantity", "Completed Supplier Receipt Quantity"),
             ("supplier_on_time_delivery_pct", "Supplier On-Time Delivery Percentage"),
+            ("purchase_confirmed_amount", "Confirmed Purchase Commitments (excluding tax)"),
+            ("purchase_product_quantity_limit", "Ordered Quantity of a Product (limit)"),
+            ("purchase_unit_price_change_pct", "Unit Price Change vs Previous Period"),
+            ("purchase_top_supplier_share_pct", "Largest Supplier Share of Purchasing"),
+            ("purchase_outstanding_amount", "Purchase Value Awaiting Delivery"),
+            ("purchase_average_receipt_lead_days", "Average Days from Order to Receipt"),
+            ("purchase_on_time_delivery_count_pct", "Deliveries Received in Full on Time"),
+            ("purchase_average_delivery_delay_days", "Average Delivery Delay (days)"),
+            ("accounting_overdue_supplier_bills_amount", "Overdue Supplier Bills"),
             ("inventory_recorded_waste_quantity", "Recorded Waste Quantity"),
             ("inventory_validated_waste_quantity", "Validated Waste Quantity"),
             ("inventory_opening_stock_quantity", "Opening Stock Quantity"),
             ("inventory_closing_stock_quantity", "Closing Stock Quantity"),
-            ("inventory_actual_consumption_quantity", "Actual Production Consumption Quantity"),
+            ("inventory_actual_consumption_quantity", "Actual Consumption Quantity (production and sales issues)"),
             ("inventory_transfer_in_quantity", "Inter-Warehouse Transfer In Quantity"),
             ("inventory_transfer_out_quantity", "Inter-Warehouse Transfer Out Quantity"),
             ("inventory_adjustment_quantity", "Net Inventory Adjustment Quantity"),
             ("inventory_unexplained_variance_quantity", "Unexplained Stock-Flow Variance Quantity"),
+            ("inventory_waste_cost_amount", "Validated Waste Cost"),
+            ("inventory_waste_cost_to_sales_pct", "Waste Cost as % of Net POS Sales"),
+            ("inventory_count_difference_quantity", "Physical Count Difference Quantity"),
+            ("inventory_recipe_coverage_pct", "Recipe Coverage % (menu items sold with a valid recipe)"),
+            ("inventory_count_plan_completion_pct", "Planned Stock Count Completion %"),
+            ("inventory_waste_recording_pct", "Waste Recording Compliance %"),
+            ("inventory_ingredient_use_difference_quantity", "Unexplained Ingredient Difference (between stock counts)"),
+            ("inventory_recorded_waste_cost", "Recorded Waste Cost of a Product"),
+            ("pos_net_sales", "POS Net Sales (excluding tax)"),
+            ("pos_sales_growth_pct", "POS Sales Growth vs Previous Period"),
+            ("pos_average_order_value", "POS Average Order Value"),
+            ("pos_product_net_sales", "POS Net Sales of a Product"),
+            ("accounting_total_expenses", "Total Expenses and Direct Costs (Posted)"),
+            ("accounting_expense_to_income_pct", "Expenses as % of Income (Posted)"),
+            ("purchase_average_unit_price", "Average Purchase Price per Unit"),
+            ("pos_average_unit_price", "Average Selling Price per Unit (POS)"),
+            ("inventory_closing_stock_value", "Closing Stock Value of a Product"),
         ],
         required=True,
         default="manual_value",
@@ -308,15 +417,41 @@ class StrategicKpiDefinitionVersion(models.Model):
             ("purchase_ordered_quantity", "Confirmed Purchase Order Quantity"),
             ("purchase_received_quantity", "Completed Supplier Receipt Quantity"),
             ("supplier_on_time_delivery_pct", "Supplier On-Time Delivery Percentage"),
+            ("purchase_confirmed_amount", "Confirmed Purchase Commitments (excluding tax)"),
+            ("purchase_product_quantity_limit", "Ordered Quantity of a Product (limit)"),
+            ("purchase_unit_price_change_pct", "Unit Price Change vs Previous Period"),
+            ("purchase_top_supplier_share_pct", "Largest Supplier Share of Purchasing"),
+            ("purchase_outstanding_amount", "Purchase Value Awaiting Delivery"),
+            ("purchase_average_receipt_lead_days", "Average Days from Order to Receipt"),
+            ("purchase_on_time_delivery_count_pct", "Deliveries Received in Full on Time"),
+            ("purchase_average_delivery_delay_days", "Average Delivery Delay (days)"),
+            ("accounting_overdue_supplier_bills_amount", "Overdue Supplier Bills"),
             ("inventory_recorded_waste_quantity", "Recorded Waste Quantity"),
             ("inventory_validated_waste_quantity", "Validated Waste Quantity"),
             ("inventory_opening_stock_quantity", "Opening Stock Quantity"),
             ("inventory_closing_stock_quantity", "Closing Stock Quantity"),
-            ("inventory_actual_consumption_quantity", "Actual Production Consumption Quantity"),
+            ("inventory_actual_consumption_quantity", "Actual Consumption Quantity (production and sales issues)"),
             ("inventory_transfer_in_quantity", "Inter-Warehouse Transfer In Quantity"),
             ("inventory_transfer_out_quantity", "Inter-Warehouse Transfer Out Quantity"),
             ("inventory_adjustment_quantity", "Net Inventory Adjustment Quantity"),
             ("inventory_unexplained_variance_quantity", "Unexplained Stock-Flow Variance Quantity"),
+            ("inventory_waste_cost_amount", "Validated Waste Cost"),
+            ("inventory_waste_cost_to_sales_pct", "Waste Cost as % of Net POS Sales"),
+            ("inventory_count_difference_quantity", "Physical Count Difference Quantity"),
+            ("inventory_recipe_coverage_pct", "Recipe Coverage % (menu items sold with a valid recipe)"),
+            ("inventory_count_plan_completion_pct", "Planned Stock Count Completion %"),
+            ("inventory_waste_recording_pct", "Waste Recording Compliance %"),
+            ("inventory_ingredient_use_difference_quantity", "Unexplained Ingredient Difference (between stock counts)"),
+            ("inventory_recorded_waste_cost", "Recorded Waste Cost of a Product"),
+            ("pos_net_sales", "POS Net Sales (excluding tax)"),
+            ("pos_sales_growth_pct", "POS Sales Growth vs Previous Period"),
+            ("pos_average_order_value", "POS Average Order Value"),
+            ("pos_product_net_sales", "POS Net Sales of a Product"),
+            ("accounting_total_expenses", "Total Expenses and Direct Costs (Posted)"),
+            ("accounting_expense_to_income_pct", "Expenses as % of Income (Posted)"),
+            ("purchase_average_unit_price", "Average Purchase Price per Unit"),
+            ("pos_average_unit_price", "Average Selling Price per Unit (POS)"),
+            ("inventory_closing_stock_value", "Closing Stock Value of a Product"),
         ],
         required=True,
         default="manual_value",
@@ -893,6 +1028,14 @@ class StrategicKpiEvaluation(models.Model):
         aggregator="avg",
         help="Attainment percentage; reporting groups average evaluated attainment rather than summing percentages.",
     )
+    progress_to_target = fields.Float(
+        readonly=True,
+        aggregator="avg",
+        help="Baseline-relative targets only: share of the distance from baseline to target covered, "
+             "(baseline - actual) / (baseline - target) x 100 for lower-is-better. Below 0 means worse than "
+             "baseline; above 100 means beyond target. Separate from attainment.",
+    )
+    has_progress_to_target = fields.Boolean(readonly=True)
     status = fields.Selection(
         [
             ("valid", "Valid / Evaluated"),
@@ -1040,6 +1183,8 @@ class StrategicKpiEvaluation(models.Model):
             "unit",
             "gap",
             "attainment",
+            "progress_to_target",
+            "has_progress_to_target",
             "status",
             "attainment_status",
             "reason",
@@ -1118,6 +1263,8 @@ class StrategicKpiEvaluation(models.Model):
                 "has_actual_value": False,
                 "gap": 0.0,
                 "attainment": 0.0,
+                "progress_to_target": 0.0,
+                "has_progress_to_target": False,
                 "status": status,
                 "attainment_status": status,
                 "reason": reason,
@@ -1255,7 +1402,28 @@ class StrategicKpiEvaluation(models.Model):
                 has_actual_value=vals.get("has_actual_value", False),
             )
         )
+        vals.update(self._calculate_baseline_progress(version.direction, vals))
         return vals
+
+    @api.model
+    def _calculate_baseline_progress(self, direction, vals):
+        """Progress from baseline toward target; only for valid baseline-relative evaluations."""
+        none = {"progress_to_target": 0.0, "has_progress_to_target": False}
+        if vals.get("target_basis") != "baseline_relative" or vals.get("status") != "valid" or not vals.get("has_actual_value"):
+            return none
+        baseline = vals.get("baseline_value", 0.0)
+        target = vals.get("target_value", 0.0)
+        actual = vals.get("actual_value", 0.0)
+        if direction == "lower":
+            span, moved = baseline - target, baseline - actual
+        elif direction == "higher":
+            span, moved = target - baseline, actual - baseline
+        else:
+            return none
+        # The target must improve on the baseline; otherwise progress is undefined.
+        if not all(self._is_finite_number(value) for value in (baseline, target, actual)) or span <= 0 or float_is_zero(span, precision_digits=6):
+            return none
+        return {"progress_to_target": round(moved / span * 100.0, 4), "has_progress_to_target": True}
 
     @api.model
     def _calculate_result(self, direction, target_value=0.0, range_min=0.0, range_max=0.0, actual_value=0.0, has_actual_value=False):
