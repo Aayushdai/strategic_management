@@ -62,7 +62,6 @@
     .o_sm_bg_nav:hover { background: #f7f7f9; color: #31284b; }
     .o_sm_bg_nav.active { background: #efe8f2; color: #4d2e56; font-weight: 600; }
     .o_sm_bg_nav.active i { color: #76516e; }
-    .o_sm_bg_nav_divider { height: 1px; background: var(--sm-border); margin: 14px 10px 8px; }
     .o_sm_bg_sidebar_note { margin-top: auto; padding: 12px 10px 0; color: #98a2b3; font-size: 11px; }
 
     .o_sm_bg_main { flex: 1 1 auto; min-width: 0; padding: 20px 22px 32px; }
@@ -436,7 +435,6 @@
     .o_sm_bg_nav:hover { background: rgba(255, 224, 194, .55); color: var(--sm-navy); }
     .o_sm_bg_nav.active { background: var(--sm-peach-strong); color: var(--sm-orange-ink); font-weight: 650; }
     .o_sm_bg_nav.active i { color: var(--sm-orange); }
-    .o_sm_bg_nav_divider { margin: 12px 8px 8px; background: #f3cfac; }
 
     /* header */
     .o_sm_bg_main { padding: 22px 26px 32px; }
@@ -599,3 +597,40 @@
         .o_sm_bg_tl_summary { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); > .is-wide { grid-column: 1 / -1; } }
     }
 }
+
+/* Branch Manager objective execution (Phase 2): scope filter, Head Office instructions and blockers. */
+.o_sm_business_goals {
+    .o_sm_bg_scope_filter { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px;
+        button { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border: 1px solid var(--sm-card-border); border-radius: 999px; background: #fff; color: #39405a; font-size: 12.5px; font-weight: 500;
+            span { padding: 0 6px; border-radius: 999px; background: #f1f2f6; color: #6b7189; font-size: 11px; }
+            &:hover { border-color: #f9a35b; }
+            &.is-active { border-color: var(--sm-orange); background: #fff3e8; color: var(--sm-orange-ink); span { background: #ffe0c2; color: var(--sm-orange-ink); } }
+        }
+    }
+    .o_sm_bg_drawer_status .o_sm_bg_badge { margin-left: auto; }
+    .o_sm_bg_followup { display: flex; flex-direction: column; gap: 8px;
+        h3 { margin: 6px 0 0; }
+    }
+    .o_sm_bg_followup_item { padding: 8px 10px; border: 1px solid var(--sm-border); border-radius: 6px; background: #fff;
+        small { color: var(--sm-muted); font-size: 11.5px; }
+        p { margin: 4px 0 0; color: #344054; font-size: 12.5px; white-space: pre-line; }
+    }
+    .o_sm_bg_followup_head { display: flex; align-items: center; justify-content: space-between; gap: 8px; strong { color: #1d2939; font-size: 13px; } }
+    .o_sm_bg_blocker_form { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid #fde0c5; border-radius: 8px; background: #fffaf5;
+        label { display: flex; flex-direction: column; gap: 4px; color: #344054; font-size: 12.5px; font-weight: 600; }
+        input, textarea { width: 100%; padding: 6px 10px; border: 1px solid #d0d5dd; border-radius: 6px; background: #fff; color: #1d2939; font-weight: 400; }
+        input:focus, textarea:focus { border-color: var(--sm-orange); outline: none; }
+    }
+    .o_sm_bg_blocker_actions { display: flex; justify-content: flex-end; gap: 8px;
+        .o_sm_bg_primary { border-color: var(--sm-orange); background: var(--sm-orange); }
+    }
+}
+
+/* Branch proposals (Phase 5): Head Office's latest decision in the goal detail, and the fixed branch on the proposal form. */
+.o_sm_business_goals .o_sm_bg_review { margin: 10px 0 0; padding: 9px 11px; border-radius: 4px; background: #ecfdf3; color: #067647; font-size: 12.5px;
+    strong { display: block; font-weight: 600; }
+    p { margin: 4px 0 0; color: #344054; white-space: pre-line; }
+    small { display: block; margin-top: 4px; color: var(--sm-muted); }
+    &.is-returned { background: #fffaeb; color: #b54708; }
+}
+.o_sm_business_goals .o_sm_bg_fixed_branch strong { display: block; padding: 7px 0; color: #344054; font-weight: 600; }

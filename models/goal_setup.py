@@ -1526,6 +1526,7 @@ class StrategicGoalSetup(models.Model):
             warehouses = self.env["stock.warehouse"].search([("company_id", "=", self.env.company.id)], order="name, id")
         else:
             warehouses = self.env.user.strategic_branch_warehouse_id
+        # The objective model enforces the same eligibility for Branch Managers' proposals.
         company_goals = self.env["strategic.objective"].search([
             ("company_id", "=", self.env.company.id), ("scope", "=", "organization"),
             ("state", "not in", ("closed", "archived")),
@@ -1586,7 +1587,13 @@ class StrategicGoalSetup(models.Model):
         }
         if scope == "branch":
             # Existing objective rule: a branch objective is aligned under a company objective of the same plan.
-            warehouse = self.env["stock.warehouse"].browse(int(values.get("warehouse_id") or 0)).exists()
+            if self._is_head_office():
+                warehouse = self.env["stock.warehouse"].browse(int(values.get("warehouse_id") or 0)).exists()
+            else:
+                # A Branch Manager's proposal is always for their own branch; a branch sent by the client is ignored.
+                warehouse = self.env.user.strategic_branch_warehouse_id
+                if not warehouse:
+                    raise AccessError("Branch objective proposals require an assigned branch warehouse.")
             if not warehouse or warehouse.company_id != self.env.company:
                 raise UserError("Choose the branch this goal applies to.")
             parent = self.env["strategic.objective"].browse(int(values.get("parent_objective_id") or 0)).exists()
@@ -2170,6 +2177,9 @@ class StrategicGoalSetup(models.Model):
             target_display = setup._target_label(setup.target_value)
         elif len(key_results) == 1:
             target_display = "%g %s" % (key_results.target_id.target_value, key_results.unit or "")
+        # Baseline: only the one Head Office recorded on the Key Result's target, in that target's unit.
+        baseline = key_results.target_id.baseline_id if len(key_results) == 1 else False
+        baseline_display = ("%g %s" % (baseline.baseline_value, key_results.unit or "")).strip() if baseline else False
         scored = objective.scoring_status not in ("not_evaluated", "data_quality_issue")
         result = setup._result_view(objective) if setup else False
         monitor = setup._monitor_view(objective) if setup else False
@@ -2233,6 +2243,17 @@ class StrategicGoalSetup(models.Model):
                 category, reason = "monitoring", ""
             elif state == "draft":
                 reason = _MONITOR_NEXT_STEP.get(setup.setup_state, reason) if setup.setup_state != "needs_setup" else reason
+        # Head Office's latest decision on this objective (the review log is read within the user's own access).
+        review = objective.review_ids[:1]
+        review_feedback = {
+            "decision": review.decision, "status": dict(review._fields["decision"].selection)[review.decision],
+            "reason": review.reason or "", "reviewer": review.reviewer_id.name,
+            "decided_at": fields.Date.to_string(fields.Datetime.context_timestamp(self, review.decided_at).date()) if review.decided_at else False,
+        } if review else False
+        if state == "draft" and review.decision == "rejected":
+            # A rejection returns the proposal to draft so its proposer can revise and resubmit it.
+            status, tone = "Returned for changes", "warn"
+            reason = "Returned by Head Office: %s" % review.reason if category == "setup" else reason
         return {
             "setup_id": setup.id or False,
             "objective_id": objective.id,
@@ -2245,6 +2266,12 @@ class StrategicGoalSetup(models.Model):
             "owner": objective.owner_id.name,
             "scope": "Entire business" if objective.scope == "organization" else (objective.warehouse_id.display_name or "Branch"),
             "plan": objective.plan_id.name,
+            "scope_kind": objective.scope,
+            "warehouse_id": objective.warehouse_id.id or False,
+            "parent_objective": objective.parent_objective_id.display_name or False,
+            "overdue": bool(objective.overdue),
+            "baseline": baseline_display,
+            "review_feedback": review_feedback,
             "state": state,
             "status": status,
             "tone": tone,

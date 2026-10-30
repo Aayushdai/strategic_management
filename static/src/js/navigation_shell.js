@@ -57,6 +57,42 @@ const SIDEBAR_PRIMARY = [
     { id: "configuration", label: "Settings" },
 ];
 const SIDEBAR_MORE = NAVIGATION_ITEMS.filter((item) => ["branches", "people", "tasks_issues", "app_dependencies"].includes(item.id));
+// Branch Manager sidebar (Phase 1). Items with a section or action open pages that already exist and are scoped to the
+// manager's branch on the server; "planned" items belong to later phases and are shown disabled, never as working pages.
+// Objectives stay reachable from the dashboard's objective cards and links; notifications from the header bell.
+const BRANCH_SIDEBAR = [
+    { id: "bm_dashboard", label: "Dashboard" },
+    { id: "sales_finance", label: "Sales" },
+    { id: "purchasing", label: "Purchasing" },
+    { id: "inventory_waste", label: "Inventory" },
+    { id: "branches", label: "Branch Performance" },
+    { id: "my_tasks", label: "My Tasks" },
+    { id: "employee_management", label: "Employee Management" },
+    { id: "task_management", label: "Task Management" },
+    // Proposals use the Business Goals form and approval workflow; the context opens the form on the Proposals list.
+    { id: "propose_objective", label: "Propose Objective", action: "strategic_management.action_business_goals", context: { propose_objective: true } },
+    { id: "reports", label: "Reports" },
+];
+// Employees: their own tasks first, then the pages they could already open.
+const EMPLOYEE_SIDEBAR = [{ id: "my_tasks", label: "My Tasks" }, ...SIDEBAR_PRIMARY];
+const TASK_MODEL = "strategic.branch.task";
+const REPORT_MODEL = "strategic.branch.report";
+// Report sections, as saved by the server; "(when taken)" figures describe the moment the report's figures were taken.
+const REPORT_SECTIONS = [
+    ["Sales (period)", "sales", [["Net sales", "net_sales", "money"], ["Completed orders", "orders"], ["Average order value", "average_order_value", "money"]]],
+    ["Inventory", "inventory", [["Recorded waste (period)", "waste_cost", "money"], ["Receipts completed (period)", "receipts_done"],
+        ["Below minimum stock (when taken)", "low_stock_count"], ["Expiring within 7 days (when taken)", "expiring_count"]]],
+    ["Purchasing", "purchasing", [["Confirmed purchases (period)", "confirmed_value", "money"], ["Open deliveries (when taken)", "awaiting_count"],
+        ["Overdue deliveries (when taken)", "overdue_count"]]],
+    ["Employee tasks (when taken)", "tasks", [["Open", "open"], ["Overdue", "overdue"], ["Awaiting review", "review"]]],
+];
+// Pages Branch Managers can already open stay reachable under "More".
+const BRANCH_SIDEBAR_MORE = [
+    { id: "people", label: "People" },
+    { id: "tasks_issues", label: "Tasks & Issues" },
+    { id: "app_dependencies", label: "App Dependencies" },
+    { id: "configuration", label: "Settings" },
+];
 const PERIOD_PRESETS = [
     { key: "this_month", label: "This Month" },
     { key: "last_month", label: "Last Month" },
@@ -85,8 +121,6 @@ export class StrategicNavigationShell extends Component {
         this.notification = useService("notification");
         this.action = useService("action");
         this.items = NAVIGATION_ITEMS;
-        this.sidebarPrimary = SIDEBAR_PRIMARY;
-        this.sidebarMore = SIDEBAR_MORE;
         this.periodPresets = PERIOD_PRESETS;
         // The Overview opens on This Month (shared by every section's period filter).
         const today = new Date();
@@ -105,6 +139,45 @@ export class StrategicNavigationShell extends Component {
             branchMetric: "sales",
             topProductLimit: 5,
             data: null,
+            // Role and own branch assignment from the server, known even when branch data cannot be loaded.
+            navContext: null,
+            // Branch Manager dashboard: objectives needing attention and Head Office instructions (Phase 2).
+            branchObjectives: null,
+            branchObjectivesLoading: false,
+            branchObjectivesError: "",
+            // Branch tasks (Phase 3): the user's own tasks, the manager's workspace, the dashboard summary and dialogs.
+            myTasks: null,
+            taskManagement: null,
+            taskSummary: null,
+            tasksLoading: false,
+            tasksError: "",
+            taskFilter: "open",
+            taskDetailId: null,
+            taskNote: "",
+            taskForm: null,
+            taskBusy: false,
+            // Task Management narrowed to one employee (from Employee Management); cleared from the page or the sidebar.
+            taskEmployee: null,
+            // Employee Management (Phase 4): the branch's people with their task counts, and one person's tasks.
+            employees: null,
+            employeesLoading: false,
+            employeesError: "",
+            employeeDetail: null,
+            employeeDetailLoading: false,
+            employeeDetailError: "",
+            // Branch operations (Phase 6): the manager's own branch sales, inventory and purchasing for the reporting period.
+            branchOps: null,
+            branchOpsLoading: false,
+            branchOpsError: "",
+            opsTab: "sales",
+            // Branch reports (Phase 7): the list, the open report, and Head Office's open blockers.
+            reports: null,
+            reportsError: "",
+            reportDetail: null,
+            reportComment: "",
+            reportNote: "",
+            reportBusy: false,
+            openBlockers: null,
             inventoryData: null,
             inventoryLoading: false,
             inventoryError: "",
@@ -149,7 +222,7 @@ export class StrategicNavigationShell extends Component {
                 this.scheduleLiveRefresh();
             }
         };
-        onWillStart(() => this.loadOverview());
+        onWillStart(() => this.loadStart());
         onMounted(() => {
             this.busService.subscribe(DATA_CHANGED, this.onDataChanged);
             if (!this.busService.isActive) {
@@ -174,6 +247,11 @@ export class StrategicNavigationShell extends Component {
     refreshActiveSectionSilently() {
         // Hidden sections load on demand when opened, so only the visible live section is refreshed.
         const loaders = {
+            bm_dashboard: "loadBranchObjectives",
+            my_tasks: "loadMyTasks",
+            task_management: "loadTaskManagement",
+            employee_management: "refreshEmployeeManagement",
+            reports: "loadReports",
             overview: "loadOverview",
             sales_finance: "loadOverview",
             inventory_waste: "loadInventory",
@@ -184,7 +262,7 @@ export class StrategicNavigationShell extends Component {
             app_dependencies: "loadAppDependencies",
         };
         const loader = loaders[this.state.activeSection];
-        if (!loader || document.visibilityState === "hidden") {
+        if (!loader || this.branchError || document.visibilityState === "hidden") {
             return;
         }
         // Keep an open "up to today" period current across midnight.
@@ -325,11 +403,33 @@ export class StrategicNavigationShell extends Component {
 
     selectSection(sectionId) {
         this.state.activeSection = sectionId;
+        if (this.branchError) {
+            // Without a valid branch assignment the server refuses branch data; nothing is requested.
+            return;
+        }
         if (["sales_finance", "inventory_waste", "purchasing"].includes(sectionId)) {
             this.loadAreaGoals(sectionId);
         }
         if (sectionId === "overview") {
             return this.loadObjectiveRequests();
+        }
+        if (sectionId === "bm_dashboard" && this.isBranchManager) {
+            return this.loadBranchObjectives();
+        }
+        if (sectionId === "my_tasks") {
+            return this.loadMyTasks();
+        }
+        if (sectionId === "task_management" && this.isBranchManager) {
+            this.state.taskEmployee = null;
+            return this.loadTaskManagement();
+        }
+        if (sectionId === "reports") {
+            return this.loadReports();
+        }
+        if (sectionId === "employee_management" && this.isBranchManager) {
+            this.state.employeeDetail = null;
+            this.state.employeeDetailError = "";
+            return this.loadEmployeeManagement();
         }
         if (sectionId === "purchasing") {
             return this.loadPurchasing();
@@ -353,7 +453,497 @@ export class StrategicNavigationShell extends Component {
 
     // ------------------------------------------------------------ Overview home ("Welcome back!")
     openNavItem(item) {
-        return item.action ? this.action.doAction(item.action) : this.selectSection(item.id);
+        if (item.planned) {
+            return;
+        }
+        if (item.action) {
+            return item.context ? this.action.doAction(item.action, { additionalContext: item.context }) : this.action.doAction(item.action);
+        }
+        return this.selectSection(item.id);
+    }
+
+    // ------------------------------------------------------------ Branch Manager dashboard (Phase 1 foundation)
+    /** Role first, then data: a Branch Manager without a valid branch keeps their navigation and sees why. */
+    async loadStart() {
+        try {
+            this.state.navContext = await this.orm.call("strategic.performance.dashboard", "get_navigation_context", []);
+        } catch (error) {
+            console.error("Navigation context could not be loaded", error);
+        }
+        const context = this.state.navContext;
+        if (context && context.role === "branch_manager") {
+            // A Branch Manager lands on their own dashboard.
+            this.state.activeSection = "bm_dashboard";
+            if (context.branch_error) {
+                this.state.loading = false;
+                return;
+            }
+            await this.loadOverview();
+            return this.loadBranchObjectives();
+        }
+        if (context && context.role === "employee") {
+            // Employees land on their own tasks.
+            this.state.activeSection = "my_tasks";
+            await this.loadOverview();
+            return this.loadMyTasks();
+        }
+        return this.loadOverview();
+    }
+
+    async loadBranchObjectives({ silent = false } = {}) {
+        if (!this.isBranchManager || this.branchError) return;
+        if (!silent) {
+            this.state.branchObjectivesLoading = true;
+        }
+        this.loadTaskSummary();
+        this.loadBranchOps({ silent });
+        try {
+            this.state.branchObjectives = await this.orm.silent.call("strategic.performance.dashboard", "get_branch_objective_summary", []);
+            this.state.branchObjectivesError = "";
+        } catch (error) {
+            if (!silent) {
+                this.state.branchObjectives = null;
+                this.state.branchObjectivesError = error.data?.message || error.message || "Objectives could not be loaded.";
+            }
+        } finally {
+            this.state.branchObjectivesLoading = false;
+        }
+    }
+
+    /** Business Goals, opened on one objective's details (Branch Manager dashboard). */
+    openBranchObjective(objectiveId) {
+        return this.action.doAction("strategic_management.action_business_goals", { additionalContext: { open_objective_id: objectiveId } });
+    }
+
+    get isBranchManager() {
+        const role = this.state.navContext?.role || this.state.data?.role;
+        return role === "branch_manager";
+    }
+
+    get branchError() {
+        return (this.isBranchManager && this.state.navContext?.branch_error) || false;
+    }
+
+    get sidebarPrimary() {
+        if (this.isBranchManager) return BRANCH_SIDEBAR;
+        return this.state.navContext?.role === "employee" ? EMPLOYEE_SIDEBAR : SIDEBAR_PRIMARY;
+    }
+
+    // ------------------------------------------------------------ branch tasks (Phase 3)
+    async loadMyTasks({ silent = false } = {}) {
+        if (!silent) this.state.tasksLoading = true;
+        try {
+            this.state.myTasks = await this.orm.silent.call(TASK_MODEL, "get_my_tasks", []);
+            this.state.tasksError = "";
+        } catch (error) {
+            if (!silent) this.state.tasksError = error.data?.message || error.message || "Tasks could not be loaded.";
+        } finally {
+            this.state.tasksLoading = false;
+        }
+    }
+
+    async loadTaskManagement({ silent = false } = {}) {
+        if (!this.isBranchManager || this.branchError) return;
+        if (!silent) this.state.tasksLoading = true;
+        try {
+            this.state.taskManagement = await this.orm.silent.call(TASK_MODEL, "get_task_management", []);
+            this.state.tasksError = "";
+        } catch (error) {
+            if (!silent) this.state.tasksError = error.data?.message || error.message || "Tasks could not be loaded.";
+        } finally {
+            this.state.tasksLoading = false;
+        }
+    }
+
+    async loadTaskSummary() {
+        try {
+            this.state.taskSummary = await this.orm.silent.call(TASK_MODEL, "get_branch_task_summary", []);
+        } catch (error) {
+            this.state.taskSummary = null;
+            console.error("Task summary could not be loaded", error);
+        }
+    }
+
+    /** Task Management's tasks, narrowed to one employee when opened from Employee Management. */
+    get scopedTasks() {
+        const tasks = this.state.taskManagement?.tasks || [];
+        const employee = this.state.taskEmployee;
+        return employee ? tasks.filter((task) => task.assigned_user_id === employee.id) : tasks;
+    }
+
+    get taskFilters() {
+        const tasks = this.scopedTasks;
+        const open = (task) => ["assigned", "in_progress", "changes_requested", "submitted"].includes(task.state);
+        return [
+            { key: "open", label: "Open", match: open },
+            { key: "overdue", label: "Overdue", match: (task) => task.is_overdue },
+            { key: "review", label: "Awaiting review", match: (task) => task.state === "submitted" },
+            { key: "all", label: "All", match: () => true },
+        ].map((filter) => ({ ...filter, count: tasks.filter(filter.match).length }));
+    }
+
+    get filteredTasks() {
+        const filter = this.taskFilters.find((item) => item.key === this.state.taskFilter) || this.taskFilters[0];
+        return this.scopedTasks.filter(filter.match);
+    }
+
+    clearTaskEmployee() {
+        this.state.taskEmployee = null;
+        this.state.pages.task_management = 0;
+    }
+
+    setTaskFilter(key) {
+        this.state.taskFilter = key;
+        this.state.pages.task_management = 0;
+    }
+
+    /** The task open in the dialog, from whichever list holds it. */
+    get taskDetail() {
+        const id = this.state.taskDetailId;
+        if (!id) return null;
+        return [...(this.state.taskManagement?.tasks || []), ...(this.state.myTasks?.tasks || [])].find((task) => task.id === id) || null;
+    }
+
+    openTask(task) {
+        this.state.taskDetailId = task.id;
+        this.state.taskNote = "";
+    }
+
+    /** From the dashboard: open the task in Task Management. */
+    async openManagedTask(taskId, employee = null) {
+        this.state.taskEmployee = employee;
+        this.state.activeSection = "task_management";
+        await this.loadTaskManagement();
+        this.state.taskFilter = "all";
+        this.state.taskDetailId = taskId;
+        this.state.taskNote = "";
+    }
+
+    // ------------------------------------------------------------ Employee Management (Phase 4): read-only workload view
+    async loadEmployeeManagement({ silent = false } = {}) {
+        if (!this.isBranchManager || this.branchError) return;
+        if (!silent) this.state.employeesLoading = true;
+        try {
+            this.state.employees = await this.orm.silent.call(TASK_MODEL, "get_employee_management", []);
+            this.state.employeesError = "";
+        } catch (error) {
+            if (!silent) {
+                this.state.employees = null;
+                this.state.employeesError = error.data?.message || error.message || "Employees could not be loaded.";
+            }
+        } finally {
+            this.state.employeesLoading = false;
+        }
+    }
+
+    async openEmployee(employee, { silent = false } = {}) {
+        if (!silent) {
+            this.state.employeeDetail = { employee, current: null, history: null };
+            this.state.employeeDetailError = "";
+            this.state.employeeDetailLoading = true;
+        }
+        try {
+            this.state.employeeDetail = await this.orm.silent.call(TASK_MODEL, "get_employee_tasks", [employee.id]);
+        } catch (error) {
+            if (!silent) this.state.employeeDetailError = error.data?.message || error.message || "This employee's tasks could not be loaded.";
+        } finally {
+            this.state.employeeDetailLoading = false;
+        }
+    }
+
+    closeEmployee() {
+        this.state.employeeDetail = null;
+        this.state.employeeDetailError = "";
+        return this.loadEmployeeManagement({ silent: true });
+    }
+
+    refreshEmployeeManagement() {
+        const detail = this.state.employeeDetail;
+        return detail && detail.current ? this.openEmployee(detail.employee, { silent: true }) : this.loadEmployeeManagement({ silent: true });
+    }
+
+    /** Task Management stays the place to act on tasks: open it narrowed to this employee. */
+    async viewEmployeeTasks(employee) {
+        this.state.activeSection = "task_management";
+        this.state.taskEmployee = { id: employee.id, name: employee.name };
+        this.state.taskFilter = "all";
+        this.state.pages.task_management = 0;
+        await this.loadTaskManagement();
+    }
+
+    // ------------------------------------------------------------ Branch reports (Phase 7)
+    get canUseReports() {
+        return ["branch_manager", "head_office"].includes(this.state.navContext?.role);
+    }
+
+    async loadReports({ silent = false } = {}) {
+        if (!this.canUseReports || this.branchError) return;
+        try {
+            this.state.reports = await this.orm.silent.call(REPORT_MODEL, "get_branch_reports", []);
+            this.state.reportsError = "";
+        } catch (error) {
+            if (!silent) this.state.reportsError = error.data?.message || error.message || "Reports could not be loaded.";
+        }
+        if (this.state.navContext?.role === "head_office") {
+            try {
+                this.state.openBlockers = await this.orm.silent.call("strategic.performance.dashboard", "get_open_blockers", []);
+            } catch {
+                this.state.openBlockers = null;
+            }
+        }
+    }
+
+    showReport(data) {
+        this.state.reportDetail = data;
+        this.state.reportComment = data.comment || "";
+        this.state.reportNote = "";
+    }
+
+    async newReport() {
+        if (this.state.reportBusy) return;
+        this.state.reportBusy = true;
+        try {
+            this.showReport(await this.orm.call(REPORT_MODEL, "create_branch_report", [this.state.dateStart, this.state.dateEnd]));
+            await this.loadReports({ silent: true });
+        } catch (error) {
+            this.notification.add(error.data?.message || error.message || "The report could not be prepared.", { type: "danger" });
+        } finally {
+            this.state.reportBusy = false;
+        }
+    }
+
+    async openReport(row) {
+        try {
+            this.showReport(await this.orm.call(REPORT_MODEL, "get_branch_report", [row.id]));
+        } catch (error) {
+            this.notification.add(error.data?.message || error.message || "This report could not be opened.", { type: "danger" });
+        }
+    }
+
+    onReportComment(event) {
+        this.state.reportComment = event.target.value;
+    }
+
+    onReportNote(event) {
+        this.state.reportNote = event.target.value;
+    }
+
+    closeReport() {
+        if (!this.state.reportBusy) this.state.reportDetail = null;
+    }
+
+    /** One workflow step on the server; the list and the report reload from the server afterwards. */
+    async runReportAction(method, args, done) {
+        if (this.state.reportBusy) return;
+        this.state.reportBusy = true;
+        try {
+            await this.orm.call(REPORT_MODEL, method, [[this.state.reportDetail.id], ...args]);
+            this.notification.add(done, { type: "success" });
+            this.state.reportDetail = null;
+            await this.loadReports({ silent: true });
+        } catch (error) {
+            this.notification.add(error.data?.message || error.message || "The report could not be updated.", { type: "danger" });
+        } finally {
+            this.state.reportBusy = false;
+        }
+    }
+
+    submitReport() {
+        return this.runReportAction("action_submit", [this.state.reportComment], "Report submitted to Head Office.");
+    }
+
+    reviewReport(decision) {
+        const note = this.state.reportNote.trim();
+        if (decision === "changes" && !note) {
+            this.notification.add("Explain what needs to change.", { type: "warning" });
+            return;
+        }
+        return decision === "changes"
+            ? this.runReportAction("action_request_changes", [note], "Changes requested.")
+            : this.runReportAction("action_mark_reviewed", [note], "Report marked as reviewed.");
+    }
+
+    /** The saved (or previewed) figures as labelled rows; a missing figure is said to be missing, never zero. */
+    reportSections(snapshot) {
+        return REPORT_SECTIONS.map(([title, key, fields]) => {
+            const data = snapshot?.[key] || {};
+            return {
+                title, key, available: Boolean(data.available), messages: data.messages || [],
+                rows: fields.map(([label, field, kind]) => [label,
+                    kind === "money" ? this.formatOpsMoney(data[field], data) : this.formatOpsCount(data[field])]),
+            };
+        });
+    }
+
+    // ------------------------------------------------------------ Branch operations (Phase 6)
+    /** Sales, inventory and purchasing for the manager's own branch; the server decides the branch, the shared dates the period. */
+    async loadBranchOps({ silent = false } = {}) {
+        if (!this.isBranchManager || this.branchError) return;
+        const requestId = (this.branchOpsRequestId = (this.branchOpsRequestId || 0) + 1);
+        if (!silent) this.state.branchOpsLoading = true;
+        try {
+            const data = await this.orm.silent.call("strategic.performance.dashboard", "get_branch_operations",
+                [this.state.dateStart || false, this.state.dateEnd || false]);
+            if (requestId === this.branchOpsRequestId) {
+                this.state.branchOps = data;
+                this.state.branchOpsError = "";
+            }
+        } catch (error) {
+            // A failed background refresh keeps the last good figures on screen.
+            if (requestId === this.branchOpsRequestId && !silent) {
+                this.state.branchOps = null;
+                this.state.branchOpsError = error.data?.message || error.message || "Branch figures could not be loaded.";
+            }
+        } finally {
+            if (requestId === this.branchOpsRequestId) this.state.branchOpsLoading = false;
+        }
+    }
+
+    setOpsTab(tab) {
+        this.state.opsTab = tab;
+    }
+
+    /** Money in the section's own currency; a missing figure says so instead of showing zero. */
+    formatOpsMoney(value, section) {
+        if (value === false || value === null || value === undefined || !Number.isFinite(Number(value))) return "Not available";
+        const currency = section?.currency || {};
+        const digits = Number.isInteger(currency.decimal_places) ? Math.max(0, Math.min(6, currency.decimal_places)) : 2;
+        const formatted = Number(value).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+        const symbol = currency.symbol || currency.name || "";
+        return currency.position === "after" ? `${formatted} ${symbol}`.trim() : `${symbol}${formatted}`;
+    }
+
+    formatOpsCount(value) {
+        return value === false || value === null || value === undefined ? "Not available" : Number(value).toLocaleString("en-US");
+    }
+
+    /** One bar per day, week or month of the period; heights relative to the best bucket (refunds can make one negative). */
+    get opsTrendBars() {
+        const trend = this.state.branchOps?.sales?.trend || [];
+        const max = Math.max(0, ...trend.map((row) => row.sales));
+        const step = Math.ceil(trend.length / 8);
+        return trend.map((row, index) => ({ ...row, height: max > 0 ? Math.max(0, Math.round((row.sales / max) * 100)) : 0,
+                                             showLabel: index % step === 0 || index === trend.length - 1 }));
+    }
+
+    /** Dashboard: what needs action now (low stock, expiring lots, overdue deliveries), at most five. */
+    get opsAlerts() {
+        const ops = this.state.branchOps;
+        if (!ops || !ops.sales) return null;
+        const alerts = [];
+        const inv = ops.inventory?.available ? ops.inventory : null;
+        const pur = ops.purchasing?.available ? ops.purchasing : null;
+        for (const row of inv?.low_stock || []) {
+            alerts.push({ key: "low-" + row.product_id, kind: "stock", title: `${row.status}: ${row.name}`,
+                          detail: `${this.formatInventoryQuantity(row.available, row.unit)} on hand · minimum ${this.formatInventoryQuantity(row.minimum, row.unit)}` });
+        }
+        for (const row of inv?.expiring || []) {
+            alerts.push({ key: "exp-" + row.lot_id + row.expiry_date, kind: "expiry", title: `${row.days_left < 0 ? "Expired" : "Expiring"}: ${row.product}`,
+                          detail: `${this.formatInventoryQuantity(row.quantity, row.unit)} · ${this.formatPurchaseDate(row.expiry_date)}` });
+        }
+        for (const row of (pur?.deliveries || []).filter((item) => item.status === "Overdue")) {
+            alerts.push({ key: "po-" + row.name, kind: "purchase", title: `Overdue delivery: ${row.name}`,
+                          detail: `${row.supplier} · expected ${this.formatPurchaseDate(row.expected_date)}` });
+        }
+        return alerts.slice(0, 5);
+    }
+
+    closeTask() {
+        if (!this.state.taskBusy) {
+            this.state.taskDetailId = null;
+        }
+    }
+
+    onTaskNoteInput(event) {
+        this.state.taskNote = event.target.value;
+    }
+
+    /** Run one workflow step on the server, then reload; nothing changes on screen before the server confirms. */
+    async runTaskAction(task, method, withNote = false) {
+        if (this.state.taskBusy) return;
+        const note = this.state.taskNote.trim();
+        if (withNote && !note) {
+            this.notification.add(method === "action_submit" ? "Describe what was done." : "Explain what needs to change.", { type: "warning" });
+            return;
+        }
+        this.state.taskBusy = true;
+        try {
+            await this.orm.call(TASK_MODEL, method, withNote ? [[task.id], note] : [[task.id]]);
+            this.state.taskNote = "";
+            const labels = { action_start: "Task started.", action_submit: "Submitted for review.", action_accept: "Task completed.",
+                             action_request_changes: "Changes requested.", action_cancel: "Task cancelled." };
+            this.notification.add(labels[method], { type: "success" });
+            await Promise.all([
+                this.state.myTasks ? this.loadMyTasks({ silent: true }) : null,
+                this.isBranchManager ? this.loadTaskManagement({ silent: true }) : null,
+                this.isBranchManager ? this.loadTaskSummary() : null,
+            ]);
+        } catch (error) {
+            this.notification.add(error.data?.message || error.message || "The task could not be updated.", { type: "danger" });
+        } finally {
+            this.state.taskBusy = false;
+        }
+    }
+
+    openTaskForm() {
+        this.state.taskForm = { name: "", description: "", assigned_user_id: "", date_deadline: "", priority: "0", objective_id: "" };
+    }
+
+    closeTaskForm() {
+        if (!this.state.taskBusy) this.state.taskForm = null;
+    }
+
+    onTaskFormInput(field, event) {
+        this.state.taskForm[field] = event.target.value;
+    }
+
+    get taskFormReady() {
+        const form = this.state.taskForm;
+        return Boolean(form && form.name.trim() && form.description.trim() && form.assigned_user_id && form.date_deadline);
+    }
+
+    async saveTask() {
+        const form = this.state.taskForm;
+        if (!this.taskFormReady || this.state.taskBusy) return;
+        this.state.taskBusy = true;
+        try {
+            await this.orm.call(TASK_MODEL, "create_branch_task", [{
+                name: form.name.trim(), description: form.description.trim(), assigned_user_id: Number(form.assigned_user_id),
+                date_deadline: form.date_deadline, priority: form.priority, objective_id: form.objective_id ? Number(form.objective_id) : false,
+            }]);
+            this.state.taskForm = null;
+            this.notification.add("Task assigned.", { type: "success" });
+            await Promise.all([this.loadTaskManagement({ silent: true }), this.loadTaskSummary()]);
+        } catch (error) {
+            this.notification.add(error.data?.message || error.message || "The task could not be created.", { type: "danger" });
+        } finally {
+            this.state.taskBusy = false;
+        }
+    }
+
+    get sidebarMore() {
+        return this.isBranchManager ? BRANCH_SIDEBAR_MORE : SIDEBAR_MORE;
+    }
+
+    /** The manager's branch as the server pinned it (res.users.strategic_branch_warehouse_id); never chosen in the browser. */
+    get managerBranch() {
+        if (!this.isBranchManager || this.branchError) return null;
+        if (this.state.navContext?.role) return this.state.navContext.branch || null;
+        const data = this.state.data;
+        return data ? (data.branch_options || []).find((branch) => branch.id === data.selected_warehouse_id) || null : null;
+    }
+
+    get userName() {
+        return user.name;
+    }
+
+    get reportingPeriodLabel() {
+        const period = this.state.data?.period;
+        return period ? `${this.formatPurchaseDate(period.start)} – ${this.formatPurchaseDate(period.end)}` : "";
+    }
+
+    openNotifications() {
+        return this.action.doAction("mail.action_discuss");
     }
 
     get avatarUrl() {
@@ -749,6 +1339,9 @@ export class StrategicNavigationShell extends Component {
     }
 
     async loadBranches({ silent = false } = {}) {
+        if (this.isBranchManager) {
+            this.loadBranchOps({ silent });
+        }
         // Ignore responses that arrive after a newer request (filter change or live refresh).
         const requestId = ++this.branchesRequestId;
         if (!silent) {

@@ -19,7 +19,25 @@
             </aside>
 
             <main class="o_sm_workspace">
-                <t t-if="this.state.activeSection === 'overview'">
+                <t t-if="this.branchError">
+    <div class="o_sm_bm">
+        <header class="o_sm_bm_header">
+            <div class="o_sm_bm_title">
+                <span class="o_sm_bm_kicker">Strategic Management</span>
+                <h1>Branch Manager Dashboard</h1>
+            </div>
+            <div class="o_sm_bm_header_actions">
+                <span class="o_sm_bm_user"><img t-att-src="this.avatarUrl" alt=""/><span><strong t-esc="this.userName"/><small>Branch Manager</small></span></span>
+            </div>
+        </header>
+        <div class="o_sm_bm_notice is-error" role="alert">
+            <strong>No branch assigned</strong>
+            <span t-esc="this.branchError"/>
+            <small>Branch data stays hidden until an administrator assigns your branch on your user.</small>
+        </div>
+    </div>
+</t>
+                <t t-elif="this.state.activeSection === 'overview'">
     <t t-set="rq" t-value="this.state.requestsData"/>
     <t t-set="rx" t-value="this.state.reqExpanded"/>
     <div class="o_sm_requests">
@@ -71,6 +89,29 @@
                     <strong>No pending objective requests</strong>
                     <span>New proposals from branch managers will appear here.</span>
                 </div>
+            </section>
+
+            <!-- Draft proposals waiting for Head Office's target set-up: not submitted yet, so no approve or reject here. -->
+            <section t-if="rq.needs_setup and rq.needs_setup.length" class="o_sm_req_card" aria-labelledby="o_sm_req_setup_title">
+                <div class="o_sm_req_card_head">
+                    <div><h2 id="o_sm_req_setup_title">Proposals needing target setup</h2><p><t t-esc="rq.can_decide ? 'Branch proposals waiting for Head Office to prepare or approve their target before they can be submitted.' : 'Your branch proposals waiting for Head Office to set up their target.'"/></p></div>
+                    <div class="o_sm_req_head_actions"><span class="o_sm_req_count"><t t-esc="rq.needs_setup.length"/> to set up</span></div>
+                </div>
+                <div class="o_sm_req_table_wrap"><table class="o_sm_req_table o_sm_req_setup_table">
+                    <thead><tr><th>Objective</th><th>Branch</th><th>Supports</th><th>Proposed By</th><th>Setup Status</th><th class="o_sm_req_actions_col">Actions</th></tr></thead>
+                    <tbody>
+                        <tr t-foreach="rq.needs_setup" t-as="row" t-key="row.objective_id">
+                            <td data-label="Objective" class="o_sm_req_objective"><strong t-att-title="row.name"><t t-esc="row.name"/></strong></td>
+                            <td data-label="Branch"><t t-esc="row.branch"/></td>
+                            <td data-label="Supports"><t t-esc="row.parent_objective or '—'"/></td>
+                            <td data-label="Proposed By"><t t-esc="row.proposer"/></td>
+                            <td data-label="Setup Status"><span class="o_sm_req_badge is-setup"><t t-esc="row.status"/></span><small class="o_sm_req_next"><t t-esc="row.next_step"/></small></td>
+                            <td data-label="Actions" class="o_sm_req_actions">
+                                <button type="button" t-att-class="'o_sm_req_btn ' + (rq.can_decide ? 'is-approve' : 'is-ghost')" t-on-click="() => this.openBranchObjective(row.objective_id)"><t t-esc="rq.can_decide ? 'Set up target' : 'Open'"/></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table></div>
             </section>
 
             <section class="o_sm_req_card" aria-labelledby="o_sm_req_history_title">
@@ -131,6 +172,7 @@
                             <div><dt>Strategic plan</dt><dd><t t-esc="item.plan or '—'"/></dd></div>
                             <div><dt>Measure</dt><dd><t t-esc="item.measure or 'Not chosen'"/></dd></div>
                             <div><dt>Target</dt><dd><t t-esc="item.target or 'Not set'"/></dd></div>
+                            <div t-if="item.baseline"><dt>Baseline</dt><dd><t t-esc="item.baseline"/></dd></div>
                             <div><dt>Measurement period</dt><dd><t t-if="item.period_start"><t t-esc="this.formatRequestDate(item.period_start)"/> – <t t-esc="this.formatRequestDate(item.period_end)"/></t><t t-else="">Not set</t></dd></div>
                             <div><dt>Deadline</dt><dd><t t-esc="this.formatRequestDate(item.deadline)"/></dd></div>
                             <div t-if="item.goal_type"><dt>Goal type</dt><dd><t t-esc="item.goal_type"/></dd></div>
@@ -175,6 +217,269 @@
                     <button type="button" class="o_sm_req_btn is-reject is-solid" t-att-disabled="this.state.deciding or !this.state.rejectReason.trim()" t-on-click="() => this.decideRequest(item, 'reject')">Reject request</button>
                 </footer>
             </section>
+        </div>
+    </div>
+</t>
+                <t t-elif="this.state.activeSection === 'bm_dashboard'">
+    <div class="o_sm_bm">
+        <t t-if="this.isBranchManager">
+            <header class="o_sm_bm_header">
+                <div class="o_sm_bm_title">
+                    <span class="o_sm_bm_kicker">Strategic Management · <t t-esc="this.managerBranch ? this.managerBranch.name : ''"/></span>
+                    <h1>Branch Manager Dashboard</h1>
+                    <p>Reporting period <strong t-esc="this.reportingPeriodLabel"/></p>
+                </div>
+                <div class="o_sm_bm_header_actions">
+                    <button type="button" class="o_sm_bm_icon_button" aria-label="Notifications" title="Notifications (Odoo inbox)" t-on-click="this.openNotifications">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2H4.5Z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>
+                    </button>
+                    <span class="o_sm_bm_user"><img t-att-src="this.avatarUrl" alt=""/><span><strong t-esc="this.userName"/><small>Branch Manager</small></span></span>
+                </div>
+            </header>
+
+            <section class="o_sm_bm_grid" aria-label="Branch Manager dashboard">
+                <article class="o_sm_bm_card is-wide">
+                    <div class="o_sm_bm_card_head"><h2>Branch overview</h2></div>
+                    <dl class="o_sm_bm_facts">
+                        <div><dt>Branch</dt><dd t-esc="this.managerBranch ? this.managerBranch.name : '—'"/></div>
+                        <div><dt>Manager</dt><dd t-esc="this.userName"/></div>
+                        <div><dt>Reporting period</dt><dd t-esc="this.reportingPeriodLabel"/></div>
+                        <div t-if="this.state.branchObjectives"><dt>Active objectives</dt><dd><t t-esc="this.state.branchObjectives.counts.own_branch"/> for your branch · <t t-esc="this.state.branchObjectives.counts.company_wide"/> company-wide<t t-if="this.state.branchObjectives.counts.proposals"> · <t t-esc="this.state.branchObjectives.counts.proposals"/> proposals</t></dd></div>
+                    </dl>
+                </article>
+                <article class="o_sm_bm_card is-wide">
+                    <div class="o_sm_bm_card_head"><h2>Performance summary</h2><button type="button" class="o_sm_bm_link" t-on-click="() => this.selectSection('branches')">Branch Performance →</button></div>
+                    <t t-set="ops" t-value="this.state.branchOps"/>
+                    <p t-if="this.state.branchOpsError and !ops" class="o_sm_bm_notice" t-esc="this.state.branchOpsError"/>
+                    <p t-elif="!ops or !ops.sales" class="o_sm_bm_empty">Loading branch figures…</p>
+                    <div t-else="" class="o_sm_ops_strip">
+                        <div><small>Net sales</small><strong t-esc="ops.sales.available ? this.formatOpsMoney(ops.sales.net_sales, ops.sales) : 'Not available'"/></div>
+                        <div><small>Completed orders</small><strong t-esc="ops.sales.available ? this.formatOpsCount(ops.sales.orders) : 'Not available'"/></div>
+                        <div><small>Average order value</small><strong t-esc="ops.sales.available ? this.formatOpsMoney(ops.sales.average_order_value, ops.sales) : 'Not available'"/></div>
+                        <div><small>Inventory alerts</small><strong t-if="ops.inventory.available"><t t-esc="this.formatOpsCount(ops.inventory.low_stock_count)"/> low stock<t t-if="ops.inventory.expiry_tracking_available"> · <t t-esc="this.formatOpsCount(ops.inventory.expiring_count)"/> expiring</t></strong><strong t-else="">Not available</strong></div>
+                        <div><small>Deliveries</small><strong t-if="ops.purchasing.available"><t t-esc="this.formatOpsCount(ops.purchasing.awaiting_count)"/> awaiting · <span t-att-class="ops.purchasing.overdue_count ? 'is-warn' : ''"><t t-esc="this.formatOpsCount(ops.purchasing.overdue_count)"/> overdue</span></strong><strong t-else="">Not available</strong></div>
+                    </div>
+                </article>
+                <article class="o_sm_bm_card">
+                    <div class="o_sm_bm_card_head"><h2>Head Office instructions</h2></div>
+                    <t t-set="bo" t-value="this.state.branchObjectives"/>
+                    <p t-if="this.state.branchObjectivesLoading and !bo" class="o_sm_bm_empty">Loading instructions…</p>
+                    <p t-elif="this.state.branchObjectivesError" class="o_sm_bm_empty" t-esc="this.state.branchObjectivesError"/>
+                    <div t-elif="bo and bo.instructions.length" class="o_sm_bm_list">
+                        <button t-foreach="bo.instructions" t-as="note" t-key="note.id" type="button" class="o_sm_bm_list_item" t-on-click="() => this.openBranchObjective(note.objective_id)">
+                            <span class="o_sm_bm_list_meta"><t t-esc="note.objective"/> · <t t-esc="note.author"/> · <t t-esc="this.formatPurchaseDate(note.date)"/></span>
+                            <span class="o_sm_bm_list_text" t-esc="note.text"/>
+                        </button>
+                    </div>
+                    <p t-elif="bo" class="o_sm_bm_empty">No instructions from Head Office on your objectives yet.</p>
+                </article>
+                <article class="o_sm_bm_card">
+                    <div class="o_sm_bm_card_head"><h2>Employee task overview</h2><button type="button" class="o_sm_bm_link" t-on-click="() => this.selectSection('task_management')">Task Management →</button></div>
+                    <t t-set="ts" t-value="this.state.taskSummary"/>
+                    <t t-if="ts">
+                        <div class="o_sm_task_counts">
+                            <span><strong t-esc="ts.counts.open"/> open</span>
+                            <span t-att-class="ts.counts.overdue ? 'is-warn' : ''"><strong t-esc="ts.counts.overdue"/> overdue</span>
+                            <span t-att-class="ts.counts.review ? 'is-review' : ''"><strong t-esc="ts.counts.review"/> awaiting review</span>
+                        </div>
+                        <div t-if="ts.attention.length" class="o_sm_bm_list">
+                            <button t-foreach="ts.attention" t-as="task" t-key="task.id" type="button" class="o_sm_bm_list_item is-objective" t-on-click="() => this.openManagedTask(task.id)">
+                                <span class="o_sm_bm_list_title"><strong t-esc="task.name"/><small><t t-esc="task.assigned_to"/> · due <t t-esc="this.formatPurchaseDate(task.date_deadline)"/></small></span>
+                                <span class="o_sm_bm_reasons"><span t-att-class="'o_sm_bm_reason ' + (task.state === 'submitted' ? 'is-no_data' : 'is-overdue')" t-esc="task.state === 'submitted' ? 'Awaiting review' : 'Overdue'"/></span>
+                            </button>
+                        </div>
+                        <p t-elif="ts.counts.open" class="o_sm_bm_empty">Nothing overdue or waiting for your review.</p>
+                        <p t-else="" class="o_sm_bm_empty">No open tasks. Assign work from Task Management.</p>
+                    </t>
+                    <p t-else="" class="o_sm_bm_empty">Loading tasks…</p>
+                </article>
+                <article class="o_sm_bm_card">
+                    <div class="o_sm_bm_card_head"><h2>Operational alerts</h2><button type="button" class="o_sm_bm_link" t-on-click="() => this.selectSection('inventory_waste')">Inventory →</button></div>
+                    <t t-set="alerts" t-value="this.opsAlerts"/>
+                    <p t-if="alerts === null" class="o_sm_bm_empty"><t t-esc="this.state.branchOpsError or 'Loading alerts…'"/></p>
+                    <div t-elif="alerts.length" class="o_sm_bm_list o_sm_ops_alerts">
+                        <div t-foreach="alerts" t-as="alert" t-key="alert.key" t-att-class="'o_sm_bm_list_item is-' + alert.kind">
+                            <span class="o_sm_bm_list_title"><strong t-esc="alert.title"/><small t-esc="alert.detail"/></span>
+                        </div>
+                    </div>
+                    <p t-else="" class="o_sm_bm_empty">No low stock, expiring lots or overdue deliveries.</p>
+                </article>
+                <article class="o_sm_bm_card is-wide">
+                    <div class="o_sm_bm_card_head"><h2>Objectives requiring attention</h2><button type="button" class="o_sm_bm_link" t-on-click="() => this.action.doAction('strategic_management.action_business_goals')">All objectives →</button></div>
+                    <t t-set="bo" t-value="this.state.branchObjectives"/>
+                    <p t-if="this.state.branchObjectivesLoading and !bo" class="o_sm_bm_empty">Loading objectives…</p>
+                    <p t-elif="this.state.branchObjectivesError" class="o_sm_bm_empty" t-esc="this.state.branchObjectivesError"/>
+                    <div t-elif="bo and bo.attention.length" class="o_sm_bm_list">
+                        <button t-foreach="bo.attention.slice(0, 6)" t-as="item" t-key="item.objective_id" type="button" class="o_sm_bm_list_item is-objective" t-on-click="() => this.openBranchObjective(item.objective_id)">
+                            <span class="o_sm_bm_list_title"><strong t-esc="item.title"/><small><t t-esc="item.own_branch ? 'Your branch' : 'Company-wide'"/><t t-if="item.deadline"> · deadline <t t-esc="this.formatPurchaseDate(item.deadline)"/></t></small></span>
+                            <span class="o_sm_bm_reasons"><span t-foreach="item.keys" t-as="key" t-key="key" t-att-class="'o_sm_bm_reason is-' + key" t-esc="item.reasons[key_index]"/></span>
+                        </button>
+                        <small t-if="bo.attention.length > 6" class="o_sm_bm_empty">and <t t-esc="bo.attention.length - 6"/> more on Objectives.</small>
+                    </div>
+                    <p t-elif="bo" class="o_sm_bm_empty">No active objective needs your attention right now.</p>
+                </article>
+            </section>
+        </t>
+        <div t-else="" class="o_sm_bm_notice">The Branch Manager dashboard is available to branch managers.</div>
+    </div>
+</t>
+                <t t-elif="this.state.activeSection === 'my_tasks'">
+    <div class="o_sm_bm o_sm_tasks">
+        <header class="o_sm_bm_header"><div class="o_sm_bm_title"><h1>My Tasks</h1><p>Work assigned to you.</p></div></header>
+        <t t-set="mt" t-value="this.state.myTasks"/>
+        <p t-if="this.state.tasksLoading and !mt" class="o_sm_bm_empty">Loading your tasks…</p>
+        <p t-elif="this.state.tasksError and !mt" class="o_sm_bm_notice" t-esc="this.state.tasksError"/>
+        <article t-elif="mt" class="o_sm_bm_card is-wide">
+            <div t-if="mt.tasks.length" class="o_sm_task_table_wrap"><table class="o_sm_task_table">
+                <thead><tr><th>Task</th><th>Due Date</th><th>Priority</th><th>Status</th><th class="is-action">Action</th></tr></thead>
+                <tbody><tr t-foreach="mt.tasks" t-as="task" t-key="task.id">
+                    <td data-label="Task"><strong t-esc="task.name"/><small>From <t t-esc="task.assigned_by"/></small></td>
+                    <td data-label="Due Date"><t t-esc="this.formatPurchaseDate(task.date_deadline)"/><span t-if="task.is_overdue" class="o_sm_task_overdue">Overdue</span></td>
+                    <td data-label="Priority" t-esc="task.priority_label"/>
+                    <td data-label="Status"><span t-att-class="'o_sm_task_status is-' + task.state" t-esc="task.status"/></td>
+                    <td class="is-action"><button type="button" class="o_sm_task_btn" t-on-click="() => this.openTask(task)">View</button></td>
+                </tr></tbody>
+            </table></div>
+            <p t-else="" class="o_sm_bm_empty">No tasks are assigned to you.</p>
+        </article>
+        <t t-call="strategic_management.TaskDialog"/>
+    </div>
+</t>
+                <t t-elif="this.state.activeSection === 'employee_management'">
+    <div class="o_sm_bm o_sm_tasks">
+        <t t-set="ed" t-value="this.state.employeeDetail"/>
+        <t t-if="ed">
+            <header class="o_sm_bm_header">
+                <div class="o_sm_bm_title">
+                    <button type="button" class="o_sm_bm_link o_sm_emp_back" t-on-click="() => this.closeEmployee()">← Employees</button>
+                    <h1 t-esc="ed.employee.name"/>
+                    <p t-if="ed.employee.note" class="o_sm_emp_note" t-esc="ed.employee.note"/>
+                </div>
+                <button t-if="ed.current" type="button" class="o_sm_task_btn" t-on-click="() => this.viewEmployeeTasks(ed.employee)">View in Task Management</button>
+            </header>
+            <p t-if="this.state.employeeDetailLoading" class="o_sm_bm_empty">Loading tasks…</p>
+            <p t-elif="this.state.employeeDetailError" class="o_sm_bm_notice" t-esc="this.state.employeeDetailError"/>
+            <t t-elif="ed.current">
+                <article class="o_sm_bm_card is-wide">
+                    <div class="o_sm_task_counts">
+                        <span><strong t-esc="ed.employee.counts.open"/> open</span>
+                        <span t-att-class="ed.employee.counts.overdue ? 'is-warn' : ''"><strong t-esc="ed.employee.counts.overdue"/> overdue</span>
+                        <span t-att-class="ed.employee.counts.review ? 'is-review' : ''"><strong t-esc="ed.employee.counts.review"/> awaiting review</span>
+                    </div>
+                </article>
+                <article class="o_sm_bm_card is-wide">
+                    <div class="o_sm_bm_card_head"><h2>Current tasks</h2></div>
+                    <div t-if="ed.current.length" class="o_sm_task_table_wrap"><table class="o_sm_task_table o_sm_emp_tasks">
+                        <thead><tr><th>Task</th><th>Due Date</th><th>Status</th><th class="is-action">Action</th></tr></thead>
+                        <tbody><tr t-foreach="ed.current" t-as="task" t-key="task.id">
+                            <td data-label="Task"><strong t-esc="task.name"/><small t-if="task.priority === '1'" class="o_sm_task_high">High priority</small></td>
+                            <td data-label="Due Date"><t t-esc="this.formatPurchaseDate(task.date_deadline)"/><span t-if="task.is_overdue" class="o_sm_task_overdue">Overdue</span></td>
+                            <td data-label="Status"><span t-att-class="'o_sm_task_status is-' + task.state" t-esc="task.status"/></td>
+                            <td class="is-action"><button type="button" t-att-class="'o_sm_task_btn' + (task.can_review ? ' is-primary' : '')" t-on-click="() => this.openManagedTask(task.id, ed.employee)"><t t-esc="task.can_review ? 'Review' : 'Open'"/></button></td>
+                        </tr></tbody>
+                    </table></div>
+                    <p t-else="" class="o_sm_bm_empty">No open tasks.</p>
+                </article>
+                <article class="o_sm_bm_card is-wide">
+                    <div class="o_sm_bm_card_head"><h2>Recent history</h2><span t-if="ed.history_total > ed.history.length" class="o_sm_emp_hint">Latest <t t-esc="ed.history.length"/> of <t t-esc="ed.history_total"/></span></div>
+                    <div t-if="ed.history.length" class="o_sm_task_table_wrap"><table class="o_sm_task_table o_sm_emp_history">
+                        <thead><tr><th>Task</th><th>Due Date</th><th>Status</th><th class="is-action">Action</th></tr></thead>
+                        <tbody><tr t-foreach="ed.history" t-as="task" t-key="task.id">
+                            <td data-label="Task"><strong t-esc="task.name"/></td>
+                            <td data-label="Due Date" t-esc="this.formatPurchaseDate(task.date_deadline)"/>
+                            <td data-label="Status"><span t-att-class="'o_sm_task_status is-' + task.state" t-esc="task.status"/></td>
+                            <td class="is-action"><button type="button" class="o_sm_task_btn" t-on-click="() => this.openManagedTask(task.id, ed.employee)">Open</button></td>
+                        </tr></tbody>
+                    </table></div>
+                    <p t-else="" class="o_sm_bm_empty">No completed or cancelled tasks yet.</p>
+                </article>
+            </t>
+        </t>
+        <t t-else="">
+            <header class="o_sm_bm_header"><div class="o_sm_bm_title"><h1>Employee Management</h1><p>Your branch's employees and the work assigned to them.</p></div></header>
+            <t t-set="em" t-value="this.state.employees"/>
+            <p t-if="!this.isBranchManager" class="o_sm_bm_notice">Employee Management is available to Branch Managers.</p>
+            <p t-elif="this.state.employeesLoading and !em" class="o_sm_bm_empty">Loading employees…</p>
+            <p t-elif="this.state.employeesError and !em" class="o_sm_bm_notice" t-esc="this.state.employeesError"/>
+            <article t-elif="em" class="o_sm_bm_card is-wide">
+                <div t-if="em.employees.length" class="o_sm_task_table_wrap"><table class="o_sm_task_table o_sm_emp_table">
+                    <thead><tr><th>Employee</th><th class="is-num">Open Tasks</th><th class="is-num">Overdue Tasks</th><th class="is-num">Awaiting Review</th><th class="is-action">Action</th></tr></thead>
+                    <tbody><tr t-foreach="this.pageRows('employee_management', em.employees)" t-as="employee" t-key="employee.id">
+                        <td data-label="Employee"><strong t-esc="employee.name"/><small t-if="employee.note" t-esc="employee.note"/></td>
+                        <td data-label="Open Tasks" class="is-num" t-esc="employee.counts.open"/>
+                        <td data-label="Overdue Tasks" t-att-class="'is-num' + (employee.counts.overdue ? ' is-warn' : '')" t-esc="employee.counts.overdue"/>
+                        <td data-label="Awaiting Review" t-att-class="'is-num' + (employee.counts.review ? ' is-review' : '')" t-esc="employee.counts.review"/>
+                        <td class="is-action"><button type="button" class="o_sm_task_btn" t-on-click="() => this.openEmployee(employee)">View</button></td>
+                    </tr></tbody>
+                </table></div>
+                <t t-if="em.employees.length"><t t-call="strategic_management.ListPager" pagerKey="'employee_management'" pagerRows="em.employees"/></t>
+                <p t-else="" class="o_sm_bm_empty">No employees belong to your branch yet.</p>
+            </article>
+        </t>
+    </div>
+</t>
+                <t t-elif="this.state.activeSection === 'task_management'">
+    <div class="o_sm_bm o_sm_tasks">
+        <header class="o_sm_bm_header">
+            <div class="o_sm_bm_title"><h1>Task Management</h1><p>Tasks assigned to your branch's employees.</p></div>
+            <button t-if="this.state.taskManagement" type="button" class="o_sm_task_btn is-primary" t-on-click="() => this.openTaskForm()">+ New task</button>
+        </header>
+        <t t-set="tm" t-value="this.state.taskManagement"/>
+        <p t-if="!this.isBranchManager" class="o_sm_bm_notice">Task Management is available to Branch Managers.</p>
+        <p t-elif="this.state.tasksLoading and !tm" class="o_sm_bm_empty">Loading tasks…</p>
+        <p t-elif="this.state.tasksError and !tm" class="o_sm_bm_notice" t-esc="this.state.tasksError"/>
+        <article t-elif="tm" class="o_sm_bm_card is-wide">
+            <nav class="o_sm_task_filters" aria-label="Show tasks">
+                <button t-foreach="this.taskFilters" t-as="filter" t-key="filter.key" type="button" t-att-class="this.state.taskFilter === filter.key ? 'is-active' : ''"
+                        t-on-click="() => this.setTaskFilter(filter.key)"><t t-esc="filter.label"/> <span t-esc="filter.count"/></button>
+                <span t-if="this.state.taskEmployee" class="o_sm_task_employee">Employee: <strong t-esc="this.state.taskEmployee.name"/>
+                    <button type="button" aria-label="Show all employees" title="Show all employees" t-on-click="() => this.clearTaskEmployee()">×</button></span>
+            </nav>
+            <t t-set="rows" t-value="this.filteredTasks"/>
+            <div t-if="rows.length" class="o_sm_task_table_wrap"><table class="o_sm_task_table">
+                <thead><tr><th>Task</th><th>Assigned To</th><th>Due Date</th><th>Status</th><th class="is-action">Action</th></tr></thead>
+                <tbody><tr t-foreach="this.pageRows('task_management', rows)" t-as="task" t-key="task.id">
+                    <td data-label="Task"><strong t-esc="task.name"/><small t-if="task.priority === '1'" class="o_sm_task_high">High priority</small></td>
+                    <td data-label="Assigned To" t-esc="task.assigned_to"/>
+                    <td data-label="Due Date"><t t-esc="this.formatPurchaseDate(task.date_deadline)"/><span t-if="task.is_overdue" class="o_sm_task_overdue">Overdue</span></td>
+                    <td data-label="Status"><span t-att-class="'o_sm_task_status is-' + task.state" t-esc="task.status"/></td>
+                    <td class="is-action"><button type="button" t-att-class="'o_sm_task_btn' + (task.can_review ? ' is-primary' : '')" t-on-click="() => this.openTask(task)"><t t-esc="task.can_review ? 'Review' : 'View'"/></button></td>
+                </tr></tbody>
+            </table></div>
+            <t t-if="rows.length"><t t-call="strategic_management.ListPager" pagerKey="'task_management'" pagerRows="rows"/></t>
+            <p t-if="!rows.length" class="o_sm_bm_empty"><t t-esc="this.scopedTasks.length ? 'No tasks match this filter.' : this.state.taskEmployee ? 'No tasks for this employee.' : 'No tasks yet. Use New task to assign work to an employee.'"/></p>
+        </article>
+        <t t-call="strategic_management.TaskDialog"/>
+
+        <div t-if="this.state.taskForm" class="o_sm_req_overlay" t-on-click="() => this.closeTaskForm()">
+            <form class="o_sm_req_dialog o_sm_task_form" role="dialog" aria-modal="true" aria-labelledby="o_sm_task_form_title" t-on-click.stop="() => {}" t-on-submit.prevent="() => this.saveTask()">
+                <header class="o_sm_req_dialog_head"><div><span class="o_sm_req_kicker">Assign work</span><h2 id="o_sm_task_form_title">New task</h2></div>
+                    <button type="button" class="o_sm_req_close" aria-label="Close" t-on-click="() => this.closeTaskForm()">×</button></header>
+                <div class="o_sm_req_dialog_body">
+                    <label>Title<input type="text" maxlength="120" required="required" t-att-value="this.state.taskForm.name" t-on-input="(ev) => this.onTaskFormInput('name', ev)" placeholder="e.g. Check milk stock"/></label>
+                    <label>Description<textarea rows="3" required="required" t-att-value="this.state.taskForm.description" t-on-input="(ev) => this.onTaskFormInput('description', ev)" placeholder="What needs to be done"/></label>
+                    <div class="o_sm_task_form_row">
+                        <label>Assigned employee<select required="required" t-on-change="(ev) => this.onTaskFormInput('assigned_user_id', ev)">
+                            <option value="">Choose…</option>
+                            <option t-foreach="this.state.taskManagement.assignees" t-as="person" t-key="person.id" t-att-value="person.id" t-att-selected="('' + person.id) === this.state.taskForm.assigned_user_id"><t t-esc="person.name"/></option>
+                        </select></label>
+                        <label>Due date<input type="date" required="required" t-att-value="this.state.taskForm.date_deadline" t-on-change="(ev) => this.onTaskFormInput('date_deadline', ev)"/></label>
+                    </div>
+                    <div class="o_sm_task_form_row">
+                        <label>Priority<select t-on-change="(ev) => this.onTaskFormInput('priority', ev)"><option value="0" t-att-selected="this.state.taskForm.priority === '0'">Normal</option><option value="1" t-att-selected="this.state.taskForm.priority === '1'">High</option></select></label>
+                        <label>Related objective <small>(optional)</small><select t-on-change="(ev) => this.onTaskFormInput('objective_id', ev)">
+                            <option value="">None</option>
+                            <option t-foreach="this.state.taskManagement.objectives" t-as="objective" t-key="objective.id" t-att-value="objective.id"><t t-esc="objective.name"/> · <t t-esc="objective.scope"/></option>
+                        </select></label>
+                    </div>
+                    <small t-if="!this.state.taskManagement.assignees.length" class="o_sm_req_hint">No employee is assigned to your branch yet, so tasks cannot be assigned.</small>
+                    <small class="o_sm_req_hint">Completing a task does not change an objective's progress; that comes from its measured results.</small>
+                </div>
+                <footer class="o_sm_req_dialog_foot">
+                    <button type="button" class="o_sm_req_btn is-ghost" t-att-disabled="this.state.taskBusy" t-on-click="() => this.closeTaskForm()">Cancel</button>
+                    <button type="submit" class="o_sm_req_btn is-approve" t-att-disabled="this.state.taskBusy or !this.taskFormReady">Assign task</button>
+                </footer>
+            </form>
         </div>
     </div>
 </t>
@@ -384,7 +689,7 @@
             <div class="o_sm_iw_filters">
                 <label class="o_sm_iw_filter"><span>From</span><input type="date" t-att-value="this.state.dateStart" t-on-change="this.onStartDateChanged" aria-label="Inventory start date"/></label>
                 <label class="o_sm_iw_filter"><span>To</span><input type="date" t-att-value="this.state.dateEnd" t-on-change="this.onEndDateChanged" aria-label="Inventory end date"/></label>
-                <label class="o_sm_iw_filter"><span>Branch</span><select t-att-value="this.branchSelectValue" t-on-change="this.onWarehouseChanged" aria-label="Inventory branch filter"><option value="all">All Branches</option><t t-foreach="(iv &amp;&amp; iv.branch_options) || []" t-as="branch" t-key="branch.id"><option t-att-value="branch.id"><t t-esc="branch.name"/></option></t></select></label>
+                <label class="o_sm_iw_filter"><span>Branch</span><select t-att-value="this.branchSelectValue" t-on-change="this.onWarehouseChanged" aria-label="Inventory branch filter"><option t-if="!this.isBranchManager" value="all">All Branches</option><t t-foreach="(iv &amp;&amp; iv.branch_options) || []" t-as="branch" t-key="branch.id"><option t-att-value="branch.id"><t t-esc="branch.name"/></option></t></select></label>
             </div>
         </header>
         <t t-if="ix.goals"><t t-call="strategic_management.AreaGoals" areaKey="'inventory_waste'"/></t>
@@ -478,6 +783,7 @@
                 <t t-set="movement" t-value="this.state.inventoryData &amp;&amp; this.state.inventoryData.movement ? this.state.inventoryData.movement : false"/>
                 <div class="o_sm_iw_movement_grid">
                     <div class="o_sm_iw_move_step"><small>Opening stock</small><strong><t t-esc="this.formatInventoryQuantity(movement ? movement.opening_stock : false, movement ? movement.unit : '')"/></strong><span>Calculated from recorded movements</span></div><div class="o_sm_iw_move_sign">+</div>
+                    <div t-if="movement and movement.ordered_quantity !== undefined" class="o_sm_iw_move_step"><small>Ordered</small><strong><t t-esc="this.formatInventoryQuantity(movement.ordered_quantity, movement.unit)"/></strong><span>Confirmed purchase orders</span></div>
                     <div class="o_sm_iw_move_step"><small>Received</small><strong><t t-esc="this.formatInventoryQuantity(movement ? movement.received_quantity : false, movement ? movement.unit : '')"/></strong><span>Supplier receipts</span></div><div class="o_sm_iw_move_sign">−</div>
                     <div class="o_sm_iw_move_step"><small>Consumption</small><strong><t t-esc="this.formatInventoryQuantity(movement ? movement.consumption_quantity : false, movement ? movement.unit : '')"/></strong><span>Completed sales and production issues</span></div><div class="o_sm_iw_move_sign">−</div>
                     <div class="o_sm_iw_move_step"><small>Recorded waste</small><strong><t t-esc="this.formatInventoryQuantity(movement ? movement.waste_quantity : false, movement ? movement.unit : '')"/></strong><span>Supported scrap records</span></div><div class="o_sm_iw_move_sign">±</div>
@@ -529,7 +835,7 @@
             <div class="o_sm_pur_filters">
                 <label class="o_sm_pur_filter"><span>From</span><input type="date" t-att-value="this.state.dateStart" t-on-change="this.onStartDateChanged" aria-label="Purchasing start date"/></label>
                 <label class="o_sm_pur_filter"><span>To</span><input type="date" t-att-value="this.state.dateEnd" t-on-change="this.onEndDateChanged" aria-label="Purchasing end date"/></label>
-                <label class="o_sm_pur_filter"><span>Branch</span><select t-att-value="this.branchSelectValue" t-on-change="this.onWarehouseChanged" aria-label="Purchasing branch filter"><option value="all">All Branches</option><t t-foreach="(pd ? pd.branch_options : [])" t-as="branch" t-key="branch.id"><option t-att-value="branch.id"><t t-esc="branch.name"/></option></t></select></label>
+                <label class="o_sm_pur_filter"><span>Branch</span><select t-att-value="this.branchSelectValue" t-on-change="this.onWarehouseChanged" aria-label="Purchasing branch filter"><option t-if="!this.isBranchManager" value="all">All Branches</option><t t-foreach="(pd ? pd.branch_options : [])" t-as="branch" t-key="branch.id"><option t-att-value="branch.id"><t t-esc="branch.name"/></option></t></select></label>
             </div>
         </header>
 
@@ -676,7 +982,8 @@
             <p t-foreach="br.messages" t-as="message" t-key="message_index"><t t-esc="message"/></p>
         </details>
 
-        <t t-if="br and br.available">
+        <t t-if="br and br.role === 'branch_manager'"><t t-call="strategic_management.BranchOperations"/></t>
+        <t t-if="br and br.available and br.role !== 'branch_manager'">
             <section class="o_sm_br_summary" aria-label="Branch summary">
                 <article class="o_sm_br_metric">
                     <span class="o_sm_br_metric_icon is-purple"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="11" height="18" rx="1.5"/><path d="M14 9h7v12h-7M6.5 7h4M6.5 11h4M6.5 15h4"/></svg></span>
@@ -1041,6 +1348,7 @@
             <p t-if="this.state.activeSection === 'reports'">Open Odoo's live analysis views (pivot, graph, list) with filters, grouping and export.</p>
             <p t-else="">Set up the strategy, targets and operational data the dashboards measure.</p>
         </div></header>
+        <t t-if="this.state.activeSection === 'reports' and this.canUseReports"><t t-call="strategic_management.BranchReports"/></t>
         <p t-if="!links.length" class="o_sm_br_notice">No items are available for your role.</p>
         <section class="o_sm_ov_ops_grid">
             <article t-foreach="links" t-as="link" t-key="link.xmlid" class="o_sm_ov_panel">
@@ -1063,8 +1371,10 @@
     </t>
     <t t-name="strategic_management.NavigationButton">
         <button type="button"
-                t-att-class="this.state.activeSection === item.id ? 'o_sm_nav_item active' : 'o_sm_nav_item'"
+                t-att-class="(this.state.activeSection === item.id ? 'o_sm_nav_item active' : 'o_sm_nav_item') + (item.planned ? ' is-planned' : '')"
                 t-att-aria-current="this.state.activeSection === item.id ? 'page' : false"
+                t-att-disabled="item.planned"
+                t-att-title="item.planned ? 'Planned for a later phase' : false"
                 t-on-click="() => this.openNavItem(item)">
             <svg class="o_sm_nav_svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
     <g t-if="item.id === 'overview'"><path d="M3.5 10.5 12 3.8l8.5 6.7"/><path d="M5.5 9.5v10.8h13V9.5"/><path d="M9.5 20.3v-6h5v6"/></g>
@@ -1077,10 +1387,254 @@
     <g t-elif="item.id === 'tasks_issues'"><rect x="5" y="4.5" width="14" height="17" rx="2"/><path d="M9 4.5v-2h6v2M8 11l2 2 4-4M8 17h8"/></g>
     <g t-elif="item.id === 'reports'"><path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></g>
     <g t-elif="item.id === 'app_dependencies'"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><path d="M16.5 13.5v6M13.5 16.5h6"/></g>
+    <g t-elif="item.id === 'bm_dashboard'"><rect x="3.5" y="3.5" width="7" height="8" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="5" rx="1.5"/><rect x="13.5" y="11.5" width="7" height="9" rx="1.5"/><rect x="3.5" y="14.5" width="7" height="6" rx="1.5"/></g>
+    <g t-elif="item.id === 'my_tasks' or item.id === 'task_management'"><rect x="5" y="4.5" width="14" height="17" rx="2"/><path d="M9 4.5v-2h6v2M8 11l2 2 4-4M8 17h8"/></g>
+    <g t-elif="item.id === 'employee_management'"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1.4a6 6 0 0 1 12 0V20Z"/><path d="M16 5.5a3 3 0 0 1 0 5.8M18 14a5 5 0 0 1 3 4.6V20h-4"/></g>
+    <g t-elif="item.id === 'propose_objective'"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></g>
+    <g t-elif="item.id === 'notifications'"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2H4.5Z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></g>
     <g t-elif="item.id === 'configuration'"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></g>
 </svg>
             <span class="o_sm_nav_label"><t t-esc="item.label"/></span>
+            <small t-if="item.planned" class="o_sm_nav_planned">Later</small>
         </button>
+    </t>
+    <!-- Branch Manager Phase 6: the manager's own branch from the existing Sales, Inventory and Purchasing calculations. -->
+    <t t-name="strategic_management.BranchOperations">
+        <t t-set="ops" t-value="this.state.branchOps"/>
+        <div t-if="this.state.branchOpsLoading and !ops" class="o_sm_br_notice">Loading your branch figures…</div>
+        <div t-elif="this.state.branchOpsError and !ops" class="o_sm_br_notice" t-esc="this.state.branchOpsError"/>
+        <section t-elif="ops and ops.sales" class="o_sm_ops" aria-label="Branch operations">
+            <nav class="o_sm_task_filters o_sm_ops_tabs" aria-label="Branch area">
+                <button t-foreach="[['sales', 'Sales'], ['inventory', 'Inventory'], ['purchasing', 'Purchasing']]" t-as="tab" t-key="tab[0]" type="button"
+                        t-att-class="this.state.opsTab === tab[0] ? 'is-active' : ''" t-att-aria-pressed="this.state.opsTab === tab[0] ? 'true' : 'false'"
+                        t-on-click="() => this.setOpsTab(tab[0])"><t t-esc="tab[1]"/></button>
+            </nav>
+            <t t-set="sec" t-value="ops[this.state.opsTab]"/>
+            <div t-if="!sec.available" class="o_sm_br_notice"><t t-foreach="sec.messages" t-as="message" t-key="message_index"><t t-esc="message"/> </t></div>
+
+            <t t-elif="this.state.opsTab === 'sales'">
+                <section class="o_sm_ops_cards">
+                    <article><small>Net sales</small><strong t-esc="this.formatOpsMoney(sec.net_sales, sec)"/><span>Paid POS sales excl. tax, net of refunds</span></article>
+                    <article><small>Completed orders</small><strong t-esc="this.formatOpsCount(sec.orders)"/><span>Paid orders; refunds not counted</span></article>
+                    <article><small>Average order value</small><strong t-esc="sec.average_order_value === false ? 'No orders' : this.formatOpsMoney(sec.average_order_value, sec)"/><span>Net sales ÷ completed orders</span></article>
+                </section>
+                <article class="o_sm_br_panel">
+                    <div class="o_sm_br_panel_heading"><div><h2>Sales trend</h2><p>Net sales per <t t-esc="ops.granularity"/>, <t t-esc="this.formatPurchaseDate(ops.period.start)"/> – <t t-esc="this.formatPurchaseDate(ops.period.end)"/></p></div></div>
+                    <div t-if="sec.net_sales or sec.orders" class="o_sm_ops_trend" role="img" t-att-aria-label="'Net sales per ' + ops.granularity">
+                        <div t-foreach="this.opsTrendBars" t-as="bar" t-key="bar.key" class="o_sm_ops_bar" t-att-title="bar.label + ': ' + this.formatOpsMoney(bar.sales, sec)">
+                            <i t-att-style="'height:' + bar.height + '%'"/><small t-esc="bar.showLabel ? bar.label : ''"/>
+                        </div>
+                    </div>
+                    <p t-else="" class="o_sm_br_empty">No paid POS sales for your branch in this period.</p>
+                    <small t-foreach="sec.messages" t-as="message" t-key="message_index" class="o_sm_br_hint" t-esc="message"/>
+                </article>
+            </t>
+
+            <t t-elif="this.state.opsTab === 'inventory'">
+                <section class="o_sm_ops_cards">
+                    <article><small>Below minimum stock</small><strong t-esc="sec.low_stock_count === false ? 'Not configured' : this.formatOpsCount(sec.low_stock_count)"/><span>Current stock vs the branch's reorder rules</span></article>
+                    <article><small>Expiring within 7 days</small><strong t-esc="sec.expiry_tracking_available ? this.formatOpsCount(sec.expiring_count) : 'Not tracked'"/><span>Lots with an expiry date, current stock</span></article>
+                    <article><small>Recorded waste</small><strong t-esc="this.formatOpsMoney(sec.waste_cost, sec)"/><span><t t-if="sec.waste_by_reason.length"><t t-foreach="sec.waste_by_reason" t-as="reason" t-key="reason.reason"><t t-if="reason_index"> · </t><t t-esc="reason.reason"/> <t t-esc="this.formatOpsMoney(reason.cost, sec)"/></t></t><t t-else="">Spoilage/Expiry and Damaged Goods in the period</t></span></article>
+                    <article><small>Receipts completed</small><strong t-esc="this.formatOpsCount(sec.receipts_done)"/><span>Supplier receipts validated in the period</span></article>
+                </section>
+                <section class="o_sm_br_grid">
+                    <article class="o_sm_br_panel">
+                        <div class="o_sm_br_panel_heading"><div><h2>Below minimum stock</h2><p>Now, from reorder rules</p></div></div>
+                        <table t-if="sec.low_stock.length" class="o_sm_task_table o_sm_ops_table"><thead><tr><th>Product</th><th>On hand</th><th>Minimum</th></tr></thead><tbody>
+                            <tr t-foreach="sec.low_stock" t-as="row" t-key="row.product_id"><td><strong t-esc="row.name"/><small t-esc="row.status"/></td>
+                                <td t-esc="this.formatInventoryQuantity(row.available, row.unit)"/><td t-esc="this.formatInventoryQuantity(row.minimum, row.unit)"/></tr>
+                        </tbody></table>
+                        <p t-else="" class="o_sm_br_empty"><t t-esc="sec.low_stock_count === false ? 'No reorder rules are set for your branch, so low stock cannot be judged.' : 'Nothing is below its minimum.'"/></p>
+                    </article>
+                    <article class="o_sm_br_panel">
+                        <div class="o_sm_br_panel_heading"><div><h2>Recorded waste</h2><p>In the period, by product</p></div></div>
+                        <table t-if="sec.waste_by_product.length" class="o_sm_task_table o_sm_ops_table"><thead><tr><th>Product</th><th>Quantity</th><th>Value</th></tr></thead><tbody>
+                            <tr t-foreach="sec.waste_by_product" t-as="row" t-key="row_index"><td><strong t-esc="row.product"/></td>
+                                <td t-esc="this.formatInventoryQuantity(row.quantity, row.unit)"/><td t-esc="this.formatOpsMoney(row.cost, sec)"/></tr>
+                        </tbody></table>
+                        <p t-else="" class="o_sm_br_empty"><t t-esc="sec.waste_breakdown_available ? 'No waste recorded in this period.' : 'Waste cannot be broken down: some scrap records have no Spoilage/Expiry or Damaged Goods reason, or no value.'"/></p>
+                    </article>
+                </section>
+                <article t-if="sec.expiry_tracking_available" class="o_sm_br_panel">
+                    <div class="o_sm_br_panel_heading"><div><h2>Expiring stock</h2><p>Lots on hand expiring within seven days or already expired</p></div></div>
+                    <table t-if="sec.expiring.length" class="o_sm_task_table o_sm_ops_table"><thead><tr><th>Product</th><th>Quantity</th><th>Expiry</th></tr></thead><tbody>
+                        <tr t-foreach="sec.expiring" t-as="row" t-key="row_index"><td><strong t-esc="row.product"/></td><td t-esc="this.formatInventoryQuantity(row.quantity, row.unit)"/>
+                            <td><t t-esc="this.formatPurchaseDate(row.expiry_date)"/><span t-if="row.days_left &lt; 0" class="o_sm_task_overdue">Expired</span></td></tr>
+                    </tbody></table>
+                    <p t-else="" class="o_sm_br_empty">No tracked lots expire within seven days.</p>
+                </article>
+                <p class="o_sm_br_hint">Ordered, received, used, wasted and remaining quantities for one product are on Inventory → Inventory Movement, in that product's unit. <button type="button" class="o_sm_br_link" t-on-click="() => this.selectSection('inventory_waste')">Open Inventory →</button></p>
+            </t>
+
+            <t t-elif="this.state.opsTab === 'purchasing'">
+                <section class="o_sm_ops_cards">
+                    <article><small>Confirmed purchases</small><strong t-esc="this.formatOpsMoney(sec.confirmed_value, sec)"/><span><t t-esc="this.formatOpsCount(sec.confirmed_count)"/> confirmed orders in the period, excl. tax</span></article>
+                    <article><small>Awaiting delivery</small><strong t-esc="this.formatOpsCount(sec.awaiting_count)"/><span>Open receipts now, any order date · <t t-esc="this.formatOpsMoney(sec.awaiting_value, sec)"/></span></article>
+                    <article t-att-class="sec.overdue_count ? 'is-warn' : ''"><small>Overdue deliveries</small><strong t-esc="this.formatOpsCount(sec.overdue_count)"/><span>Past the expected date · <t t-esc="this.formatOpsMoney(sec.overdue_value, sec)"/></span></article>
+                </section>
+                <article class="o_sm_br_panel">
+                    <div class="o_sm_br_panel_heading"><div><h2>Outstanding deliveries</h2><p>Orders with goods still to receive, overdue first</p></div></div>
+                    <table t-if="sec.deliveries.length" class="o_sm_task_table o_sm_ops_table"><thead><tr><th>Order</th><th>Supplier</th><th>Expected</th><th>Still to receive</th><th>Status</th></tr></thead><tbody>
+                        <tr t-foreach="sec.deliveries" t-as="row" t-key="row.name"><td><strong t-esc="row.name"/><small t-if="row.date_order">Ordered <t t-esc="this.formatPurchaseDate(row.date_order)"/></small></td><td t-esc="row.supplier"/>
+                            <td t-esc="row.expected_date ? this.formatPurchaseDate(row.expected_date) : '—'"/><td t-esc="this.formatOpsMoney(row.outstanding_value, sec)"/>
+                            <td><span t-att-class="'o_sm_task_status ' + (row.status === 'Overdue' ? 'is-changes_requested' : 'is-in_progress')" t-esc="row.status"/></td></tr>
+                    </tbody></table>
+                    <p t-else="" class="o_sm_br_empty">Nothing is waiting to be delivered to your branch.</p>
+                    <small t-foreach="sec.messages" t-as="message" t-key="message_index" class="o_sm_br_hint" t-esc="message"/>
+                </article>
+            </t>
+        </section>
+        <t t-set="br" t-value="this.state.branchesData"/>
+        <t t-set="bx" t-value="this.state.brExpanded"/>
+        <section t-if="br and br.available" class="o_sm_br_grid o_sm_ops_attention">
+                <article t-att-class="'o_sm_br_panel' + (bx.attention ? ' is-expanded' : '')">
+                    <div class="o_sm_br_panel_heading"><div><h2 class="is-warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 21.5 20h-19Z"/><path d="M12 10v4.5M12 17.2h.01"/></svg>Needs Attention</h2><p>Most important open branch issues</p></div>
+                        <button t-if="br.attention.length" type="button" class="o_sm_br_link" t-on-click="() => this.toggleBranches('attention')"><t t-esc="bx.attention ? 'Show top 3' : 'See all issues →'"/></button></div>
+                    <p t-if="!br.attention.length" class="o_sm_br_empty">No measurable issues: no KPI targets or objectives below target and no overdue supplier receipts.</p>
+                    <div t-elif="!bx.attention" class="o_sm_br_issue_items">
+                        <div t-foreach="br.attention.slice(0, 3)" t-as="item" t-key="item_index" class="o_sm_br_issue_item">
+                            <span t-att-class="'o_sm_br_status ' + (item.severity === 'critical' ? 'o_sm_br_status_critical' : 'o_sm_br_status_warn')"><t t-esc="item.severity === 'critical' ? 'Critical' : 'Warning'"/></span>
+                            <div class="o_sm_br_issue_copy"><strong t-att-title="item.title"><t t-esc="item.title"/></strong><small t-att-title="item.evidence"><t t-esc="item.branch"/> · <t t-esc="item.evidence"/></small></div>
+                            <button t-if="item.res_model" type="button" class="o_sm_br_item_action" t-on-click="() => this.openIssueRecord(item)">View</button>
+                        </div>
+                    </div>
+                    <t t-else="">
+                        <div class="o_sm_pur_table_wrap"><table class="o_sm_pur_table">
+                            <thead><tr><th>Severity</th><th>Issue</th><th>Branch</th><th>Evidence</th><th>Responsible</th><th>Deadline</th><th>Action status</th><th>Actions</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="this.pageRows('br_attention', br.attention)" t-as="item" t-key="item_index">
+                                    <td><span t-att-class="'o_sm_br_status ' + (item.severity === 'critical' ? 'o_sm_br_status_critical' : 'o_sm_br_status_warn')"><t t-esc="item.severity === 'critical' ? 'Critical' : 'Warning'"/></span></td>
+                                    <td><t t-esc="item.title"/></td>
+                                    <td><t t-esc="item.branch"/></td>
+                                    <td style="white-space:normal"><t t-esc="item.evidence"/></td>
+                                    <td><t t-esc="item.responsible"/></td>
+                                    <td><t t-esc="this.formatPurchaseDate(item.deadline)"/></td>
+                                    <td><t t-esc="item.action_status"/></td>
+                                    <td><span t-if="item.res_model" class="o_sm_issue_actions"><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.openIssueRecord(item)">Open</button><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.createIssueFollowup(item)">Assign follow-up</button></span></td>
+                                </tr>
+                            </tbody>
+                        </table></div><t t-call="strategic_management.ListPager" pagerKey="'br_attention'" pagerRows="br.attention"/>
+                    </t>
+                </article>
+        </section>
+    </t>
+    <!-- Branch Manager Phase 7: branch reports (prepare, submit, review) and Head Office's open blockers. -->
+    <t t-name="strategic_management.BranchReports">
+        <t t-set="rp" t-value="this.state.reports"/>
+        <section class="o_sm_ops o_sm_reports" aria-label="Branch reports">
+            <article class="o_sm_br_panel">
+                <div class="o_sm_br_panel_heading">
+                    <div><h2>Branch reports</h2><p t-if="rp and rp.role === 'branch_manager'">Prepare a report for a period, add a short comment and send it to Head Office.</p><p t-else="">Reports submitted by the branches, with their saved figures.</p></div>
+                    <div t-if="rp and rp.role === 'branch_manager'" class="o_sm_reports_new">
+                        <label class="o_sm_pur_filter"><span>From</span><input type="date" t-att-value="this.state.dateStart" t-att-max="this.state.todayDate" t-on-change="this.onStartDateChanged" aria-label="Report start date"/></label>
+                        <label class="o_sm_pur_filter"><span>To</span><input type="date" t-att-value="this.state.dateEnd" t-att-max="this.state.todayDate" t-on-change="this.onEndDateChanged" aria-label="Report end date"/></label>
+                        <button type="button" class="o_sm_task_btn is-primary" t-att-disabled="this.state.reportBusy" t-on-click="() => this.newReport()">+ New report</button>
+                    </div>
+                </div>
+                <p t-if="this.state.reportsError and !rp" class="o_sm_br_notice" t-esc="this.state.reportsError"/>
+                <p t-elif="!rp or !rp.reports" class="o_sm_br_empty">Loading reports…</p>
+                <table t-elif="rp.reports.length" class="o_sm_task_table o_sm_reports_table"><thead><tr><th>Branch</th><th>Period</th><th>Submitted</th><th>Status</th><th class="is-action">Action</th></tr></thead><tbody>
+                    <tr t-foreach="this.pageRows('reports', rp.reports)" t-as="row" t-key="row.id">
+                        <td data-label="Branch"><strong t-esc="row.branch"/></td>
+                        <td data-label="Period"><t t-esc="this.formatPurchaseDate(row.date_start)"/> – <t t-esc="this.formatPurchaseDate(row.date_end)"/></td>
+                        <td data-label="Submitted"><t t-if="row.submitted_at"><t t-esc="row.submitted_by"/><small><t t-esc="this.formatPurchaseDate(row.submitted_at.slice(0, 10))"/><t t-if="row.submission_count > 1"> · submission <t t-esc="row.submission_count"/></t></small></t><t t-else="">—</t></td>
+                        <td data-label="Status"><span t-att-class="'o_sm_task_status is-' + ({submitted: 'submitted', changes_requested: 'changes_requested', reviewed: 'done'}[row.state] || 'assigned')" t-esc="row.status"/></td>
+                        <td class="is-action"><button type="button" t-att-class="'o_sm_task_btn' + (row.state === 'submitted' and rp.role === 'head_office' ? ' is-primary' : '')" t-on-click="() => this.openReport(row)"><t t-esc="row.state === 'submitted' and rp.role === 'head_office' ? 'Review' : 'Open'"/></button></td>
+                    </tr>
+                </tbody></table>
+                <t t-if="rp and rp.reports and rp.reports.length"><t t-call="strategic_management.ListPager" pagerKey="'reports'" pagerRows="rp.reports"/></t>
+                <p t-if="rp and rp.reports and !rp.reports.length" class="o_sm_br_empty"><t t-esc="rp.role === 'branch_manager' ? 'No reports yet. Choose the period and use New report.' : 'No branch has submitted a report yet.'"/></p>
+            </article>
+
+            <article t-if="rp and rp.role === 'head_office'" class="o_sm_br_panel">
+                <div class="o_sm_br_panel_heading"><div><h2>Open blockers</h2><p>Blockers reported on objectives that still wait for Head Office's follow-up (its To-Dos)</p></div></div>
+                <t t-set="ob" t-value="this.state.openBlockers"/>
+                <table t-if="ob and ob.length" class="o_sm_task_table"><thead><tr><th>Problem</th><th>Branch</th><th>Objective</th><th>Reported</th><th>Follow up by</th></tr></thead><tbody>
+                    <tr t-foreach="ob" t-as="row" t-key="row.objective_id + row.problem"><td><strong t-esc="row.problem"/></td><td t-esc="row.branch or '—'"/>
+                        <td><button type="button" class="o_sm_bm_link" t-on-click="() => this.openRequestObjective(row.objective_id)" t-esc="row.objective"/></td>
+                        <td><t t-esc="row.reported_by"/><small t-esc="this.formatPurchaseDate(row.reported_on)"/></td>
+                        <td><t t-esc="this.formatPurchaseDate(row.due)"/><span t-if="row.overdue" class="o_sm_task_overdue">Overdue</span></td></tr>
+                </tbody></table>
+                <p t-elif="ob" class="o_sm_br_empty">No open blockers.</p>
+                <p t-else="" class="o_sm_br_empty">Open blockers could not be loaded.</p>
+            </article>
+
+            <t t-set="rd" t-value="this.state.reportDetail"/>
+            <div t-if="rd" class="o_sm_req_overlay" t-on-click="() => this.closeReport()">
+                <section class="o_sm_req_dialog o_sm_report_dialog" role="dialog" aria-modal="true" aria-labelledby="o_sm_report_title" t-on-click.stop="() => {}">
+                    <header class="o_sm_req_dialog_head"><div><span class="o_sm_req_kicker">Branch report · <t t-esc="rd.status"/></span>
+                        <h2 id="o_sm_report_title"><t t-esc="rd.branch"/> · <t t-esc="this.formatPurchaseDate(rd.date_start)"/> – <t t-esc="this.formatPurchaseDate(rd.date_end)"/></h2></div>
+                        <button type="button" class="o_sm_req_close" aria-label="Close" t-on-click="() => this.closeReport()">×</button></header>
+                    <div class="o_sm_req_dialog_body">
+                        <p class="o_sm_req_hint"><t t-if="rd.preview">Preview of today's figures: they are saved when you submit.</t><t t-else="">Figures as submitted<t t-if="rd.submitted_by"> by <t t-esc="rd.submitted_by"/></t><t t-if="rd.snapshot_at">, taken <t t-esc="rd.snapshot_at"/></t><t t-if="rd.submission_count > 1"> (submission <t t-esc="rd.submission_count"/>)</t>.</t> "(period)" figures cover the report period; "(when taken)" figures describe that moment.</p>
+                        <div t-if="rd.review_note" class="o_sm_report_feedback"><strong>Head Office feedback<t t-if="rd.reviewed_by"> from <t t-esc="rd.reviewed_by"/></t></strong><p t-esc="rd.review_note"/></div>
+                        <div class="o_sm_report_sections">
+                            <div t-foreach="this.reportSections(rd.snapshot)" t-as="section" t-key="section.key" class="o_sm_report_section">
+                                <h3 t-esc="section.title"/>
+                                <dl t-if="section.available"><t t-foreach="section.rows" t-as="row" t-key="row[0]"><dt t-esc="row[0]"/><dd t-esc="row[1]"/></t></dl>
+                                <p t-else="" class="o_sm_req_hint">Not available. <t t-esc="section.messages.join(' ')"/></p>
+                            </div>
+                        </div>
+                        <t t-set="obj" t-value="rd.snapshot and rd.snapshot.objectives"/>
+                        <div class="o_sm_report_section">
+                            <h3>Objectives (when taken)</h3>
+                            <ul t-if="obj and obj.available and obj.items.length" class="o_sm_report_objectives">
+                                <li t-foreach="obj.items" t-as="item" t-key="item_index"><strong t-esc="item.title"/> · <t t-esc="item.status"/> · due <t t-esc="this.formatPurchaseDate(item.deadline)"/><t t-if="obj.attention.some((a) => a.title === item.title)"> · <span class="o_sm_task_overdue">Needs attention</span></t></li>
+                            </ul>
+                            <p t-elif="obj and obj.available" class="o_sm_req_hint">No active objectives apply to this branch.</p>
+                            <p t-else="" class="o_sm_req_hint">Not available.</p>
+                        </div>
+                        <label t-if="rd.can_edit" class="o_sm_req_reason"><span>Your comment for Head Office <small>(optional)</small></span>
+                            <textarea rows="3" maxlength="2000" t-att-value="this.state.reportComment" t-on-input="this.onReportComment" placeholder="What explains these results?"/></label>
+                        <div t-elif="rd.comment" class="o_sm_report_section"><h3>Manager's comment</h3><p class="o_sm_req_description" t-esc="rd.comment"/></div>
+                        <label t-if="rd.can_review" class="o_sm_req_reason"><span>Feedback <small>(required to request changes)</small></span>
+                            <textarea rows="3" maxlength="2000" t-att-value="this.state.reportNote" t-on-input="this.onReportNote" placeholder="Shared with the branch manager"/></label>
+                    </div>
+                    <footer class="o_sm_req_dialog_foot">
+                        <button t-if="rd.can_edit" type="button" class="o_sm_req_btn is-approve" t-att-disabled="this.state.reportBusy" t-on-click="() => this.submitReport()">Submit to Head Office</button>
+                        <t t-if="rd.can_review">
+                            <button type="button" class="o_sm_req_btn is-reject" t-att-disabled="this.state.reportBusy" t-on-click="() => this.reviewReport('changes')">Request changes</button>
+                            <button type="button" class="o_sm_req_btn is-approve" t-att-disabled="this.state.reportBusy" t-on-click="() => this.reviewReport('reviewed')">Mark reviewed</button>
+                        </t>
+                        <button type="button" class="o_sm_req_btn is-ghost" t-on-click="() => this.closeReport()">Close</button>
+                    </footer>
+                </section>
+            </div>
+        </section>
+    </t>
+    <t t-name="strategic_management.TaskDialog">
+        <t t-set="task" t-value="this.taskDetail"/>
+        <div t-if="task" class="o_sm_req_overlay" t-on-click="() => this.closeTask()">
+            <section class="o_sm_req_dialog" role="dialog" aria-modal="true" aria-labelledby="o_sm_task_title" t-on-click.stop="() => {}">
+                <header class="o_sm_req_dialog_head">
+                    <div><span class="o_sm_req_kicker">Task</span><h2 id="o_sm_task_title" t-esc="task.name"/></div>
+                    <button type="button" class="o_sm_req_close" aria-label="Close" t-on-click="() => this.closeTask()">×</button>
+                </header>
+                <div class="o_sm_req_dialog_body">
+                    <div class="o_sm_req_dialog_status"><span t-att-class="'o_sm_task_status is-' + task.state" t-esc="task.status"/><span t-if="task.is_overdue" class="o_sm_task_overdue">Overdue</span></div>
+                    <p class="o_sm_req_description" t-esc="task.description"/>
+                    <dl class="o_sm_req_details">
+                        <div><dt>Assigned to</dt><dd t-esc="task.assigned_to"/></div>
+                        <div><dt>Assigned by</dt><dd t-esc="task.assigned_by"/></div>
+                        <div><dt>Due date</dt><dd t-esc="this.formatPurchaseDate(task.date_deadline)"/></div>
+                        <div><dt>Priority</dt><dd t-esc="task.priority_label"/></div>
+                        <div t-if="task.objective" class="is-wide"><dt>Supports objective</dt><dd t-esc="task.objective"/></div>
+                        <div t-if="task.completion_note" class="is-wide"><dt>Completion notes</dt><dd t-esc="task.completion_note"/></div>
+                        <div t-if="task.review_note" class="is-wide"><dt>Manager's notes</dt><dd t-esc="task.review_note"/></div>
+                    </dl>
+                    <label t-if="task.can_submit or task.can_review" class="o_sm_req_reason"><span><t t-esc="task.can_submit ? 'Completion notes' : 'Notes for the employee'"/> <small t-if="task.can_review">(required to request changes)</small></span>
+                        <textarea rows="3" t-att-value="this.state.taskNote" t-on-input="this.onTaskNoteInput" t-att-placeholder="task.can_submit ? 'What was done?' : 'What needs to change?'"/></label>
+                </div>
+                <footer class="o_sm_req_dialog_foot">
+                    <button t-if="task.can_cancel" type="button" class="o_sm_req_btn is-reject" t-att-disabled="this.state.taskBusy" t-on-click="() => this.runTaskAction(task, 'action_cancel')">Cancel task</button>
+                    <button t-if="task.can_review" type="button" class="o_sm_req_btn is-reject" t-att-disabled="this.state.taskBusy" t-on-click="() => this.runTaskAction(task, 'action_request_changes', true)">Request changes</button>
+                    <button t-if="task.can_review" type="button" class="o_sm_req_btn is-approve" t-att-disabled="this.state.taskBusy" t-on-click="() => this.runTaskAction(task, 'action_accept')">Accept</button>
+                    <button t-if="task.can_start" type="button" class="o_sm_req_btn is-approve" t-att-disabled="this.state.taskBusy" t-on-click="() => this.runTaskAction(task, 'action_start')">Start work</button>
+                    <button t-if="task.can_submit" type="button" class="o_sm_req_btn is-approve" t-att-disabled="this.state.taskBusy" t-on-click="() => this.runTaskAction(task, 'action_submit', true)">Submit for review</button>
+                    <button type="button" class="o_sm_req_btn is-ghost" t-on-click="() => this.closeTask()">Close</button>
+                </footer>
+            </section>
+        </div>
     </t>
     <t t-name="strategic_management.ListPager">
         <t t-set="pagerCount" t-value="this.pageCount(pagerRows)"/>

@@ -37,6 +37,8 @@
         "views/hoshin_matrix_views.xml",
         "views/business_goals_action.xml",
         "views/inventory_control_views.xml",
+        "views/branch_task_views.xml",
+        "views/branch_report_views.xml",
     ],
     "assets": {
         "web.assets_backend": [

@@ -10,13 +10,7 @@
                     <a t-att-class="'o_sm_bg_nav' + (this.state.section === 'sales_finance' ? ' active' : '')" href="#" t-on-click.prevent="() => this.openSection('sales_finance')"><i class="oi" data-icon="bar_chart"/> <span>Sales &amp; Finance</span></a>
                     <a t-att-class="'o_sm_bg_nav' + (this.state.section === 'inventory_waste' ? ' active' : '')" href="#" t-on-click.prevent="() => this.openSection('inventory_waste')"><i class="oi" data-icon="inventory_2"/> <span>Inventory &amp; Waste</span></a>
                     <a t-att-class="'o_sm_bg_nav' + (this.state.section === 'purchasing' ? ' active' : '')" href="#" t-on-click.prevent="() => this.openSection('purchasing')"><i class="oi" data-icon="shopping_cart"/> <span>Purchasing</span></a>
-                    <a t-att-class="'o_sm_bg_nav' + (this.state.section === 'branches' ? ' active' : '')" href="#" t-on-click.prevent="() => this.openSection('branches')"><i class="oi" data-icon="storefront"/> <span>Branches</span></a>
                     <a t-att-class="'o_sm_bg_nav' + (this.state.section === 'people' ? ' active' : '')" href="#" t-on-click.prevent="() => this.openSection('people')"><i class="oi" data-icon="group"/> <span>People</span></a>
-                    <a t-att-class="'o_sm_bg_nav' + (this.state.section === 'tasks_issues' ? ' active' : '')" href="#" t-on-click.prevent="() => this.openSection('tasks_issues')"><i class="oi" data-icon="checklist"/> <span>Tasks &amp; Issues</span></a>
-                    <a t-att-class="'o_sm_bg_nav' + (this.state.section === 'reports' ? ' active' : '')" href="#" t-on-click.prevent="() => this.openSection('reports')"><i class="oi" data-icon="description"/> <span>Reports</span></a>
-                    <a t-att-class="'o_sm_bg_nav' + (this.state.section === 'app_dependencies' ? ' active' : '')" href="#" t-on-click.prevent="() => this.openSection('app_dependencies')"><i class="oi" data-icon="link"/> <span>App Dependencies</span></a>
-                    <div class="o_sm_bg_nav_divider"/>
-                    <a t-att-class="'o_sm_bg_nav' + (this.state.section === 'configuration' ? ' active' : '')" href="#" t-on-click.prevent="() => this.openSection('configuration')"><i class="oi" data-icon="settings"/> <span>Configuration</span></a>
                 </nav>
             </aside>
 
@@ -35,6 +29,11 @@
                 <div t-if="this.state.loading" class="o_sm_bg_sample_note"><i class="oi" data-icon="info"/> Loading goals…</div>
 
                 <t t-elif="this.isGoalList">
+                <nav t-if="this.showScopeFilter" class="o_sm_bg_scope_filter" aria-label="Which objectives">
+                    <button t-foreach="this.scopeFilters" t-as="filter" t-key="filter.key" type="button"
+                            t-att-class="this.state.scopeFilter === filter.key ? 'is-active' : ''" t-att-aria-pressed="this.state.scopeFilter === filter.key ? 'true' : 'false'"
+                            t-on-click="() => this.setScopeFilter(filter.key)"><t t-esc="filter.label"/> <span t-esc="filter.count"/></button>
+                </nav>
                 <section class="o_sm_bg_summary" aria-label="Business goal summary">
                     <div class="o_sm_bg_metric"><span class="o_sm_bg_metric_icon is-orange"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg></span><div class="o_sm_bg_metric_copy"><div>Active goals</div><strong t-esc="this.summary.active"/><small>approved and being measured</small></div></div>
                     <div class="o_sm_bg_metric"><span class="o_sm_bg_metric_icon is-green"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="m8 12.5 2.8 2.8L16.5 9.5"/></svg></span><div class="o_sm_bg_metric_copy"><div>On track</div><strong t-esc="this.summary.onTrack"/><small>valid result meets the target</small></div></div>
@@ -212,11 +211,20 @@
                     <header class="o_sm_bg_drawer_header"><div><span class="o_sm_bg_drawer_kicker">BUSINESS GOAL</span><h2 t-esc="goal.title"/></div><button class="o_sm_bg_icon_button" aria-label="Close details" t-on-click="this.closeGoal"><i class="oi" data-icon="close"/></button></header>
                     <div class="o_sm_bg_drawer_body">
                         <p t-if="goal.desired_result or goal.description" class="o_sm_bg_statement" t-esc="goal.desired_result or goal.description"/>
-                        <div class="o_sm_bg_drawer_status"><span t-att-class="'o_sm_bg_status ' + this.statusClass(goal.tone)"><span class="o_sm_bg_status_dot"/><t t-esc="goal.status"/></span><span>Deadline <strong t-esc="this.formatDate(goal.deadline)"/></span></div>
+                        <div class="o_sm_bg_drawer_status"><span t-att-class="'o_sm_bg_status ' + this.statusClass(goal.tone)"><span class="o_sm_bg_status_dot"/><t t-esc="goal.status"/></span><span>Deadline <strong t-esc="this.formatDate(goal.deadline)"/></span><span t-if="goal.overdue" class="o_sm_bg_badge is-warn">Deadline passed</span></div>
+                        <!-- Head Office's latest decision on a proposal: a rejection returns it to draft to revise and resubmit. -->
+                        <div t-if="goal.review_feedback and goal.state === 'draft' and goal.review_feedback.decision === 'rejected'" class="o_sm_bg_review is-returned">
+                            <strong>Returned for changes by <t t-esc="goal.review_feedback.reviewer"/> on <t t-esc="this.formatDate(goal.review_feedback.decided_at)"/></strong>
+                            <p t-esc="goal.review_feedback.reason"/>
+                            <small>Revise the proposal, then submit it again.</small>
+                        </div>
+                        <div t-elif="goal.review_feedback and goal.review_feedback.decision === 'approved'" class="o_sm_bg_review">
+                            <strong>Approved by <t t-esc="goal.review_feedback.reviewer"/> on <t t-esc="this.formatDate(goal.review_feedback.decided_at)"/></strong>
+                        </div>
                         <div class="o_sm_bg_detail_numbers"><div><small>Current result</small><strong t-esc="goal.current"/></div><div><small>Target</small><strong t-esc="goal.target or '—'"/></div><div><small t-esc="this.barTitle(goal.bar)"/><strong t-esc="goal.bar ? goal.bar.pct + '%' : '—'"/></div></div>
                         <div class="o_sm_bg_drawer_bar"><t t-call="strategic_management.GoalBar" bar="goal.bar" showLabel="false"/></div>
                         <p class="o_sm_bg_evidence" t-esc="goal.current_note"/>
-                        <dl class="o_sm_bg_details"><div><dt>Responsible</dt><dd t-esc="goal.owner"/></div><div><dt>Business area</dt><dd t-esc="goal.area_label"/></div><div><dt>Goal type</dt><dd t-esc="goal.goal_type_label"/></div><div><dt>Applies to</dt><dd t-esc="goal.scope"/></div><div><dt>Strategic plan</dt><dd t-esc="goal.plan"/></div></dl>
+                        <dl class="o_sm_bg_details"><div><dt>Responsible</dt><dd t-esc="goal.owner"/></div><div><dt>Business area</dt><dd t-esc="goal.area_label"/></div><div><dt>Goal type</dt><dd t-esc="goal.goal_type_label"/></div><div><dt>Applies to</dt><dd t-esc="goal.scope"/></div><div><dt>Strategic plan</dt><dd t-esc="goal.plan"/></div><div t-if="goal.parent_objective"><dt>Supports</dt><dd t-esc="goal.parent_objective"/></div><div t-if="goal.baseline"><dt>Baseline</dt><dd t-esc="goal.baseline"/></div></dl>
 
                         <section t-if="goal.result" class="o_sm_bg_drawer_section o_sm_bg_budget">
                             <t t-set="res" t-value="goal.result"/>
@@ -291,6 +299,35 @@
                                 <p t-if="!okr.key_results.length" class="o_sm_bg_form_note">No key results yet.</p>
                             </div>
                             <p class="o_sm_bg_okr_framework">Business goal → objective → OKR → key result → KPI. Values come from the KPI evaluations recorded in Odoo.</p>
+                        </section>
+
+                        <t t-set="fu" t-value="this.state.followup"/>
+                        <section t-if="fu and fu.objective_id === goal.objective_id" class="o_sm_bg_drawer_section o_sm_bg_followup">
+                            <h3>Head Office instructions</h3>
+                            <div t-foreach="fu.instructions" t-as="note" t-key="note.id" class="o_sm_bg_followup_item">
+                                <small><t t-esc="note.author"/> · <t t-esc="this.formatDateTime(note.date)"/><t t-if="note.objective_id !== goal.objective_id"> · on <t t-esc="note.objective"/></t></small>
+                                <p t-esc="note.text"/>
+                            </div>
+                            <p t-if="!fu.instructions.length" class="o_sm_bg_form_note">No instructions from Head Office on this objective yet.</p>
+
+                            <h3>Blockers</h3>
+                            <div t-foreach="fu.blockers" t-as="blocker" t-key="blocker.id" class="o_sm_bg_followup_item">
+                                <div class="o_sm_bg_followup_head"><strong t-esc="blocker.problem"/><span t-att-class="'o_sm_bg_badge ' + (blocker.status === 'Waiting for Head Office' ? 'is-warn' : 'is-good')" t-esc="blocker.status"/></div>
+                                <small><t t-esc="blocker.author"/> · <t t-esc="this.formatDateTime(blocker.date)"/></small>
+                                <p t-esc="blocker.text"/>
+                            </div>
+                            <p t-if="!fu.blockers.length" class="o_sm_bg_form_note">No blockers reported.</p>
+                            <button t-if="fu.can_report and !this.state.blockerForm" type="button" class="o_sm_bg_secondary" t-on-click="() => this.openBlockerForm()">Report a blocker</button>
+                            <form t-if="this.state.blockerForm" class="o_sm_bg_blocker_form" t-on-submit.prevent="() => this.reportBlocker()">
+                                <label>Problem<input type="text" maxlength="120" t-att-value="this.state.blockerForm.problem" t-on-input="(ev) => this.setValue(this.state.blockerForm, 'problem', ev)" placeholder="e.g. Milk supplier delivers late"/></label>
+                                <label>Explanation<textarea rows="3" t-att-value="this.state.blockerForm.explanation" t-on-input="(ev) => this.setValue(this.state.blockerForm, 'explanation', ev)"/></label>
+                                <label>Help needed from Head Office<textarea rows="2" t-att-value="this.state.blockerForm.help" t-on-input="(ev) => this.setValue(this.state.blockerForm, 'help', ev)"/></label>
+                                <small class="o_sm_bg_form_note">Head Office receives a To-Do. The objective, its target and its status do not change.</small>
+                                <div class="o_sm_bg_blocker_actions">
+                                    <button type="button" class="o_sm_bg_secondary" t-att-disabled="this.state.reporting" t-on-click="() => this.closeBlockerForm()">Cancel</button>
+                                    <button type="submit" class="o_sm_bg_primary" t-att-disabled="this.state.reporting or !this.blockerReady">Send to Head Office</button>
+                                </div>
+                            </form>
                         </section>
 
                         <section t-if="goal.setup_id" class="o_sm_bg_drawer_section">
@@ -438,19 +475,21 @@
 
             <div t-if="this.state.createOpen" class="o_sm_bg_overlay o_sm_bg_modal_overlay" t-on-click="this.closeCreate">
                 <section class="o_sm_bg_modal" role="dialog" aria-modal="true" aria-labelledby="o_sm_bg_create_title" t-on-click.stop="() => {}">
-                    <header class="o_sm_bg_modal_header"><div><h2 id="o_sm_bg_create_title">Create a business goal</h2><p>Describe the result you want. You will choose how it is measured next.</p></div><button class="o_sm_bg_icon_button" aria-label="Close form" t-on-click="this.closeCreate"><i class="oi" data-icon="close"/></button></header>
+                    <header class="o_sm_bg_modal_header"><div><h2 id="o_sm_bg_create_title" t-esc="this.state.options.is_head_office ? 'Create a business goal' : 'Propose a branch objective'"/><p>Describe the result you want. You will choose how it is measured next.</p></div><button class="o_sm_bg_icon_button" aria-label="Close form" t-on-click="this.closeCreate"><i class="oi" data-icon="close"/></button></header>
                     <form class="o_sm_bg_form" t-on-submit.prevent="this.saveDraft">
                         <label class="o_sm_bg_field o_sm_bg_field_full"><span>What do you want to improve? <b>*</b></span><input t-att-value="this.state.newGoal.name" t-on-input="(ev) => this.setValue(this.state.newGoal, 'name', ev)" required="required" maxlength="180" placeholder="e.g. Sell more lattes"/></label>
                         <label class="o_sm_bg_field"><span>Business area <b>*</b></span><select t-on-input="(ev) => this.setValue(this.state.newGoal, 'business_area', ev)"><option t-foreach="this.areas" t-as="area" t-key="area.key" t-att-value="area.key" t-att-selected="area.key === this.state.newGoal.business_area" t-esc="area.label"/></select></label>
                         <label class="o_sm_bg_field"><span>Desired result</span><input t-att-value="this.state.newGoal.desired_result" t-on-input="(ev) => this.setValue(this.state.newGoal, 'desired_result', ev)" placeholder="e.g. Sell 20 lattes a month"/></label>
                         <label class="o_sm_bg_field"><span>Deadline <b>*</b></span><input t-att-value="this.state.newGoal.deadline" t-on-input="(ev) => this.setValue(this.state.newGoal, 'deadline', ev)" type="date" required="required"/><small t-if="this.deadlineHint" t-att-class="'o_sm_bg_field_hint' + (this.deadlineBeyondPlan or !this.state.options.has_plan ? ' is-warn' : '')" t-esc="this.deadlineHint"/></label>
-                        <label class="o_sm_bg_field"><span>Applies to</span><select t-on-input="(ev) => this.setValue(this.state.newGoal, 'scope', ev)"><option t-if="this.state.options.is_head_office" value="organization" t-att-selected="this.state.newGoal.scope === 'organization'">Entire business</option><option value="branch" t-att-selected="this.state.newGoal.scope === 'branch'">One branch</option></select></label>
+                        <!-- Branch Managers propose for their own branch; the server takes the branch from their account. -->
+                        <div t-if="!this.state.options.is_head_office" class="o_sm_bg_field o_sm_bg_fixed_branch"><span>Branch</span><strong t-esc="(this.state.options.branches[0] || {}).name || 'No branch assigned'"/></div>
+                        <label t-if="this.state.options.is_head_office" class="o_sm_bg_field"><span>Applies to</span><select t-on-input="(ev) => this.setValue(this.state.newGoal, 'scope', ev)"><option t-if="this.state.options.is_head_office" value="organization" t-att-selected="this.state.newGoal.scope === 'organization'">Entire business</option><option value="branch" t-att-selected="this.state.newGoal.scope === 'branch'">One branch</option></select></label>
                         <t t-if="this.state.newGoal.scope === 'branch'">
-                            <label class="o_sm_bg_field"><span>Branch <b>*</b></span><select t-on-input="(ev) => this.setValue(this.state.newGoal, 'warehouse_id', ev)"><option value="" t-att-selected="!this.state.newGoal.warehouse_id">Choose a branch…</option><option t-foreach="this.state.options.branches" t-as="branch" t-key="branch.id" t-att-value="branch.id" t-att-selected="branch.id == this.state.newGoal.warehouse_id" t-esc="branch.name"/></select></label>
+                            <label t-if="this.state.options.is_head_office" class="o_sm_bg_field"><span>Branch <b>*</b></span><select t-on-input="(ev) => this.setValue(this.state.newGoal, 'warehouse_id', ev)"><option value="" t-att-selected="!this.state.newGoal.warehouse_id">Choose a branch…</option><option t-foreach="this.state.options.branches" t-as="branch" t-key="branch.id" t-att-value="branch.id" t-att-selected="branch.id == this.state.newGoal.warehouse_id" t-esc="branch.name"/></select></label>
                             <label class="o_sm_bg_field"><span>Supports company goal <b>*</b></span><select t-on-input="(ev) => this.setValue(this.state.newGoal, 'parent_objective_id', ev)"><option value="" t-att-selected="!this.state.newGoal.parent_objective_id">Choose a company goal…</option><option t-foreach="this.state.options.company_goals" t-as="parent" t-key="parent.id" t-att-value="parent.id" t-att-selected="parent.id == this.state.newGoal.parent_objective_id" t-esc="parent.name"/></select></label>
                         </t>
                         <label class="o_sm_bg_field"><span>Responsible person <b>*</b></span><select t-on-input="(ev) => this.setValue(this.state.newGoal, 'owner_id', ev)"><option t-foreach="this.state.options.users" t-as="user" t-key="user.id" t-att-value="user.id" t-att-selected="user.id == this.state.newGoal.owner_id" t-esc="user.name"/></select></label>
-                        <label t-if="this.state.options.plans.length > 1" class="o_sm_bg_field"><span>Strategic plan <b>*</b></span><select t-on-input="(ev) => this.setValue(this.state.newGoal, 'plan_id', ev)"><option value="" t-att-selected="!this.state.newGoal.plan_id">Choose a plan…</option><option t-foreach="this.state.options.plans" t-as="plan" t-key="plan.id" t-att-value="plan.id" t-att-selected="plan.id == this.state.newGoal.plan_id" t-esc="plan.name"/></select></label>
+                        <label t-if="this.state.options.plans.length > 1 and this.state.newGoal.scope !== 'branch'" class="o_sm_bg_field"><span>Strategic plan <b>*</b></span><select t-on-input="(ev) => this.setValue(this.state.newGoal, 'plan_id', ev)"><option value="" t-att-selected="!this.state.newGoal.plan_id">Choose a plan…</option><option t-foreach="this.state.options.plans" t-as="plan" t-key="plan.id" t-att-value="plan.id" t-att-selected="plan.id == this.state.newGoal.plan_id" t-esc="plan.name"/></select></label>
                         <label class="o_sm_bg_field o_sm_bg_field_full"><span>Why is this goal important?</span><textarea t-att-value="this.state.newGoal.reason" t-on-input="(ev) => this.setValue(this.state.newGoal, 'reason', ev)" rows="2" placeholder="Add a short explanation (optional)"/></label>
                         <p class="o_sm_bg_form_note"><i class="oi" data-icon="info"/> The goal is saved as a draft. It becomes active only after its measurement is set up and the goal is approved.</p>
                         <footer class="o_sm_bg_modal_footer"><button type="button" class="o_sm_bg_secondary" t-on-click="this.closeCreate">Cancel</button><span/><button type="submit" class="o_sm_bg_primary" t-att-disabled="this.state.busy">Save draft and continue</button></footer>

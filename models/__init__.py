@@ -18,6 +18,10 @@ from . import branch_overview
 from . import people_overview
 from . import overview_extras
 from . import objective_requests
+from . import branch_objectives
+from . import branch_task
 from . import stock_warehouse
 from . import product_template
 from . import stock_count_plan
+from . import branch_operations
+from . import branch_report

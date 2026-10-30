@@ -4,11 +4,13 @@
  * Every goal is a strategic.objective; all setup steps run server-side through strategic.goal.setup.
  * Status labels come from the server, so a goal is never shown as active before it is approved.
  */
-import { Component, onWillStart, proxy } from "@odoo/owl";
+import { Component, onWillStart, proxy, useProps } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
+import { standardActionServiceProps } from "@web/webclient/actions/action_plugin";
 
 const MODEL = "strategic.goal.setup";
+const DASHBOARD = "strategic.performance.dashboard";
 
 // Business Goals has its own page per sidebar item; area pages show only that area's goals.
 const SECTIONS = {
@@ -18,11 +20,6 @@ const SECTIONS = {
     inventory_waste: { title: "Inventory & Waste Goals", description: "Goals for stock health, waste and expiry.", area: "inventory_waste" },
     purchasing: { title: "Purchasing Goals", description: "Goals for suppliers, deliveries and purchasing.", area: "purchasing" },
     people: { title: "People Goals", description: "Goals for staffing, attendance and team performance.", area: "people" },
-    branches: { title: "Branch Goals", description: "Goals for individual branches." },
-    tasks_issues: { title: "Goal Tasks & Issues", description: "Follow-up actions for goals." },
-    reports: { title: "Goal Reports", description: "Reports on goal progress." },
-    app_dependencies: { title: "Goal Data Sources", description: "Odoo apps that goal measurements rely on." },
-    configuration: { title: "Goal Settings", description: "Settings for business goals." },
 };
 // Plain-language next step for each server-side setup state.
 const NEXT_STEP = {
@@ -45,6 +42,8 @@ const formatDate = (iso) => {
 
 export class BusinessGoalsAction extends Component {
     static template = "strategic_management.BusinessGoalsAction";
+    // Odoo 20 (OWL 3) passes client-action props only when declared; the action's context can open one objective.
+    props = useProps({ ...standardActionServiceProps });
 
     formatDate(iso) { return formatDate(iso); }
 
@@ -60,6 +59,8 @@ export class BusinessGoalsAction extends Component {
             createOpen: false, newGoal: this.blankGoal(),
             // Monitoring time breakdown: the open interval per goal, its drill-down path, and stock snapshots shown inline.
             monitorDetail: null, monitorSnapshot: null,
+            // Branch Managers: which objectives to list, and the open objective's instructions and blockers.
+            scopeFilter: "all", followup: null, blockerForm: null, reporting: false,
         });
         onWillStart(() => this.load());
     }
@@ -72,6 +73,16 @@ export class BusinessGoalsAction extends Component {
         this.state.options = options;
         this.state.goals = goals;
         this.state.loading = false;
+        // Opened from the Branch Manager dashboard on one objective.
+        const openId = this.props?.action?.context?.open_objective_id;
+        if (openId && goals.some((goal) => goal.objective_id === openId)) {
+            this.openGoal(openId);
+        }
+        // Opened from "Propose Objective": a Branch Manager's proposals, with the new-goal form ready.
+        if (this.props?.action?.context?.propose_objective && !options.is_head_office) {
+            this.state.scopeFilter = "proposals";
+            this.openCreate();
+        }
     }
 
     blankGoal(area = false) {
@@ -89,8 +100,31 @@ export class BusinessGoalsAction extends Component {
     areaLabel(key) { return (this.areas.find((area) => area.key === key) || {}).label || key; }
 
     get sectionGoals() {
-        return this.sectionArea ? this.state.goals.filter((goal) => goal.areas.includes(this.sectionArea)) : this.state.goals;
+        const goals = this.sectionArea ? this.state.goals.filter((goal) => goal.areas.includes(this.sectionArea)) : this.state.goals;
+        return this.showScopeFilter ? goals.filter((goal) => this.inScope(goal, this.state.scopeFilter)) : goals;
     }
+
+    // ------------------------------------------------------------ Branch Manager scope (Phase 2)
+    // The server already limits the list to company-wide objectives and the manager's own branch; this only groups them.
+    get showScopeFilter() { return Boolean(this.state.options && !this.state.options.is_head_office); }
+
+    isProposal(goal) { return goal.scope_kind === "branch" && ["draft", "pending_approval"].includes(goal.state); }
+
+    inScope(goal, scope) {
+        if (scope === "branch") return goal.scope_kind === "branch" && !this.isProposal(goal);
+        // Approved company objectives; Head Office drafts the existing access rule shows stay under "All".
+        if (scope === "company") return goal.scope_kind === "organization" && ["active", "completed", "closed"].includes(goal.state);
+        if (scope === "proposals") return this.isProposal(goal);
+        return true;
+    }
+
+    get scopeFilters() {
+        const goals = this.sectionArea ? this.state.goals.filter((goal) => goal.areas.includes(this.sectionArea)) : this.state.goals;
+        return [["all", "All"], ["branch", "Your branch"], ["company", "Company-wide"], ["proposals", "Proposals"]]
+            .map(([key, label]) => ({ key, label, count: goals.filter((goal) => this.inScope(goal, key)).length }));
+    }
+
+    setScopeFilter(key) { this.state.scopeFilter = key; }
 
     get areaMeasures() {
         if (!this.sectionArea || !this.state.options) return null;
@@ -242,6 +276,8 @@ export class BusinessGoalsAction extends Component {
     openGoal(objectiveId) {
         const goal = this.state.goals.find((item) => item.objective_id === objectiveId);
         this.state.selectedGoalId = objectiveId;
+        this.state.blockerForm = null;
+        this.loadFollowup(objectiveId);
         this.state.productResults = [];
         this.state.productSearched = false;
         // A goal with a chosen option opens on that option; the full list is one click away.
@@ -269,7 +305,49 @@ export class BusinessGoalsAction extends Component {
     closeGoal() {
         this.state.selectedGoalId = null;
         this.state.setupForm = null;
+        this.state.followup = null;
+        this.state.blockerForm = null;
     }
+
+    // ------------------------------------------------------------ instructions and blockers (Phase 2)
+    async loadFollowup(objectiveId) {
+        this.state.followup = null;
+        try {
+            const followup = await this.orm.silent.call(DASHBOARD, "get_objective_followup", [objectiveId]);
+            if (this.state.selectedGoalId === objectiveId) {
+                this.state.followup = followup;
+            }
+        } catch {
+            // Employees, or a Branch Manager without a valid branch: the server refuses and nothing is shown.
+        }
+    }
+
+    openBlockerForm() { this.state.blockerForm = { problem: "", explanation: "", help: "" }; }
+    closeBlockerForm() { if (!this.state.reporting) this.state.blockerForm = null; }
+
+    get blockerReady() {
+        const form = this.state.blockerForm;
+        return Boolean(form && form.problem.trim() && form.explanation.trim() && form.help.trim());
+    }
+
+    async reportBlocker() {
+        const goal = this.selectedGoal;
+        const form = this.state.blockerForm;
+        if (!goal || !form || !this.blockerReady || this.state.reporting) return;
+        this.state.reporting = true;
+        try {
+            const result = await this.orm.call(DASHBOARD, "report_objective_blocker", [goal.objective_id, form.problem, form.explanation, form.help]);
+            this.state.followup = result.followup;
+            this.state.blockerForm = null;
+            this.notification.add("Blocker sent to Head Office.", { type: "success" });
+        } catch (error) {
+            this.notification.add((error.data && error.data.message) || error.message || "The blocker could not be sent.", { type: "danger" });
+        } finally {
+            this.state.reporting = false;
+        }
+    }
+
+    formatDateTime(value) { return value ? formatDate(String(value).slice(0, 10)) : "—"; }
 
     measuresFor(goal) {
         const area = goal.areas[0];

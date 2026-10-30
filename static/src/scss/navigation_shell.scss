@@ -1850,7 +1850,9 @@
         &.is-pending { background: #fff3d6; color: #925f0b; }
         &.is-approved { background: #e3f6ea; color: #1e7a4b; }
         &.is-rejected { background: #fde7e5; color: #b4321f; }
+        &.is-setup { background: #e7efff; color: #2f5bb7; }
     }
+    .o_sm_req_next { display: block; margin-top: .2rem; color: #6b7189; font-size: .74rem; }
     .o_sm_req_btn { display: inline-flex; align-items: center; justify-content: center; min-height: 1.9rem; margin-left: .35rem; padding: 0 .7rem; border: 1px solid transparent; border-radius: .45rem; font-size: .8rem; font-weight: 600; white-space: nowrap; cursor: pointer;
         &:disabled { opacity: .55; cursor: default; }
         &.is-ghost { border-color: #eceef3; background: #fff; color: #39405a; &:hover:not(:disabled) { border-color: #b9aef0; color: #4b3cae; } }
@@ -1925,4 +1927,217 @@
         .o_sm_req_head_actions { justify-content: flex-start; }
         .o_sm_req_details { grid-template-columns: minmax(0, 1fr); }
     }
+}
+
+/* Branch Manager dashboard (Phase 1 foundation). Scoped to .o_sm_bm; planned sidebar items are dimmed and disabled. */
+.o_sm_navigation_shell .o_sm_sidebar .o_sm_nav_item.is-planned {
+    cursor: default; opacity: .55;
+    &:hover { background: transparent; }
+    .o_sm_nav_planned { margin-left: auto; padding: .05rem .4rem; border: 1px solid rgba(255, 255, 255, .35); border-radius: 999px; color: rgba(255, 255, 255, .8); font-size: .62rem; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; }
+}
+.o_sm_navigation_shell .o_sm_workspace:has(> .o_sm_bm) { padding: 0; background: #f7f7fb; }
+
+.o_sm_navigation_shell .o_sm_bm {
+    display: flex; flex-direction: column; gap: 1rem; min-width: 0; padding: 1.4rem 1.6rem 2rem 1.75rem; color: var(--sm-home-navy);
+
+    .o_sm_bm_header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+    .o_sm_bm_kicker { color: var(--sm-home-purple); font-size: .78rem; font-weight: 600; letter-spacing: .03em; }
+    .o_sm_bm_title h1 { margin: .15rem 0 .25rem; color: var(--sm-home-navy); font-size: 1.875rem; font-weight: 700; letter-spacing: -.015em; line-height: 1.2; }
+    .o_sm_bm_title p { margin: 0; color: #5d6480; font-size: .9rem; strong { color: var(--sm-home-navy); font-weight: 600; } }
+    .o_sm_bm_header_actions { display: flex; align-items: center; gap: .75rem; }
+    .o_sm_bm_icon_button { display: inline-flex; align-items: center; justify-content: center; width: 2.4rem; height: 2.4rem; border: 1px solid var(--sm-home-border); border-radius: 50%; background: #fff; color: var(--sm-home-navy); cursor: pointer;
+        svg { width: 1.15rem; height: 1.15rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+        &:hover { border-color: var(--sm-home-purple); color: var(--sm-home-purple); }
+    }
+    .o_sm_bm_user { display: inline-flex; align-items: center; gap: .55rem; padding: .25rem .75rem .25rem .3rem; border: 1px solid var(--sm-home-border); border-radius: 999px; background: #fff;
+        img { width: 1.9rem; height: 1.9rem; border-radius: 50%; object-fit: cover; }
+        > span { display: flex; flex-direction: column; line-height: 1.15; }
+        strong { font-size: .85rem; font-weight: 600; }
+        small { color: var(--sm-home-muted); font-size: .72rem; }
+    }
+
+    .o_sm_bm_grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
+    .o_sm_bm_card { display: flex; flex-direction: column; align-items: flex-start; gap: .55rem; min-width: 0; padding: 1rem 1.15rem; border: 1px solid var(--sm-home-border); border-radius: .85rem; background: #fff; box-shadow: 0 1px 3px rgba(29, 35, 64, .04);
+        &.is-wide { grid-column: 1 / -1; }
+    }
+    .o_sm_bm_card_head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; width: 100%;
+        h2 { margin: 0; color: var(--sm-home-navy); font-size: 1rem; font-weight: 650; }
+    }
+    .o_sm_bm_planned { padding: .12rem .55rem; border: 1px dashed #c9c3ec; border-radius: 999px; color: #5a48b8; font-size: .7rem; font-weight: 600; white-space: nowrap; }
+    .o_sm_bm_empty { margin: 0; color: var(--sm-home-muted); font-size: .85rem; }
+    .o_sm_bm_link { padding: 0; border: 0; background: none; color: var(--sm-home-purple); font-size: .85rem; font-weight: 600; cursor: pointer; &:hover { text-decoration: underline; } }
+    .o_sm_bm_facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem 1.25rem; width: 100%; margin: 0;
+        dt { color: var(--sm-home-muted); font-size: .74rem; font-weight: 600; }
+        dd { margin: .1rem 0 0; color: var(--sm-home-navy); font-size: .95rem; font-weight: 600; }
+    }
+    .o_sm_bm_list { display: flex; flex-direction: column; width: 100%; }
+    .o_sm_bm_list_item { display: flex; flex-direction: column; gap: .2rem; width: 100%; padding: .6rem 0; border: 0; border-top: 1px solid #f1f2f6; background: none; color: inherit; text-align: left; cursor: pointer;
+        &:first-child { border-top: 0; padding-top: .1rem; }
+        &:hover .o_sm_bm_list_title strong, &:hover .o_sm_bm_list_text { color: var(--sm-home-purple); }
+        &.is-objective { flex-direction: row; align-items: center; justify-content: space-between; gap: 1rem; }
+    }
+    .o_sm_bm_list_title { display: flex; flex-direction: column; gap: .1rem; min-width: 0;
+        strong { overflow: hidden; color: var(--sm-home-navy); font-size: .9rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+        small { color: var(--sm-home-muted); font-size: .78rem; }
+    }
+    .o_sm_bm_list_meta { color: var(--sm-home-muted); font-size: .74rem; }
+    .o_sm_bm_list_text { display: -webkit-box; overflow: hidden; color: var(--sm-home-navy); font-size: .85rem; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .o_sm_bm_reasons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .35rem; }
+    .o_sm_bm_reason { padding: .15rem .55rem; border-radius: 999px; background: #f1f2f6; color: #4a5069; font-size: .72rem; font-weight: 600; white-space: nowrap;
+        &.is-overdue, &.is-due_soon, &.is-attention { background: #fff3d6; color: #925f0b; }
+        &.is-at_risk { background: #fde7e5; color: #b4321f; }
+        &.is-no_data { background: #efecfb; color: #5a48b8; }
+    }
+    .o_sm_bm_notice { padding: .8rem 1rem; border: 1px solid var(--sm-home-border); border-radius: .6rem; background: #fff; color: var(--sm-home-muted);
+        &.is-error { display: flex; flex-direction: column; gap: .25rem; border-color: #f3c3bc; background: #fff6f4; color: #8a2a1d;
+            strong { color: #b4321f; font-size: 1rem; } small { color: #6b7189; } }
+    }
+}
+
+@media (max-width: 900px) {
+    .o_sm_navigation_shell .o_sm_bm {
+        padding: 1rem 1rem 1.5rem;
+        .o_sm_bm_header { flex-direction: column; }
+        .o_sm_bm_grid, .o_sm_bm_facts { grid-template-columns: minmax(0, 1fr); }
+    }
+}
+
+/* Branch tasks (Phase 3): plain tables, clear status labels, a short form. Scoped to .o_sm_tasks / the task dialogs.
+   Branch Performance's operations view (Phase 6, .o_sm_ops) reuses the same tables, tabs and status labels. */
+.o_sm_navigation_shell .o_sm_bm, .o_sm_navigation_shell .o_sm_ops {
+    .o_sm_task_table_wrap { width: 100%; overflow-x: auto; }
+    .o_sm_task_table { width: 100%; border-collapse: collapse; color: var(--sm-home-navy); font-size: .88rem;
+        th { padding: .5rem .6rem; border-bottom: 1px solid var(--sm-home-border); color: var(--sm-home-muted); font-size: .76rem; font-weight: 600; text-align: left; white-space: nowrap; }
+        td { padding: .65rem .6rem; border-top: 1px solid #f1f2f6; vertical-align: middle; }
+        tbody tr:first-child td { border-top: 0; }
+        td strong { display: block; font-weight: 600; }
+        td small { display: block; color: var(--sm-home-muted); font-size: .76rem; }
+        .is-action { text-align: right; white-space: nowrap; }
+    }
+    .o_sm_task_status { display: inline-block; padding: .18rem .6rem; border-radius: 999px; background: #f1f2f6; color: #4a5069; font-size: .75rem; font-weight: 600; white-space: nowrap;
+        &.is-in_progress { background: #e7efff; color: #2f5bb7; }
+        &.is-submitted { background: #efecfb; color: #5a48b8; }
+        &.is-changes_requested { background: #fff3d6; color: #925f0b; }
+        &.is-done { background: #e3f6ea; color: #1e7a4b; }
+        &.is-cancelled { background: #f1f2f6; color: #8a90a6; text-decoration: line-through; }
+    }
+    .o_sm_task_overdue { display: inline-block; margin-left: .4rem; padding: .05rem .45rem; border-radius: 999px; background: #fde7e5; color: #b4321f; font-size: .7rem; font-weight: 600; }
+    .o_sm_task_high { color: #b4321f !important; font-weight: 600; }
+    .o_sm_task_btn { padding: .35rem .8rem; border: 1px solid var(--sm-home-border); border-radius: .45rem; background: #fff; color: #39405a; font-size: .82rem; font-weight: 600; cursor: pointer;
+        &:hover { border-color: var(--sm-home-purple); color: var(--sm-home-purple); }
+        &.is-primary { border-color: var(--sm-home-purple); background: var(--sm-home-purple); color: #fff; &:hover { background: #5d4bc0; color: #fff; } }
+    }
+    .o_sm_task_filters { display: flex; flex-wrap: wrap; gap: .45rem;
+        button { display: inline-flex; align-items: center; gap: .35rem; padding: .3rem .75rem; border: 1px solid var(--sm-home-border); border-radius: 999px; background: #fff; color: #39405a; font-size: .8rem; cursor: pointer;
+            span { padding: 0 .4rem; border-radius: 999px; background: #f1f2f6; color: var(--sm-home-muted); font-size: .72rem; }
+            &.is-active { border-color: var(--sm-home-purple); background: #efecfb; color: #4b3cae; }
+        }
+    }
+    .o_sm_task_counts { display: flex; flex-wrap: wrap; gap: 1rem; color: var(--sm-home-muted); font-size: .85rem;
+        strong { color: var(--sm-home-navy); font-size: 1.1rem; }
+        .is-warn strong { color: #b4321f; } .is-review strong { color: #5a48b8; }
+    }
+    .o_sm_task_form .o_sm_req_dialog_body > label, .o_sm_task_form_row > label { display: flex; flex-direction: column; gap: .3rem; color: var(--sm-home-navy); font-size: .85rem; font-weight: 600;
+        small { color: var(--sm-home-muted); font-weight: 400; }
+        input, select, textarea { width: 100%; padding: .45rem .6rem; border: 1px solid #dfe2ea; border-radius: .45rem; background: #fff; color: var(--sm-home-navy); font: inherit; font-weight: 400;
+            &:focus { border-color: var(--sm-home-purple); outline: none; } }
+    }
+    .o_sm_task_form_row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+    /* Task dialogs reuse the request dialog's layout; the shell's dialog styles live under .o_sm_requests. */
+    .o_sm_req_overlay { position: fixed; inset: 0; z-index: 1050; display: flex; align-items: center; justify-content: center; padding: 1.5rem; background: rgba(29, 35, 64, .35); }
+    .o_sm_req_dialog { display: flex; flex-direction: column; width: 38rem; max-width: 100%; max-height: calc(100vh - 3rem); border-radius: .85rem; background: #fff; box-shadow: 0 18px 50px rgba(29, 35, 64, .25); }
+    .o_sm_req_dialog_head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.1rem 1.25rem .6rem;
+        h2 { margin: .15rem 0 0; color: var(--sm-home-navy); font-size: 1.2rem; font-weight: 700; } }
+    .o_sm_req_kicker { color: var(--sm-home-purple); font-size: .72rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
+    .o_sm_req_close { width: 2rem; height: 2rem; border: 0; border-radius: 50%; background: #f4f5f8; color: #39405a; font-size: 1.2rem; line-height: 1; cursor: pointer; }
+    .o_sm_req_dialog_body { display: flex; flex-direction: column; gap: .9rem; overflow-y: auto; padding: .4rem 1.25rem 1rem; }
+    .o_sm_req_dialog_status { display: flex; align-items: center; gap: .5rem; }
+    .o_sm_req_description { margin: 0; color: #39405a; font-size: .9rem; white-space: pre-line; }
+    .o_sm_req_details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem 1.25rem; margin: 0;
+        > div.is-wide { grid-column: 1 / -1; }
+        dt { color: var(--sm-home-muted); font-size: .74rem; font-weight: 600; }
+        dd { margin: .1rem 0 0; color: var(--sm-home-navy); font-size: .88rem; white-space: pre-line; } }
+    .o_sm_req_reason { display: flex; flex-direction: column; gap: .35rem; margin: 0; color: var(--sm-home-navy); font-size: .85rem; font-weight: 600;
+        small { color: var(--sm-home-muted); font-weight: 400; }
+        textarea { width: 100%; padding: .55rem .7rem; border: 1px solid #dfe2ea; border-radius: .5rem; font: inherit; font-weight: 400; &:focus { border-color: var(--sm-home-purple); outline: none; } } }
+    .o_sm_req_hint { color: var(--sm-home-muted); font-size: .78rem; }
+    .o_sm_req_dialog_foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .35rem; padding: .8rem 1.25rem 1rem; border-top: 1px solid #f1f2f6; }
+    .o_sm_req_btn { display: inline-flex; align-items: center; justify-content: center; min-height: 1.9rem; padding: 0 .8rem; border: 1px solid transparent; border-radius: .45rem; font-size: .82rem; font-weight: 600; cursor: pointer;
+        &:disabled { opacity: .55; cursor: default; }
+        &.is-ghost { border-color: #eceef3; background: #fff; color: #39405a; }
+        &.is-approve { background: #23995a; color: #fff; }
+        &.is-reject { border-color: #f3c3bc; background: #fff; color: #b4321f; } }
+    /* Employee Management (Phase 4): the task table's look, with right-aligned counts. */
+    .o_sm_emp_table {
+        .is-num { text-align: right; font-variant-numeric: tabular-nums; }
+        td.is-warn { color: #b4321f; font-weight: 700; }
+        td.is-review { color: #5a48b8; font-weight: 700; }
+    }
+    .o_sm_emp_back { margin-bottom: .25rem; padding: 0; }
+    .o_sm_emp_note { color: #925f0b !important; }
+    .o_sm_emp_hint { color: var(--sm-home-muted); font-size: .76rem; }
+    .o_sm_task_employee { display: inline-flex; align-items: center; gap: .35rem; margin-left: auto; padding: .3rem .4rem .3rem .75rem; border-radius: 999px; background: #efecfb; color: #4b3cae; font-size: .8rem;
+        button { width: 1.4rem; height: 1.4rem; border: 0; border-radius: 50%; background: #fff; color: #4b3cae; line-height: 1; cursor: pointer; }
+    }
+}
+@media (max-width: 900px) {
+    .o_sm_navigation_shell .o_sm_bm {
+        .o_sm_emp_table .is-num { text-align: left; }
+        .o_sm_emp_table td.is-num::before { content: attr(data-label) ": "; color: #6b7189; font-size: .75rem; font-weight: 600; }
+        .o_sm_task_table thead { display: none; }
+        .o_sm_task_table, .o_sm_task_table tbody, .o_sm_task_table tr, .o_sm_task_table td { display: block; width: 100%; }
+        .o_sm_task_table tr { padding: .6rem 0; border-top: 1px solid #f1f2f6; }
+        .o_sm_task_table td { padding: .15rem 0; border: 0; text-align: left !important; }
+        .o_sm_task_form_row, .o_sm_req_details { grid-template-columns: minmax(0, 1fr); }
+    }
+}
+
+/* Branch operations (Phase 6): a few figures, one sales trend and short lists for the manager's own branch. */
+.o_sm_navigation_shell .o_sm_ops {
+    display: flex; flex-direction: column; gap: .9rem; margin-bottom: 1rem;
+    .o_sm_ops_cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: .75rem;
+        article { display: flex; flex-direction: column; gap: .2rem; padding: .85rem 1rem; border: 1px solid var(--sm-home-border); border-radius: .75rem; background: #fff;
+            small { color: var(--sm-home-muted); font-size: .78rem; font-weight: 600; }
+            strong { color: var(--sm-home-navy); font-size: 1.35rem; font-weight: 700; }
+            span { color: var(--sm-home-muted); font-size: .76rem; }
+            &.is-warn strong { color: #b4321f; }
+        }
+    }
+    .o_sm_ops_trend { display: flex; align-items: flex-end; gap: 3px; height: 11rem; padding: .5rem 0 1.4rem;
+        .o_sm_ops_bar { position: relative; display: flex; flex: 1 1 0; flex-direction: column; justify-content: flex-end; height: 100%; min-width: 0;
+            i { display: block; min-height: 1px; border-radius: 3px 3px 0 0; background: var(--sm-home-purple); }
+            small { position: absolute; bottom: -1.3rem; left: 50%; transform: translateX(-50%); color: var(--sm-home-muted); font-size: .68rem; white-space: nowrap; }
+        }
+    }
+    .o_sm_ops_table td small { display: block; }
+}
+.o_sm_navigation_shell .o_sm_ops_attention { margin-top: .25rem; }
+/* Dashboard summary strip and alerts. */
+.o_sm_navigation_shell .o_sm_bm .o_sm_ops_strip { display: grid; width: 100%; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: .75rem;
+    > div { display: flex; flex-direction: column; gap: .15rem; }
+    small { color: var(--sm-home-muted); font-size: .76rem; font-weight: 600; }
+    strong { color: var(--sm-home-navy); font-size: 1.05rem; font-weight: 700; }
+    .is-warn { color: #b4321f; }
+}
+.o_sm_navigation_shell .o_sm_bm .o_sm_ops_alerts .o_sm_bm_list_item { cursor: default; }
+
+/* Branch reports (Phase 7): the report list, its dialog sections and Head Office feedback. */
+.o_sm_navigation_shell .o_sm_reports {
+    .o_sm_br_panel_heading { flex-wrap: wrap; }
+    .o_sm_reports_new { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+    .o_sm_task_table td small { display: block; color: var(--sm-home-muted); font-size: .76rem; }
+    .o_sm_report_dialog { width: 44rem; }
+    .o_sm_report_sections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+    .o_sm_report_section { padding: .7rem .85rem; border: 1px solid #eceef3; border-radius: .6rem;
+        h3 { margin: 0 0 .4rem; color: var(--sm-home-navy); font-size: .9rem; font-weight: 700; }
+        dl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .25rem .75rem; margin: 0; }
+        dt { color: var(--sm-home-muted); font-size: .8rem; font-weight: 500; }
+        dd { margin: 0; color: var(--sm-home-navy); font-size: .85rem; font-weight: 600; text-align: right; }
+    }
+    .o_sm_report_objectives { margin: 0; padding-left: 1.1rem; font-size: .85rem; }
+    .o_sm_report_feedback { padding: .65rem .85rem; border-radius: .6rem; background: #fffaeb; color: #b54708; font-size: .85rem;
+        p { margin: .25rem 0 0; color: #344054; white-space: pre-line; } }
+}
+@media (max-width: 900px) {
+    .o_sm_navigation_shell .o_sm_reports .o_sm_report_sections { grid-template-columns: minmax(0, 1fr); }
 }

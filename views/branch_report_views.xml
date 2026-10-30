@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Branch reports (Phase 7). Managers prepare and submit them in the app's Reports page; Head Office reviews them there
+         or here, and To-Do links open this form. The model enforces the branch, the snapshot and every transition. -->
+    <record id="view_strategic_branch_report_list" model="ir.ui.view">
+        <field name="name">strategic.branch.report.list</field>
+        <field name="model">strategic.branch.report</field>
+        <field name="arch" type="xml">
+            <list create="false" decoration-warning="state == 'submitted'" decoration-muted="state == 'reviewed'">
+                <field name="warehouse_id"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
+                <field name="submitted_by_id"/>
+                <field name="submitted_at"/>
+                <field name="submission_count"/>
+                <field name="state" widget="badge" decoration-warning="state == 'submitted'" decoration-info="state == 'changes_requested'" decoration-success="state == 'reviewed'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_strategic_branch_report_form" model="ir.ui.view">
+        <field name="name">strategic.branch.report.form</field>
+        <field name="model">strategic.branch.report</field>
+        <field name="arch" type="xml">
+            <form create="false" edit="false">
+                <header>
+                    <button name="action_mark_reviewed" type="object" string="Mark Reviewed" class="btn-primary" invisible="state != 'submitted'"
+                            groups="strategic_management.group_strategic_head_office_manager"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,reviewed"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="warehouse_id"/>
+                            <field name="date_start"/>
+                            <field name="date_end"/>
+                        </group>
+                        <group>
+                            <field name="submitted_by_id"/>
+                            <field name="submitted_at"/>
+                            <field name="submission_count"/>
+                            <field name="reviewed_by_id" invisible="not reviewed_by_id"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="comment"/>
+                        <field name="review_note" invisible="not review_note"/>
+                    </group>
+                    <field name="summary_html"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_strategic_branch_report" model="ir.actions.act_window">
+        <field name="name">Branch Reports</field>
+        <field name="res_model">strategic.branch.report</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('company_id', '=', allowed_company_ids[0])]</field>
+    </record>
+
+    <menuitem id="menu_strategic_branch_report"
+              name="Branch Reports"
+              parent="menu_strategic_management_strategy"
+              action="action_strategic_branch_report"
+              sequence="41"
+              groups="strategic_management.group_strategic_head_office_manager"/>
+</odoo>

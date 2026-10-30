@@ -777,6 +777,14 @@ class StrategicObjective(models.Model):
             vals["warehouse_id"] = branch_id
             vals.setdefault("owner_id", self.env.user.id)
 
+            # The parent must be one the proposal form offers: this company's, not closed or archived.
+            parent = self.browse(vals.get("parent_objective_id") or []).exists()
+            if parent and (parent.scope != "organization" or parent.state in ("closed", "archived")
+                           or parent.company_id != self.env.company):
+                raise ValidationError(
+                    "A branch proposal must support one of the company's open company-wide objectives."
+                )
+
         return vals
 
     def _check_write_allowed(self, vals):

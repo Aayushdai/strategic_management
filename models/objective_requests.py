@@ -25,6 +25,7 @@ class StrategicPerformanceDashboardObjectiveRequests(models.AbstractModel):
             "branch_options": [],
             "selected_warehouse_id": False,
             "pending": [],
+            "needs_setup": [],
             "history": [],
             "messages": [],
         }
@@ -52,6 +53,20 @@ class StrategicPerformanceDashboardObjectiveRequests(models.AbstractModel):
             order="submitted_at desc, id desc",
         )
         result["pending"] = [self._objective_request_row(objective) for objective in pending]
+
+        # Draft proposals whose next step is Head Office's (prepare or approve the target). They cannot be submitted
+        # yet, so they are listed apart and never counted or decided as pending requests.
+        waiting = self.env["strategic.goal.setup"].search(
+            [
+                ("objective_id.company_id", "=", company.id),
+                ("objective_id.scope", "=", "branch"),
+                ("objective_id.state", "=", "draft"),
+                ("objective_id.warehouse_id", "in", warehouses.ids),
+                ("setup_state", "in", ("ready", "target_pending")),
+            ],
+            order="id desc",
+        )
+        result["needs_setup"] = [self._setup_request_row(setup) for setup in waiting]
 
         reviews = self.env["strategic.objective.review"].search(
             [
@@ -100,6 +115,7 @@ class StrategicPerformanceDashboardObjectiveRequests(models.AbstractModel):
             "proposed_target": objective._review_target_summary() or False,
             "measure": goal.get("measure_label") or False,
             "target": goal.get("target") or False,
+            "baseline": goal.get("baseline") or False,
             "period_start": goal.get("period_start") or False,
             "period_end": goal.get("period_end") or False,
             "goal_type": goal.get("goal_type_label") or False,
@@ -109,6 +125,18 @@ class StrategicPerformanceDashboardObjectiveRequests(models.AbstractModel):
                 for step in goal.get("readiness") or []
             ],
             "status": "Pending Review",
+        }
+
+    def _setup_request_row(self, setup):
+        objective = setup.objective_id
+        return {
+            "objective_id": objective.id,
+            "name": objective.name,
+            "branch": objective.warehouse_id.display_name,
+            "parent_objective": objective.parent_objective_id.display_name or False,
+            "proposer": objective.proposer_id.name or objective.create_uid.name,
+            "status": setup._status(objective, setup)[0],
+            "next_step": "Prepare the target" if setup.setup_state == "ready" else "Approve the target",
         }
 
     def _objective_review_row(self, review):

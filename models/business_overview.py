@@ -422,6 +422,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             "purchase_categories": [],
             "supplier_performance": [],
             "orders_attention": [],
+            "open_deliveries": [],
             "recent_orders": [],
             "price_months": [],
             "ingredient_price_trend": [],
@@ -546,11 +547,18 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         _committed_orders, _committed_rows, purchase_order_value, committed_issue = confirmed_purchase_commitments(
             self.env, company, start_utc, end_utc, Warehouse.browse(warehouse_ids)
         )
+        # Open deliveries are current obligations, whenever the order was placed: every confirmed order in scope whose
+        # receipts are not all done or cancelled (Odoo's receipt status). The period only scopes spend and order lists.
+        if "receipt_status" in PurchaseOrder._fields:
+            open_delivery_orders = PurchaseOrder.search(company_domain + [
+                ("state", "in", ("purchase", "done")), ("receipt_status", "in", ("pending", "partial"))])
+        else:
+            open_delivery_orders = confirmed
         pending_delivery_value = 0.0
         outstanding_by_order = {}
         overdue_line_order_ids = set()
         now = fields.Datetime.to_datetime(fields.Datetime.now())
-        for order in confirmed:
+        for order in open_delivery_orders:
             outstanding = 0.0
             for line in lines_for(order):
                 remaining = line_remaining(line)
@@ -569,7 +577,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         overdue_receipts = self.env["stock.picking"].browse()
         receipts_available = "picking_ids" in PurchaseOrder._fields and "stock.picking" in self.env.registry.models
         if receipts_available:
-            all_receipts = orders.mapped("picking_ids")
+            all_receipts = open_delivery_orders.mapped("picking_ids")
             incoming_receipts = all_receipts.filtered(
                 lambda picking: picking.picking_type_id
                 and picking.picking_type_id.code == "incoming"
@@ -587,7 +595,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                 if "purchase_id" in picking._fields and picking.purchase_id
             )
             if "purchase_id" not in self.env["stock.picking"]._fields:
-                for order in orders:
+                for order in open_delivery_orders:
                     if order.picking_ids & overdue_receipts:
                         overdue_order_ids.add(order.id)
         overdue_delivery_value = sum(outstanding_by_order.get(order_id, 0.0) for order_id in overdue_order_ids)
@@ -718,6 +726,27 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                     "date_order": fields.Date.to_string(order_date(order)) if order_date(order) else "",
                 })
 
+        # Every order with a receipt still to come (any order date), overdue first; one row per order.
+        open_deliveries = []
+        for order in open_delivery_orders:
+            open_picks = (order.picking_ids if "picking_ids" in order._fields else self.env["stock.picking"].browse()).filtered(
+                lambda picking: picking.picking_type_id.code == "incoming" and picking.state not in ("done", "cancel"))
+            if not open_picks and not outstanding_by_order.get(order.id):
+                continue
+            dates = [fields.Date.to_date(picking.scheduled_date) for picking in open_picks if picking.scheduled_date]
+            received_any = any(float(getattr(line, "qty_received", 0.0) or 0.0) > 0 for line in lines_for(order))
+            status = "Overdue" if order.id in overdue_order_ids else "Partial" if received_any else "Awaiting"
+            open_deliveries.append({
+                "name": order.name,
+                "supplier": order.partner_id.display_name if order.partner_id else "Unknown supplier",
+                "branch": order_branch(order),
+                "status": status,
+                "expected_date": fields.Date.to_string(min(dates)) if dates else "",
+                "outstanding_value": round(outstanding_by_order.get(order.id, 0.0), 2),
+                "date_order": fields.Date.to_string(order_date(order)) if order_date(order) else "",
+            })
+        open_deliveries.sort(key=lambda row: (row["status"] != "Overdue", row["expected_date"] or "9999-12-31", row["name"]))
+
         supplier_performance = []
         for stats in supplier_stats.values():
             if stats["eligible"]:
@@ -790,6 +819,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             "purchase_category_total": round(category_total, 2),
             "supplier_performance": supplier_performance,
             "orders_attention": sorted(orders_attention, key=lambda row: (row["status"] != "Overdue", row["expected_date"] or "9999-12-31"))[:_LIST_LIMIT],
+            "open_deliveries": open_deliveries[:_LIST_LIMIT],
             "recent_orders": recent_orders,
             "price_months": [{"key": key, "label": month_label_by_key[key]} for key in month_keys],
             "ingredient_price_trend": price_trends,
@@ -1152,14 +1182,14 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                 if expiry_value and not lot_info[lot_key].get("expiry"):
                     lot_info[lot_key]["expiry"] = expiry_value
 
-        Orderpoint = self.env["stock.warehouse.orderpoint"]
+        # Reorder rules are readable only by Sales/Purchase/Inventory users. A Branch Manager reads them for their own
+        # verified branch (warehouse_ids is pinned above, never taken from the request) and company only.
+        Orderpoint = self.env["stock.warehouse.orderpoint"].sudo() if is_branch_manager else self.env["stock.warehouse.orderpoint"]
         required_orderpoint_fields = {"product_id", "product_min_qty", "qty_forecast", "warehouse_id"}
         orderpoint_available = required_orderpoint_fields.issubset(Orderpoint._fields)
         orderpoint_rows = False
         if orderpoint_available and warehouse_ids:
-            domain = [("warehouse_id", "in", warehouse_ids), ("product_min_qty", ">", 0)]
-            if "company_id" in Orderpoint._fields:
-                domain.append(("company_id", "=", company.id))
+            domain = [("warehouse_id", "in", warehouse_ids), ("product_min_qty", ">", 0), ("company_id", "=", company.id)]
             fields_to_read = [name for name in ("product_id", "product_min_qty", "qty_forecast", "warehouse_id", "product_max_qty") if name in Orderpoint._fields]
             orderpoint_rows = self._overview_safe(lambda: Orderpoint.search_read(domain, fields_to_read, order="id asc", limit=2000))
             if orderpoint_rows is not False:
@@ -1303,6 +1333,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                     pass
             return quantity
 
+        waste_by_reason_map = defaultdict(float)
         waste_required = {"is_scrap", "date", "state", "company_id", "scrap_reason_tag_ids", "location_id", "product_id"}
         if waste_breakdown_available and waste_required.issubset(Move._fields) and scoped_location_ids:
             waste_domain = [
@@ -1326,6 +1357,9 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                 else:
                     waste_by_product_map = defaultdict(lambda: {"cost": 0.0, "quantity": 0.0, "product": "Product", "category": "Uncategorized", "unit": ""})
                     for move in scrap_moves:
+                        # Value by recorded waste reason; quantities stay per product because units differ.
+                        reason = " + ".join(sorted({(tag.name or "").strip() for tag in move.scrap_reason_tag_ids}))
+                        waste_by_reason_map[reason] += cost_by_move.get(move.id, 0.0)
                         pid = move.product_id.id
                         meta = product_meta.get(pid, {"name": move.product_id.display_name, "category": move.product_id.categ_id.display_name if move.product_id.categ_id else "Uncategorized", "uom": move.product_id.uom_id.name if move.product_id.uom_id else ""})
                         qty = _inventory_move_qty(move)
@@ -1412,6 +1446,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                     "variance": physical_variance if physical_applicable else False,
                     "message": "Opening stock is reconstructed from completed movements since the selected period began. Physical count compares pending inventory counts with system stock.",
                 }
+                movement["ordered_quantity"] = self._overview_ordered_quantity(start_utc, end_utc, selected_product_id, scoped_warehouses)
                 recipe_value, recipe_note = self._overview_recipe_estimate(start_utc, end_utc, selected_product_id, scoped_warehouses)
                 movement.update({"recipe_consumption_quantity": recipe_value, "recipe_consumption_note": recipe_note})
                 if opening_value is False or expected_value is False:
@@ -1479,6 +1514,8 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             },
             "stock_health": stock_health,
             "waste_by_product": waste_by_product if waste_breakdown_available else [],
+            "waste_by_reason": [{"reason": reason, "cost": round(cost, 2)} for reason, cost in sorted(waste_by_reason_map.items())]
+                               if waste_breakdown_available else [],
             "waste_breakdown_available": waste_breakdown_available,
             "inventory_products": inventory_products,
             "selected_product_id": selected_product_id or False,
@@ -1534,6 +1571,26 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         ])
         kits = boms.filtered(lambda bom: bom.type == "phantom").product_tmpl_id
         return sorted(set((boms.product_tmpl_id - kits).mapped("display_name")))
+
+    @api.model
+    def _overview_ordered_quantity(self, start_utc, end_utc, product_id, warehouses):
+        """Quantity of the product on purchase orders confirmed in the period for the branches, in the product's unit.
+
+        Same population as the Purchasing page (confirmed orders, dated by their approval, branch from the receipt type).
+        Ordered is not received: receipts come from completed stock moves. False when purchases cannot be read.
+        """
+        if "purchase.order.line" not in self.env.registry.models:
+            return False
+        lines = self._overview_safe(lambda: self.env["purchase.order.line"].search([
+            ("product_id", "=", product_id), ("order_id.company_id", "=", self.env.company.id),
+            ("order_id.state", "in", ("purchase", "done")),
+            ("order_id.picking_type_id.warehouse_id", "in", warehouses.ids),
+            ("order_id.date_approve", ">=", fields.Datetime.to_string(start_utc)),
+            ("order_id.date_approve", "<", fields.Datetime.to_string(end_utc)),
+        ]))
+        if lines is False:
+            return False
+        return round(sum(lines.mapped("product_uom_qty")), 4)
 
     @api.model
     def _overview_recipe_estimate(self, start_utc, end_utc, product_id, warehouses):
@@ -1615,7 +1672,12 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                         "date": picking.get("scheduled_date") or "",
                     })
 
-        Orderpoint = self.env["stock.warehouse.orderpoint"]
+        user = self.env.user
+        # Same rule as the inventory page: a Branch Manager reads only their own pinned branch's reorder rules.
+        own_branch = (bool(warehouse) and user.has_group("strategic_management.group_strategic_branch_manager")
+                      and not user.has_group("strategic_management.group_strategic_head_office_manager")
+                      and warehouse == user.strategic_branch_warehouse_id)
+        Orderpoint = self.env["stock.warehouse.orderpoint"].sudo() if own_branch else self.env["stock.warehouse.orderpoint"]
         required = {"product_id", "product_min_qty", "qty_forecast", "warehouse_id"}
         if required.issubset(Orderpoint._fields):
             domain = [("company_id", "=", company.id), ("product_min_qty", ">", 0)]

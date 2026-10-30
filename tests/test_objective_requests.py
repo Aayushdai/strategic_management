@@ -1,6 +1,6 @@
 """Objective Requests on the Overview: branch proposals, Head Office decisions and the review history."""
 
-from odoo.exceptions import AccessError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests.common import TransactionCase, tagged
 
 
@@ -179,3 +179,65 @@ class TestObjectiveRequests(TransactionCase):
         self.Dashboard.with_user(self.head).decide_objective_request(setup.objective_id.id, "reject", "Pick a measure first")
         self.assertEqual(setup.objective_id.state, "draft")
         self.assertEqual(setup.setup_state, "measured")
+
+    # ------------------------------------------------------------------ proposals waiting for Head Office's target set-up
+    def _saved_proposal(self, manager=None, name="Need 30 kg coffee beans"):
+        """A proposal saved from Business Goals by the manager; not submitted (its target is not set up yet)."""
+        payload = self.env["strategic.goal.setup"].with_user(manager or self.manager1).create_goal({
+            "name": name, "business_area": "inventory_waste", "deadline": "2099-06-30", "scope": "branch",
+            "parent_objective_id": self.company_goal.id, "reason": "We run out every Friday."})
+        objective = self.env["strategic.objective"].browse(payload["objective_id"])
+        return objective, objective.goal_setup_ids
+
+    def test_saved_proposal_waiting_for_target_setup_is_listed_apart_from_pending(self):
+        objective, setup = self._saved_proposal()
+        self.assertEqual((objective.state, setup.setup_state), ("draft", "needs_setup"))
+        self.assertNotIn(objective.id, [row["objective_id"] for row in self._requests(self.head)["needs_setup"]],
+                         "still the manager's step: nothing for Head Office yet")
+        setup.sudo().setup_state = "ready"  # fixture: the measure is chosen and its readiness checks pass
+        data = self._requests(self.head)
+        row = next(row for row in data["needs_setup"] if row["objective_id"] == objective.id)
+        self.assertEqual((row["name"], row["branch"], row["parent_objective"], row["proposer"]),
+                         ("Need 30 kg coffee beans", self.branch1.display_name, self.company_goal.display_name, self.manager1.name))
+        self.assertEqual((row["status"], row["next_step"]), ("Ready for target", "Prepare the target"))
+        self.assertNotIn(objective.id, [row["objective_id"] for row in data["pending"]], "never counted as awaiting approval")
+        with self.assertRaises(UserError):
+            self.Dashboard.with_user(self.head).decide_objective_request(objective.id, "approve")
+        self.assertEqual(objective.state, "draft")
+        setup.sudo().setup_state = "target_pending"
+        row = next(row for row in self._requests(self.head)["needs_setup"] if row["objective_id"] == objective.id)
+        self.assertEqual(row["next_step"], "Approve the target")
+
+    def test_head_office_opens_the_proposal_with_its_target_setup_actions(self):
+        objective, setup = self._saved_proposal()
+        setup.sudo().setup_state = "ready"
+        goal = next(goal for goal in self.env["strategic.goal.setup"].with_user(self.head).get_goals() if goal["objective_id"] == objective.id)
+        self.assertTrue(goal["can_prepare_target"], "the existing Business Goals detail offers Prepare target")
+        self.assertFalse(goal["can_approve_goal"] or goal["can_submit"])
+        mine = next(goal for goal in self.env["strategic.goal.setup"].with_user(self.manager1).get_goals() if goal["objective_id"] == objective.id)
+        self.assertFalse(mine["can_prepare_target"], "the manager cannot prepare it")
+
+    def test_set_up_and_submitted_proposal_moves_to_objective_requests(self):
+        objective, setup = self._saved_proposal()
+        setup.sudo().setup_state = "measured"  # fixture: Head Office prepared and approved the target
+        objective.with_user(self.manager1).action_submit()
+        data = self._requests(self.head)
+        self.assertIn(objective.id, [row["objective_id"] for row in data["pending"]])
+        self.assertNotIn(objective.id, [row["objective_id"] for row in data["needs_setup"]])
+        self.Dashboard.with_user(self.head).decide_objective_request(objective.id, "reject", "Add the weekly usage.")
+        self.assertEqual(objective.state, "draft")
+        objective.with_user(self.manager1).action_submit()
+        self.Dashboard.with_user(self.head).decide_objective_request(objective.id, "approve")
+        self.assertEqual((objective.state, objective.scoring_status), ("active", "not_evaluated"))
+
+    def test_other_branches_do_not_see_or_open_proposals_needing_setup(self):
+        objective, setup = self._saved_proposal()
+        setup.sudo().setup_state = "ready"
+        self.assertIn(objective.id, [row["objective_id"] for row in self._requests(self.manager1)["needs_setup"]], "the proposing branch sees it")
+        self.assertNotIn(objective.id, [row["objective_id"] for row in self._requests(self.manager2)["needs_setup"]])
+        with self.assertRaises(AccessError):
+            objective.with_user(self.manager2).read(["name"])
+        with self.assertRaises(AccessError):
+            setup.with_user(self.manager2).prepare_target()
+        self.assertFalse(self._requests(self.employee)["needs_setup"])
+

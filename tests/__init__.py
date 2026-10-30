@@ -37,3 +37,10 @@ from . import test_purchase_monitoring
 from . import test_supplier_performance
 from . import test_inventory_monitoring
 from . import test_objective_requests
+from . import test_navigation_context
+from . import test_branch_objectives
+from . import test_branch_tasks
+from . import test_employee_management
+from . import test_branch_proposals
+from . import test_branch_operations
+from . import test_branch_reports

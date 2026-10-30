@@ -173,6 +173,24 @@ class StrategicPerformanceDashboardBranches(models.AbstractModel):
         return "employee"
 
     @api.model
+    def get_navigation_context(self):
+        """The current user's role and own branch assignment, for the app's navigation only (no business data).
+
+        The role is known even when a Branch Manager's branch is missing or invalid, so the app can show that
+        problem instead of falling back to another role's navigation; data methods keep refusing as before.
+        """
+        role = self._strategic_role()
+        context = {"role": role, "branch": False, "branch_error": False}
+        if role == "branch_manager":
+            # sudo only to validate the user's own assignment; a branch in another company may not be readable.
+            warehouse = self.env.user.sudo().strategic_branch_warehouse_id
+            if not warehouse or (warehouse.company_id and warehouse.company_id != self.env.company):
+                context["branch_error"] = "Assign this Branch Manager to a warehouse in the active company."
+            else:
+                context["branch"] = {"id": warehouse.id, "name": warehouse.display_name}
+        return context
+
+    @api.model
     def _strategic_branch_scope(self, role, warehouse_id=False):
         """Return (permitted, selected) warehouses; Branch Managers are pinned to their own branch."""
         company = self.env.company
