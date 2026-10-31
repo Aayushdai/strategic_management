@@ -94,6 +94,10 @@ class ResUsers(models.Model):
         if model_name == "account.move":
             # Only POS-linked entries belong to a branch; other entries keep whatever the user's groups allow.
             return ["|", ("pos_order_ids", "=", False), ("pos_order_ids.%s" % pos_warehouse, "=", branch.id or False)]
+        if model_name in ("hr.employee", "hr.employee.public"):
+            # Branch staff see their own branch's colleagues; Odoo's standard directory would show every branch's contacts.
+            own = [("user_id", "=", self.id)]
+            return ["|", *own, ("user_id.strategic_branch_warehouse_id", "=", branch.id)] if branch else own
         if not branch:
             return _NOTHING
         departments = self.sudo().strategic_department_ids.mapped("code")

@@ -40,6 +40,7 @@
         "views/inventory_control_views.xml",
         "views/branch_task_views.xml",
         "views/branch_report_views.xml",
+        "views/stock_picking_views.xml",
     ],
     "assets": {
         "web.assets_backend": [

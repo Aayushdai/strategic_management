@@ -170,8 +170,7 @@ class TestEmployeeManagement(TransactionCase):
         self.assertEqual(task.state, "in_progress")
 
     def test_head_office_permissions_unchanged(self):
-        with self.assertRaises(AccessError):
-            self.Task.with_user(self.head).get_employee_management()
+        self.assertIn(self.cook.id, [row["id"] for row in self.Task.with_user(self.head).get_employee_management()["employees"]], "Head Office sees every branch")
         task = self.Task.with_user(self.head).create({"name": "HO task", "description": "x", "assigned_user_id": self.cook.id,
                                                       "date_deadline": "2099-01-10"})
         self.assertEqual(task.warehouse_id, self.branch1)

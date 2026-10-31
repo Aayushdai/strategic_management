@@ -2124,6 +2124,27 @@
     span { color: var(--sm-home-muted); }
 }
 
+/* Staffing requests and employee performance. */
+.o_sm_navigation_shell .o_sm_bm {
+    .o_sm_staff_actions { display: flex; justify-content: flex-end; }
+    .o_sm_staff_filters { justify-content: flex-start; }
+    .o_sm_staff_reason { margin: 0; font-size: .9rem; }
+    .o_sm_staff_buttons { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .o_sm_staff_people { display: flex; flex-direction: column; gap: .35rem; width: 100%; }
+    .o_sm_staff_approved { background: #e3f4ea; color: #1d6b3f; }
+    .o_sm_staff_rejected { background: #fde7e5; color: #b4321f; }
+    .o_sm_staff_submitted { background: #fff3d6; color: #925f0b; }
+    .o_sm_perf_h { margin: .4rem 0 0; font-size: .92rem; font-weight: 650; }
+    .o_sm_perf_cards { display: grid; width: 100%; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: .75rem;
+        article { display: flex; flex-direction: column; gap: .2rem; padding: .75rem .9rem; border: 1px solid var(--sm-home-border); border-radius: .75rem;
+            small { color: var(--sm-home-muted); font-size: .78rem; font-weight: 600; }
+            strong { color: var(--sm-home-navy); font-size: 1.25rem; font-weight: 700; }
+            span { color: var(--sm-home-muted); font-size: .76rem; }
+            &.is-warn strong { color: #b4321f; }
+        }
+    }
+}
+
 /* Department Assignment (Phase 9A). */
 .o_sm_navigation_shell .o_sm_dept {
     .o_sm_dept_search { width: 100%; max-width: 24rem; padding: .45rem .7rem; border: 1px solid #d0d5dd; border-radius: .4rem; font-size: .88rem; }
@@ -2214,3 +2235,8 @@
 @media (max-width: 900px) {
     .o_sm_navigation_shell .o_sm_reports .o_sm_report_sections { grid-template-columns: minmax(0, 1fr); }
 }
+
+.o_sm_task_panel { margin-top: 12px; display: grid; gap: 10px; }
+.o_sm_rating_scale { margin: 0 0 8px; }
+.o_sm_emp_toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 12px; }
+.o_sm_emp_toolbar_actions { display: flex; flex-wrap: wrap; gap: 8px; }

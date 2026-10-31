@@ -57,7 +57,8 @@ const SIDEBAR_PRIMARY = [
     { id: "configuration", label: "Settings" },
 ];
 const SIDEBAR_MORE = NAVIGATION_ITEMS.filter((item) => ["branches", "people", "tasks_issues", "app_dependencies"].includes(item.id));
-const HEAD_OFFICE_SIDEBAR_MORE = [...SIDEBAR_MORE, { id: "department_assignment", label: "Department Assignment" }];
+const HEAD_OFFICE_SIDEBAR_MORE = [...SIDEBAR_MORE, { id: "department_assignment", label: "Department Assignment" },
+    { id: "employee_management", label: "Employee Management" }, { id: "staffing_requests", label: "Staffing Requests" }, { id: "employee_performance", label: "Employee Performance" }];
 // Branch Manager sidebar (Phase 1). Items with a section or action open pages that already exist and are scoped to the
 // manager's branch on the server; "planned" items belong to later phases and are shown disabled, never as working pages.
 // Objectives stay reachable from the dashboard's objective cards and links; notifications from the header bell.
@@ -157,6 +158,7 @@ export class StrategicNavigationShell extends Component {
             taskFilter: "open",
             taskDetailId: null,
             taskNote: "",
+            taskPanel: null,
             taskForm: null,
             taskBusy: false,
             // Task Management narrowed to one employee (from Employee Management); cleared from the page or the sidebar.
@@ -164,6 +166,7 @@ export class StrategicNavigationShell extends Component {
             // Employee Management (Phase 4): the branch's people with their task counts, and one person's tasks.
             employees: null,
             employeesLoading: false,
+            employeeDepartment: "",
             employeesError: "",
             employeeDetail: null,
             employeeDetailLoading: false,
@@ -174,6 +177,19 @@ export class StrategicNavigationShell extends Component {
             branchOpsError: "",
             objectiveDeadlines: {},
             employeeContext: null,
+            staffing: null,
+            staffingError: "",
+            staffingFilters: { warehouse_id: "", position: "", state: "" },
+            staffingForm: null,
+            staffingDecision: null,
+            staffingRegister: null,
+            staffingBusy: false,
+            employeePerformance: null,
+            employeePerformanceError: "",
+            assessmentForm: null,
+            performanceOverview: null,
+            performanceOverviewError: "",
+            myPerformance: null,
             departmentProductId: false,
             departmentAssignments: null,
             departmentAssignmentsError: "",
@@ -344,6 +360,8 @@ export class StrategicNavigationShell extends Component {
             // Period change only: on landing the first load comes from loadBranchObjectives.
             if (this.state.activeSection === "bm_dashboard" && this.branchOpsRequestId) { await this.loadBranchOps(); }
             if (this.departmentCode) { await this.loadBranchOps(); }
+            if (this.state.activeSection === "employee_performance") { await this.loadPerformanceOverview(); }
+            if (this.state.activeSection === "employee_management" && this.state.employeeDetail) { await this.loadEmployeePerformance(this.state.employeeDetail.employee.id); }
             if (this.state.activeSection === "purchasing") { await this.loadPurchasing(); }
             if (this.state.activeSection === "branches") { await this.loadBranches(); }
             if (this.state.activeSection === "people") { await this.loadPeople(); }
@@ -432,6 +450,12 @@ export class StrategicNavigationShell extends Component {
         if (sectionId === "bm_dashboard" && this.isBranchManager) {
             return this.loadBranchObjectives();
         }
+        if (sectionId === "staffing_requests") {
+            return this.loadStaffing();
+        }
+        if (sectionId === "employee_performance") {
+            return this.loadPerformanceOverview();
+        }
         if (sectionId === "department_assignment") {
             return this.loadDepartmentAssignments();
         }
@@ -446,6 +470,7 @@ export class StrategicNavigationShell extends Component {
             return this.loadBranchOps();
         }
         if (sectionId === "employee_dashboard") {
+            this.loadMyPerformance();
             return this.loadMyTasks();
         }
         if (sectionId === "my_tasks") {
@@ -458,7 +483,7 @@ export class StrategicNavigationShell extends Component {
         if (sectionId === "reports") {
             return this.loadReports();
         }
-        if (sectionId === "employee_management" && this.isBranchManager) {
+        if (sectionId === "employee_management" && (this.isBranchManager || this.isHeadOffice)) {
             this.state.employeeDetail = null;
             this.state.employeeDetailError = "";
             return this.loadEmployeeManagement();
@@ -517,6 +542,7 @@ export class StrategicNavigationShell extends Component {
             // Employees land on their own tasks.
             this.state.activeSection = "employee_dashboard";
             await this.loadEmployeeContext();
+            this.loadMyPerformance();
             await this.loadOverview();
             return this.loadMyTasks();
         }
@@ -556,6 +582,10 @@ export class StrategicNavigationShell extends Component {
     get isBranchManager() {
         const role = this.state.navContext?.role || this.state.data?.role;
         return role === "branch_manager";
+    }
+
+    get isHeadOffice() {
+        return (this.state.navContext?.role || this.state.data?.role) === "head_office";
     }
 
     get branchError() {
@@ -645,6 +675,7 @@ export class StrategicNavigationShell extends Component {
     openTask(task) {
         this.state.taskDetailId = task.id;
         this.state.taskNote = "";
+        this.state.taskPanel = null;
     }
 
     /** From the dashboard: open the task in Task Management. */
@@ -655,11 +686,12 @@ export class StrategicNavigationShell extends Component {
         this.state.taskFilter = "all";
         this.state.taskDetailId = taskId;
         this.state.taskNote = "";
+        this.state.taskPanel = null;
     }
 
     // ------------------------------------------------------------ Employee Management (Phase 4): read-only workload view
     async loadEmployeeManagement({ silent = false } = {}) {
-        if (!this.isBranchManager || this.branchError) return;
+        if (!(this.isBranchManager || this.isHeadOffice) || this.branchError) return;
         if (!silent) this.state.employeesLoading = true;
         try {
             this.state.employees = await this.orm.silent.call(TASK_MODEL, "get_employee_management", []);
@@ -674,7 +706,27 @@ export class StrategicNavigationShell extends Component {
         }
     }
 
+    /** Filtered on the page: the server has already limited these rows to what this user may see. */
+    matchesDepartment(person) {
+        const selected = this.state.employeeDepartment;
+        return !selected || (person.department_ids || []).includes(Number(selected));
+    }
+
+    get filteredEmployees() {
+        return (this.state.employees?.employees || []).filter((person) => this.matchesDepartment(person));
+    }
+
+    get filteredWithoutLogin() {
+        return (this.state.employees?.without_login || []).filter((person) => this.matchesDepartment(person));
+    }
+
+    onEmployeeDepartment(event) {
+        this.state.employeeDepartment = event.target.value;
+        this.setPage("employee_management", 1);
+    }
+
     async openEmployee(employee, { silent = false } = {}) {
+        this.loadEmployeePerformance(employee.id);
         if (!silent) {
             this.state.employeeDetail = { employee, current: null, history: null };
             this.state.employeeDetailError = "";
@@ -869,6 +921,160 @@ export class StrategicNavigationShell extends Component {
         return (orders || []).flatMap((order) => order.lines.map((line, index) => ({ ...line, key: `${order.name}-${index}`, order: order.name, supplier: order.supplier })));
     }
 
+    // ------------------------------------------------------------ staffing requests and performance
+    async loadStaffing() {
+        try {
+            const filters = this.state.staffingFilters;
+            this.state.staffing = await this.orm.silent.call("strategic.staffing.request", "get_staffing_requests", [{
+                warehouse_id: filters.warehouse_id ? Number(filters.warehouse_id) : false, position: filters.position, state: filters.state }]);
+            this.state.staffingError = "";
+        } catch (error) {
+            this.state.staffing = null;
+            this.state.staffingError = error.data?.message || error.message || "Staffing requests could not be loaded.";
+        }
+    }
+
+    onStaffingFilter(field, event) {
+        this.state.staffingFilters[field] = event.target.value;
+        return this.loadStaffing();
+    }
+
+    async openStaffingForm() {
+        if (!this.state.staffing) await this.loadStaffing();
+        this.state.staffingForm = { department_id: "", position: "", quantity: 1, reason: "", expected_date: "", comments: "" };
+    }
+
+    /** Run one server step, then refresh; nothing changes on screen before the server confirms. Returns whether it worked. */
+    async staffingCall(method, args, done) {
+        if (this.state.staffingBusy) return false;
+        this.state.staffingBusy = true;
+        try {
+            const result = await this.orm.call("strategic.staffing.request", method, args);
+            if (done) done(result);
+            await this.loadStaffing();
+            if (this.state.activeSection === "employee_management") await this.loadEmployeeManagement({ silent: true });
+            return true;
+        } catch (error) {
+            this.notification.add(error.data?.message || error.message || "This could not be saved.", { type: "danger" });
+            return false;
+        } finally {
+            this.state.staffingBusy = false;
+        }
+    }
+
+    async saveStaffingForm(submit) {
+        if (await this.staffingCall("save_staffing_request", [{ ...this.state.staffingForm }, submit])) {
+            this.state.staffingForm = null;
+            this.notification.add(submit ? "Request sent to Head Office." : "Draft saved.", { type: "success" });
+        }
+    }
+
+    submitStaffing(row) {
+        return this.staffingCall("action_submit", [[row.id]]);
+    }
+
+    approveStaffing(row) {
+        return this.staffingCall("action_decide", [[row.id], "approve"]);
+    }
+
+    async confirmReject() {
+        const decision = this.state.staffingDecision;
+        if (await this.staffingCall("action_decide", [[decision.row.id], "reject", decision.reason])) this.state.staffingDecision = null;
+    }
+
+    /** From a request's card (row) or from Add Employee (choose the request). The server re-checks all of it. */
+    async openRegister(row = null) {
+        const options = await this.orm.silent.call("strategic.staffing.request", "get_staffing_requests", [{ state: "approved" }]);
+        this.state.staffingRegister = { options, request_id: "", warehouse_id: "", name: "", work_email: "", work_phone: "", job: "", department_id: "", parent_id: "" };
+        if (row) this.selectRegisterRequest(String(row.id));
+    }
+
+    get registerRequests() {
+        const form = this.state.staffingRegister;
+        return form.options.requests.filter((request) => request.remaining && (!form.warehouse_id || String(request.branch_id) === form.warehouse_id));
+    }
+
+    selectRegisterRequest(requestId) {
+        const form = this.state.staffingRegister;
+        const request = form.options.requests.find((row) => String(row.id) === requestId);
+        Object.assign(form, { request_id: requestId, warehouse_id: request ? String(request.branch_id) : form.warehouse_id, job: request ? request.position : "", department_id: request ? String(request.department_id) : "" });
+    }
+
+    selectRegisterBranch(branchId) {
+        const form = this.state.staffingRegister;
+        form.warehouse_id = branchId;
+        if (!this.registerRequests.some((row) => String(row.id) === form.request_id)) this.selectRegisterRequest("");
+    }
+
+    async saveRegister() {
+        const form = this.state.staffingRegister;
+        const values = { name: form.name, work_email: form.work_email, work_phone: form.work_phone, job: form.job, department_id: form.department_id ? Number(form.department_id) : false,
+                         warehouse_id: Number(form.warehouse_id), parent_id: form.parent_id ? Number(form.parent_id) : false };
+        if (await this.staffingCall("register_employee", [[Number(form.request_id)], values])) {
+            this.state.staffingRegister = null;
+            this.notification.add("Employee registered.", { type: "success" });
+        }
+    }
+
+    createLogin(employee, resend = false) {
+        return this.staffingCall(resend ? "resend_employee_invitation" : "create_employee_login", [employee.id], (result) => {
+            this.notification.add(result.invitation === "sent" ? `Invitation handed to the mail server for ${result.login}.` : `Login ready, but the invitation was not sent: ${result.error}`,
+                                  { type: result.invitation === "sent" ? "success" : "warning", sticky: result.invitation !== "sent" });
+        });
+    }
+
+    async loadEmployeePerformance(userId) {
+        try {
+            this.state.employeePerformance = await this.orm.silent.call("strategic.performance.dashboard", "get_employee_performance",
+                [userId, this.state.dateStart || false, this.state.dateEnd || false]);
+            this.state.employeePerformanceError = "";
+        } catch (error) {
+            this.state.employeePerformance = null;
+            this.state.employeePerformanceError = error.data?.message || error.message || "Performance could not be loaded.";
+        }
+    }
+
+    get assessmentCriteria() {
+        return this.state.employeePerformance?.criteria || [];
+    }
+
+    openAssessment() {
+        this.state.assessmentForm = { work_quality: "", teamwork: "", communication: "", responsibility: "", problem_solving: "", customer_service: "", notes: "" };
+    }
+
+    async saveAssessment() {
+        try {
+            this.state.employeePerformance = await this.orm.call("strategic.performance.dashboard", "save_employee_assessment",
+                [this.state.employeePerformance.employee.id, { ...this.state.assessmentForm }, this.state.dateStart || false, this.state.dateEnd || false]);
+            this.state.assessmentForm = null;
+            this.notification.add("Assessment saved.", { type: "success" });
+        } catch (error) {
+            this.notification.add(error.data?.message || error.message || "The assessment could not be saved.", { type: "danger" });
+        }
+    }
+
+    async loadPerformanceOverview() {
+        try {
+            this.state.performanceOverview = await this.orm.silent.call("strategic.performance.dashboard", "get_performance_overview", [this.state.dateStart || false, this.state.dateEnd || false]);
+            this.state.performanceOverviewError = "";
+        } catch (error) {
+            this.state.performanceOverview = null;
+            this.state.performanceOverviewError = error.data?.message || error.message || "Performance could not be loaded.";
+        }
+    }
+
+    async loadMyPerformance() {
+        try {
+            this.state.myPerformance = await this.orm.silent.call("strategic.performance.dashboard", "get_my_performance", [this.state.dateStart || false, this.state.dateEnd || false]);
+        } catch {
+            this.state.myPerformance = null;
+        }
+    }
+
+    formatRate(value) {
+        return value === false || value === null || value === undefined ? "No completed tasks" : `${value}%`;
+    }
+
     // ------------------------------------------------------------ department assignment (Phase 9A)
     async loadDepartmentAssignments() {
         try {
@@ -878,6 +1084,14 @@ export class StrategicNavigationShell extends Component {
             this.state.departmentAssignments = null;
             this.state.departmentAssignmentsError = error.data?.message || error.message || "Department assignments could not be loaded.";
         }
+    }
+
+    get departmentChoices() {
+        return (this.state.activeSection === "employee_management" ? this.state.employees : this.state.departmentAssignments)?.departments || [];
+    }
+
+    get departmentChoices() {
+        return (this.state.activeSection === "employee_management" ? this.state.employees : this.state.departmentAssignments)?.departments || [];
     }
 
     get departmentRows() {
@@ -907,7 +1121,7 @@ export class StrategicNavigationShell extends Component {
             await this.orm.call("strategic.performance.dashboard", "set_employee_departments", [form.row.id, form.departmentIds]);
             this.notification.add(`Departments saved for ${form.row.name}.`, { type: "success" });
             this.state.departmentForm = null;
-            await this.loadDepartmentAssignments();
+            await (this.state.activeSection === "employee_management" ? this.loadEmployeeManagement({ silent: true }) : this.loadDepartmentAssignments());
         } catch (error) {
             this.notification.add(error.data?.message || error.message || "The departments could not be saved.", { type: "danger" });
         } finally {
@@ -1025,11 +1239,41 @@ export class StrategicNavigationShell extends Component {
             const labels = { action_start: "Task started.", action_submit: "Submitted for review.", action_accept: "Task completed.",
                              action_request_changes: "Changes requested.", action_cancel: "Task cancelled." };
             this.notification.add(labels[method], { type: "success" });
-            await Promise.all([
-                this.state.myTasks ? this.loadMyTasks({ silent: true }) : null,
-                this.isBranchManager ? this.loadTaskManagement({ silent: true }) : null,
-                this.isBranchManager ? this.loadTaskSummary() : null,
-            ]);
+            await this.refreshTasks();
+        } catch (error) {
+            this.notification.add(error.data?.message || error.message || "The task could not be updated.", { type: "danger" });
+        } finally {
+            this.state.taskBusy = false;
+        }
+    }
+
+    refreshTasks() {
+        return Promise.all([
+            this.state.myTasks ? this.loadMyTasks({ silent: true }) : null,
+            this.isBranchManager ? this.loadTaskManagement({ silent: true }) : null,
+            this.isBranchManager ? this.loadTaskSummary() : null,
+        ]);
+    }
+
+    openTaskPanel(kind) {
+        this.state.taskPanel = { kind, first: "", second: "" };
+    }
+
+    /** Report or resolve a blocker, or extend the due date; the server decides who may and keeps the record. */
+    async saveTaskPanel(task) {
+        const panel = this.state.taskPanel;
+        const { method, args, done } = {
+            blocker: { method: "action_report_blocker", args: [panel.first, panel.second], done: "Blocker sent to your manager." },
+            resolve: { method: "action_resolve_blocker", args: [panel.first], done: "Blocker resolved." },
+            extend: { method: "action_extend_deadline", args: [panel.first, panel.second], done: "Due date extended." },
+        }[panel.kind];
+        if (this.state.taskBusy) return;
+        this.state.taskBusy = true;
+        try {
+            await this.orm.call(TASK_MODEL, method, [[task.id], ...args]);
+            this.state.taskPanel = null;
+            this.notification.add(done, { type: "success" });
+            await this.refreshTasks();
         } catch (error) {
             this.notification.add(error.data?.message || error.message || "The task could not be updated.", { type: "danger" });
         } finally {

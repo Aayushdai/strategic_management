@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_picking_form_strategic_pos_stock" model="ir.ui.view">
+        <field name="name">stock.picking.form.strategic.pos.stock</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-danger mb-0" role="alert" invisible="not strategic_pos_stock_error">
+                    <strong>POS stock not processed.</strong> <field name="strategic_pos_stock_error" nolabel="1" class="d-inline"/>
+                    <button name="action_strategic_retry_pos_stock" type="object" string="Retry stock processing" class="btn btn-sm btn-danger ms-2"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

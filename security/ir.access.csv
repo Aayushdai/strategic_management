@@ -72,3 +72,15 @@ access_strategic_role_picking_batch,Strategic role restriction - stock.picking.b
 access_strategic_role_bank_statement,Strategic role restriction - account.bank.statement,account.bank.statement,,crud,"user._strategic_access_domain('account.bank.statement', 'branch')"
 access_strategic_role_account_move,Strategic role restriction - account.move,account.move,,crud,"user._strategic_access_domain('account.move', 'branch')"
 access_strategic_role_supplierinfo,Strategic role restriction - product.supplierinfo,product.supplierinfo,,r,"user._strategic_access_domain('product.supplierinfo', 'branch')"
+access_strategic_staffing_request_head_office,Staffing Request - Head Office,strategic.staffing.request,strategic_management.group_strategic_head_office_manager,r,
+access_strategic_staffing_request_branch_manager,Staffing Request - Branch Manager (own branch),strategic.staffing.request,strategic_management.group_strategic_branch_manager,r,"[('warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
+access_strategic_employee_assessment_head_office,Employee Assessment - Head Office,strategic.employee.assessment,strategic_management.group_strategic_head_office_manager,r,
+access_strategic_employee_assessment_branch_manager,Employee Assessment - Branch Manager (own branch),strategic.employee.assessment,strategic_management.group_strategic_branch_manager,r,"[('warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
+access_strategic_role_hr_employee,Strategic role restriction - hr.employee,hr.employee,,crud,"user._strategic_access_domain('hr.employee', 'branch')"
+access_strategic_role_hr_employee_public,Strategic role restriction - hr.employee.public,hr.employee.public,,r,"user._strategic_access_domain('hr.employee.public', 'branch')"
+access_strategic_task_extension_head_office,Task Extension - Head Office,strategic.task.deadline.extension,strategic_management.group_strategic_head_office_manager,r,
+access_strategic_task_extension_branch_manager,Task Extension - Branch Manager (own branch),strategic.task.deadline.extension,strategic_management.group_strategic_branch_manager,r,"[('task_id.warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
+access_strategic_task_extension_employee,Task Extension - Employee (own task),strategic.task.deadline.extension,strategic_management.group_strategic_employee,r,"[('task_id.assigned_user_id', '=', user.id)]"
+access_strategic_task_blocker_head_office,Task Blocker - Head Office,strategic.task.blocker,strategic_management.group_strategic_head_office_manager,r,
+access_strategic_task_blocker_branch_manager,Task Blocker - Branch Manager (own branch),strategic.task.blocker,strategic_management.group_strategic_branch_manager,r,"[('task_id.warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
+access_strategic_task_blocker_employee,Task Blocker - Employee (own task),strategic.task.blocker,strategic_management.group_strategic_employee,r,"[('task_id.assigned_user_id', '=', user.id)]"

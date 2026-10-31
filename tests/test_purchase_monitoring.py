@@ -48,6 +48,8 @@ class TestPurchaseMonitoring(TransactionCase):
         cls.coffee_category = Category.create({"name": "BG Buy Coffee", "parent_id": cls.ingredients.id})
         cls.dairy = Category.create({"name": "BG Buy Dairy", "parent_id": cls.ingredients.id})
         cls.packaging = Category.create({"name": "BG Buy Packaging"})
+        # The unit's name is data a database may rename; these assertions pin the behaviour, so pin the name (rolled back).
+        ref("uom.product_uom_unit").sudo().name = "Units"
         cls.kg, cls.gram, cls.litre, cls.units = ref("uom.product_uom_kgm"), ref("uom.product_uom_gram"), ref("uom.product_uom_litre"), ref("uom.product_uom_unit")
 
         def product(name, uom, category):

@@ -53,6 +53,8 @@ class TestSalesMonitoring(TransactionCase):
         cls.drinks = Category.create({"name": "BG Monitor Drinks"})
         cls.hot_drinks = Category.create({"name": "BG Monitor Hot drinks", "parent_id": cls.drinks.id})
         cls.food = Category.create({"name": "BG Monitor Food"})
+        # The unit's name is data a database may rename; these assertions pin the behaviour, so pin the name (rolled back).
+        ref("uom.product_uom_unit").sudo().name = "Units"
         units, kg = ref("uom.product_uom_unit"), ref("uom.product_uom_kgm")
 
         def item(name, uom, category):

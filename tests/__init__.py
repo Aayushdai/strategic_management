@@ -48,3 +48,5 @@ from . import test_department_access
 from . import test_department_dashboards
 from . import test_employee_security
 from . import test_branch_manager_security
+from . import test_pos_recipe_lots
+from . import test_staffing

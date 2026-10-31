@@ -148,8 +148,15 @@ class StrategicPerformanceDashboardDepartments(models.AbstractModel):
 
     @api.model
     def set_employee_departments(self, user_id, department_ids):
-        """Replace an Employee's departments; Head Office only. Role, branch, groups and tasks are not touched."""
-        self._require_department_admin()
+        """Replace an Employee's departments: Head Office, or the manager of the Employee's branch. Role, branch, groups and tasks are not touched."""
+        role = self._strategic_role()
+        if role == "branch_manager":
+            branch = self._branch_manager_branch()
+            target = self.env["res.users"].sudo().browse(user_id if isinstance(user_id, int) and not isinstance(user_id, bool) else 0).exists()
+            if target.strategic_branch_warehouse_id != branch:
+                raise AccessError("This person is not one of your branch's employees.")
+        else:
+            self._require_department_admin()
         valid_int = lambda value: isinstance(value, int) and not isinstance(value, bool)
         if not valid_int(user_id) or not isinstance(department_ids, list) or not all(valid_int(value) for value in department_ids):
             raise ValidationError("Choose an employee and valid departments.")

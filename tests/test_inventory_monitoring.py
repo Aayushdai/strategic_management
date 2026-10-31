@@ -41,6 +41,8 @@ class TestInventoryMonitoring(TransactionCase):
         cls.coffee_category = Category.create({"name": "BG Stock Coffee", "parent_id": cls.cafe.id})
         cls.dairy = Category.create({"name": "BG Stock Dairy", "parent_id": cls.cafe.id})
         cls.empty_category = Category.create({"name": "BG Stock Empty"})
+        # The unit's name is data a database may rename; these assertions pin the behaviour, so pin the name (rolled back).
+        ref("uom.product_uom_unit").sudo().name = "Units"
         cls.kg, cls.litre, cls.units = ref("uom.product_uom_kgm"), ref("uom.product_uom_litre"), ref("uom.product_uom_unit")
 
         def product(name, uom, category, **extra):

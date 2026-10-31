@@ -7,6 +7,10 @@ and KPI evaluations only.
 Assigned -> In Progress -> Submitted for Review -> Completed, or back to Changes Requested; open tasks can be Cancelled.
 The assignee works the task; the branch's manager (or Head Office) assigns, reviews and cancels it. Overdue is
 computed from the due date, never set by hand.
+
+The due date changes only through an approved extension, never during review or later. Each submission keeps the deadline
+that applied and whether it was met, so later changes cannot alter past on-time results. Extensions and blockers are
+kept as their own records and only change through the actions here.
 """
 
 from odoo import api, fields, models
@@ -19,8 +23,8 @@ OPEN_STATES = ("assigned", "in_progress", "changes_requested", "submitted")
 # Waiting on the assignee; a submitted task waits on the reviewer, so it is not the assignee's overdue work.
 WORKING_STATES = ("assigned", "in_progress", "changes_requested")
 _LIFECYCLE_FIELDS = {"state", "assigned_user_id", "warehouse_id", "company_id", "assigned_by_id", "completion_note",
-                     "submitted_at", "reviewed_by_id", "reviewed_at"}
-_MANAGER_FIELDS = {"name", "description", "date_deadline", "priority", "objective_id"}
+                     "submitted_at", "reviewed_by_id", "reviewed_at", "submission_deadline", "submitted_on_time"}
+_MANAGER_FIELDS = {"name", "description", "priority", "objective_id"}
 
 
 class StrategicBranchTask(models.Model):
@@ -49,6 +53,10 @@ class StrategicBranchTask(models.Model):
     completion_note = fields.Text("Completion Notes", readonly=True)
     review_note = fields.Text("Review Notes")
     submitted_at = fields.Datetime(readonly=True)
+    submission_deadline = fields.Date("Deadline at Submission", readonly=True)
+    submitted_on_time = fields.Boolean("Submitted On Time", readonly=True)
+    extension_ids = fields.One2many("strategic.task.deadline.extension", "task_id", "Deadline Extensions")
+    blocker_ids = fields.One2many("strategic.task.blocker", "task_id", "Blockers")
     reviewed_by_id = fields.Many2one("res.users", readonly=True)
     reviewed_at = fields.Datetime(readonly=True)
     is_overdue = fields.Boolean("Overdue", compute="_compute_is_overdue")
@@ -145,13 +153,15 @@ class StrategicBranchTask(models.Model):
             return super().write(vals)
         if _LIFECYCLE_FIELDS.intersection(vals):
             raise ValidationError("A task's assignee, branch and status change only through its workflow buttons.")
+        if "date_deadline" in vals:
+            raise ValidationError("A due date changes only through an approved extension with a reason.")
         for task in self:
             if not task._can_manage():
                 raise AccessError("Only the branch's manager or Head Office can edit this task.")
             if task.state in ("done", "cancelled"):
                 raise ValidationError("Completed or cancelled tasks cannot be edited.")
             if set(vals) - _MANAGER_FIELDS - {"review_note"}:
-                raise ValidationError("Only the title, description, due date, priority, objective and review notes can be edited.")
+                raise ValidationError("Only the title, description, priority, objective and review notes can be edited.")
             if "objective_id" in vals:
                 task._check_objective(vals["objective_id"], task.warehouse_id)
         return super().write(vals)
@@ -196,8 +206,62 @@ class StrategicBranchTask(models.Model):
             note = (note or "").strip()
             if not note:
                 raise ValidationError("Describe what was done before submitting for review.")
-            task._transition(("in_progress",), {"state": "submitted", "completion_note": note, "submitted_at": fields.Datetime.now()},
+            now = fields.Datetime.now()
+            # The company's time zone: the browser's context and the employee's own preference are theirs to change.
+            local_day = fields.Datetime.context_timestamp(task.with_context(tz=task.company_id.partner_id.tz or "UTC"), now).date()
+            task._transition(("in_progress",), {"state": "submitted", "completion_note": note, "submitted_at": now, "submission_deadline": task.date_deadline,
+                                                "submitted_on_time": local_day <= task.date_deadline},
                              "Submitted for review: %s" % note, notify=task._reviewers())
+        return True
+
+    def action_extend_deadline(self, new_deadline, reason):
+        """An approved extension: the only way a due date moves, later only, with its reason and approver kept."""
+        self.ensure_one()
+        self._require_manager()
+        reason = (reason or "").strip()
+        try:
+            new_deadline = fields.Date.to_date(new_deadline)
+        except (TypeError, ValueError):
+            new_deadline = False
+        if not new_deadline or not reason:
+            raise ValidationError("Choose the new due date and give the reason for the extension.")
+        if new_deadline <= self.date_deadline:
+            raise ValidationError("An extension must be later than the current due date.")
+        previous = self.date_deadline
+        self.env["strategic.task.deadline.extension"].sudo().create({
+            "task_id": self.id, "previous_deadline": previous, "new_deadline": new_deadline, "reason": reason, "approved_by_id": self.env.user.id})
+        return self._transition(WORKING_STATES, {"date_deadline": new_deadline}, "Due date extended from %s to %s: %s" % (previous, new_deadline, reason), notify=self.assigned_user_id)
+
+    def _open_blocker(self):
+        Blocker = self.env["strategic.task.blocker"].sudo()
+        return Blocker.search([("task_id", "=", self.id), ("state", "=", "open")], limit=1) if self.state in OPEN_STATES else Blocker
+
+    def action_report_blocker(self, problem, help_needed):
+        """The assignee tells the branch's manager what stops the work. The due date does not move by itself."""
+        self.ensure_one()
+        self._require_assignee()
+        problem, help_needed = (problem or "").strip(), (help_needed or "").strip()
+        if not problem or not help_needed:
+            raise ValidationError("Describe the problem and say what help you need.")
+        if self.state not in WORKING_STATES:
+            raise ValidationError("Blockers can be reported only while you are working on the task.")
+        if self._open_blocker():
+            raise UserError("This task already has an open blocker.")
+        self.env["strategic.task.blocker"].sudo().create({"task_id": self.id, "reported_by_id": self.env.user.id, "problem": problem, "help_needed": help_needed})
+        self.message_post(body="Blocker reported: %s Help needed: %s" % (problem, help_needed), subtype_xmlid="mail.mt_note", partner_ids=self._reviewers().partner_id.ids)
+        return True
+
+    def action_resolve_blocker(self, resolution):
+        self.ensure_one()
+        self._require_manager()
+        resolution = (resolution or "").strip()
+        blocker = self._open_blocker()
+        if not blocker:
+            raise UserError("This task has no open blocker.")
+        if not resolution:
+            raise ValidationError("Say how the blocker was resolved.")
+        blocker.write({"state": "resolved", "resolved_by_id": self.env.user.id, "resolved_at": fields.Datetime.now(), "resolution": resolution})
+        self.message_post(body="Blocker resolved: %s" % resolution, subtype_xmlid="mail.mt_note", partner_ids=self.assigned_user_id.partner_id.ids)
         return True
 
     def action_accept(self):
@@ -227,7 +291,20 @@ class StrategicBranchTask(models.Model):
     def _row(self):
         self.ensure_one()
         user = self.env.user
+        record = self.sudo()
+        blocker = self._open_blocker()
         return {
+            "extensions": [{"id": row.id, "previous": fields.Date.to_string(row.previous_deadline), "new": fields.Date.to_string(row.new_deadline), "reason": row.reason,
+                            "approved_by": row.approved_by_id.name, "at": fields.Datetime.to_string(row.create_date)} for row in record.extension_ids],
+            "open_blocker": {"problem": blocker.problem, "help_needed": blocker.help_needed, "reported_by": blocker.reported_by_id.name,
+                             "at": fields.Datetime.to_string(blocker.create_date)} if blocker else False,
+            "resolved_blockers": [{"id": row.id, "problem": row.problem, "resolution": row.resolution, "resolved_by": row.resolved_by_id.name}
+                                  for row in record.blocker_ids if row.state == "resolved"],
+            "can_report_blocker": user == self.assigned_user_id and self.state in WORKING_STATES and not blocker,
+            "can_resolve_blocker": bool(blocker) and self._can_manage(),
+            "can_extend": self.state in WORKING_STATES and self._can_manage(),
+            "submission_deadline": fields.Date.to_string(self.submission_deadline) if self.submission_deadline else False,
+            "submitted_on_time": self.submitted_on_time,
             "id": self.id, "name": self.name, "description": self.description, "assigned_to": self.assigned_user_id.name,
             "assigned_user_id": self.assigned_user_id.id, "assigned_by": self.assigned_by_id.name, "branch": self.warehouse_id.display_name,
             "date_deadline": fields.Date.to_string(self.date_deadline), "priority": self.priority,
@@ -292,9 +369,9 @@ class StrategicBranchTask(models.Model):
     def get_branch_task_summary(self):
         """Compact overview for the Branch Manager dashboard: counts and the few tasks needing action."""
         data = self.get_task_management()
-        attention = [row for row in data["tasks"] if row["state"] == "submitted" or row["is_overdue"]]
-        attention.sort(key=lambda row: (row["state"] != "submitted", row["date_deadline"]))
-        return {"counts": data["counts"], "attention": attention[:5]}
+        attention = [row for row in data["tasks"] if row["state"] == "submitted" or row["is_overdue"] or row["open_blocker"]]
+        attention.sort(key=lambda row: (not row["open_blocker"], row["state"] != "submitted", row["date_deadline"]))
+        return {"counts": data["counts"], "attention": attention[:5], "blocked": sum(1 for row in data["tasks"] if row["open_blocker"])}
 
     # ------------------------------------------------------------------ Employee Management (Phase 4): read-only workload view
     @api.model
@@ -304,13 +381,17 @@ class StrategicBranchTask(models.Model):
         People are the branch's active internal users other than managers, plus anyone else holding one of those tasks
         (for example someone since moved to another branch), so the per-person counts add up to Task Management's.
         """
-        branch = self._manager_branch()
-        tasks = self._managed_tasks(branch)
+        head = self._is_head_office()
+        branch = self.env["stock.warehouse"] if head else self._manager_branch()
+        if head:
+            tasks = self.search([("assigned_user_id", "!=", self.env.user.id), ("company_id", "=", self.env.company.id)])
+        else:
+            tasks = self._managed_tasks(branch)
         # sudo: names and groups of this branch's internal users only, the same scope as the task form's assignee list.
         members = self.env["res.users"].sudo().search([
             ("active", "=", True), ("share", "=", False), ("company_ids", "in", self.env.company.id),
-            ("strategic_branch_warehouse_id", "=", branch.id), ("id", "!=", self.env.user.id)])
-        members = members.filtered(lambda user: not user.has_group(_MANAGER))
+            ("strategic_branch_warehouse_id", "=", branch.id) if branch else ("strategic_branch_warehouse_id", "!=", False), ("id", "!=", self.env.user.id)])
+        members = members.filtered(lambda user: not user.has_group(_HEAD if head else _MANAGER))
         return branch, tasks, (members | tasks.sudo().assigned_user_id).sorted(lambda user: (user.name or "").lower())
 
     @api.model
@@ -320,13 +401,16 @@ class StrategicBranchTask(models.Model):
         if user not in assignable:
             if not user.active:
                 note = "Account archived"
-            elif user.strategic_branch_warehouse_id != branch:
+            elif branch and user.strategic_branch_warehouse_id != branch:
                 note = "No longer in this branch"
             elif user.has_group(_MANAGER):
                 note = "Branch Manager"
             else:
                 note = "Cannot receive tasks: no Strategic Management employee access"
         return {"id": user.id, "name": user.name, "can_receive_tasks": user in assignable, "note": note, "counts": self._counts(tasks),
+                "branch": user.sudo().strategic_branch_warehouse_id.display_name or False, "role": "Employee", "department_ids": user.sudo().strategic_department_ids.ids,
+                # Same rule as set_employee_departments: managers keep their role's own access.
+                "can_assign_departments": user.has_group(_EMPLOYEE) and not user.has_group(_MANAGER) and bool(user.sudo().strategic_branch_warehouse_id),
                 "departments": user.sudo().strategic_department_ids.mapped("name")}
 
     @api.model
@@ -336,9 +420,17 @@ class StrategicBranchTask(models.Model):
         assignable = self._assignable_users().sudo()
         by_user = tasks.grouped("assigned_user_id")
         empty = self.browse()
+        employees = [self._employee_row(user, branch, by_user.get(user, empty), assignable) for user in people]
+        # Registered employees who have no login yet: tasks go to user accounts, so they cannot receive any.
+        waiting = self.env["hr.employee"].sudo().search(
+            [("user_id", "=", False), ("strategic_branch_warehouse_id", "=", branch.id) if branch else ("strategic_branch_warehouse_id", "!=", False),
+             ("company_id", "=", self.env.company.id)], order="name")
+        without_login = [{"id": e.id, "name": e.name, "job": e.job_id.name or "", "branch": e.strategic_branch_warehouse_id.display_name} for e in waiting]
         return {
-            "branch": {"id": branch.id, "name": branch.display_name},
-            "employees": [self._employee_row(user, branch, by_user.get(user, empty), assignable) for user in people],
+            "branch": {"id": branch.id, "name": branch.display_name} if branch else False,
+            "employees": employees,
+            "without_login": without_login,
+            "departments": [{"id": department.id, "name": department.name} for department in self.env["strategic.department"].sudo().search([])],
         }
 
     @api.model
@@ -356,3 +448,34 @@ class StrategicBranchTask(models.Model):
             "history": [task._row() for task in history[:10]],
             "history_total": len(history),
         }
+
+
+class StrategicTaskDeadlineExtension(models.Model):
+    """One approved change of a task's due date. Created only by action_extend_deadline; nobody can edit it."""
+    _name = "strategic.task.deadline.extension"
+    _description = "Task Deadline Extension"
+    _order = "id"
+
+    task_id = fields.Many2one("strategic.branch.task", required=True, index=True, ondelete="cascade", readonly=True)
+    previous_deadline = fields.Date(required=True, readonly=True)
+    new_deadline = fields.Date(required=True, readonly=True)
+    reason = fields.Text(required=True, readonly=True)
+    approved_by_id = fields.Many2one("res.users", required=True, readonly=True)
+
+
+class StrategicTaskBlocker(models.Model):
+    """What stops an employee's task, for the branch's manager. Neutral: it never changes a rate or a due date by itself."""
+    _name = "strategic.task.blocker"
+    _description = "Task Blocker"
+    _order = "id desc"
+
+    task_id = fields.Many2one("strategic.branch.task", required=True, index=True, ondelete="cascade", readonly=True)
+    reported_by_id = fields.Many2one("res.users", required=True, index=True, readonly=True)
+    problem = fields.Text(required=True, readonly=True)
+    help_needed = fields.Text(required=True, readonly=True)
+    state = fields.Selection([("open", "Open"), ("resolved", "Resolved")], default="open", required=True, readonly=True)
+    resolved_by_id = fields.Many2one("res.users", readonly=True)
+    resolved_at = fields.Datetime(readonly=True)
+    resolution = fields.Text(readonly=True)
+
+    _one_open_per_task = models.UniqueIndex("(task_id) WHERE state = 'open'", "This task already has an open blocker.")

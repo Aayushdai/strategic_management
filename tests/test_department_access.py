@@ -110,12 +110,17 @@ class TestDepartmentAssignment(TransactionCase):
 
     # ------------------------------------------------------------------ authorization
     def test_only_head_office_can_list_or_change(self):
-        for actor in (self.manager1, self.emp, self.emp2, self.no_group):
+        for actor in (self.emp, self.emp2, self.no_group):
             with self.assertRaises(AccessError):
                 self._assign(self.emp, self.sales, by=actor)
             with self.assertRaises(AccessError):
                 self.Dashboard.with_user(actor).get_department_assignments()
         self.assertFalse(self.emp.strategic_department_ids)
+        with self.assertRaises(AccessError):
+            self.Dashboard.with_user(self.manager1).get_department_assignments()
+        self.assertEqual(self._assign(self.emp, self.sales, by=self.manager1)["departments"], ["Sales"], "the manager of the Employee's own branch may assign")
+        with self.assertRaises(AccessError, msg="never another branch's Employee"):
+            self._assign(self.foreign, self.sales, by=self.manager1)
 
     def test_direct_model_operations_are_refused(self):
         self._assign(self.emp2, self.sales)

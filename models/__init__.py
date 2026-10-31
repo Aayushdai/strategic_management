@@ -6,6 +6,7 @@ from . import kpi_measurement
 from . import kpi_source_adapter
 from . import kpi_receipt_refresh
 from . import stock_picking
+from . import pos_recipe_stock
 from . import purchase_order
 from . import purchase_delivery_baseline
 from . import live_refresh
@@ -26,3 +27,4 @@ from . import stock_count_plan
 from . import branch_operations
 from . import branch_report
 from . import department_access
+from . import staffing
