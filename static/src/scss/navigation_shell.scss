@@ -1966,10 +1966,6 @@
     .o_sm_bm_planned { padding: .12rem .55rem; border: 1px dashed #c9c3ec; border-radius: 999px; color: #5a48b8; font-size: .7rem; font-weight: 600; white-space: nowrap; }
     .o_sm_bm_empty { margin: 0; color: var(--sm-home-muted); font-size: .85rem; }
     .o_sm_bm_link { padding: 0; border: 0; background: none; color: var(--sm-home-purple); font-size: .85rem; font-weight: 600; cursor: pointer; &:hover { text-decoration: underline; } }
-    .o_sm_bm_facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem 1.25rem; width: 100%; margin: 0;
-        dt { color: var(--sm-home-muted); font-size: .74rem; font-weight: 600; }
-        dd { margin: .1rem 0 0; color: var(--sm-home-navy); font-size: .95rem; font-weight: 600; }
-    }
     .o_sm_bm_list { display: flex; flex-direction: column; width: 100%; }
     .o_sm_bm_list_item { display: flex; flex-direction: column; gap: .2rem; width: 100%; padding: .6rem 0; border: 0; border-top: 1px solid #f1f2f6; background: none; color: inherit; text-align: left; cursor: pointer;
         &:first-child { border-top: 0; padding-top: .1rem; }
@@ -1998,7 +1994,7 @@
     .o_sm_navigation_shell .o_sm_bm {
         padding: 1rem 1rem 1.5rem;
         .o_sm_bm_header { flex-direction: column; }
-        .o_sm_bm_grid, .o_sm_bm_facts { grid-template-columns: minmax(0, 1fr); }
+        .o_sm_bm_grid { grid-template-columns: minmax(0, 1fr); }
     }
 }
 
@@ -2112,14 +2108,91 @@
     .o_sm_ops_table td small { display: block; }
 }
 .o_sm_navigation_shell .o_sm_ops_attention { margin-top: .25rem; }
-/* Dashboard summary strip and alerts. */
-.o_sm_navigation_shell .o_sm_bm .o_sm_ops_strip { display: grid; width: 100%; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: .75rem;
-    > div { display: flex; flex-direction: column; gap: .15rem; }
-    small { color: var(--sm-home-muted); font-size: .76rem; font-weight: 600; }
-    strong { color: var(--sm-home-navy); font-size: 1.05rem; font-weight: 700; }
-    .is-warn { color: #b4321f; }
+/* Employee dashboard and department pages (Phase 9B). */
+.o_sm_navigation_shell .o_sm_employee_departments { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .85rem; }
+.o_sm_navigation_shell .o_sm_employee_department { display: flex; flex-direction: column; gap: .25rem; padding: 1rem 1.15rem; border: 1px solid var(--sm-home-border); border-radius: .85rem; background: #fff; color: var(--sm-home-navy); text-align: left; cursor: pointer;
+    strong { font-size: 1.1rem; font-weight: 650; }
+    span { color: var(--sm-home-purple); font-size: .85rem; font-weight: 600; }
+    &:hover { border-color: var(--sm-home-purple); }
 }
+.o_sm_navigation_shell .o_sm_employee_home .o_sm_task_counts { display: flex; gap: 1.5rem; }
+.o_sm_navigation_shell .o_sm_dept_movement { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .75rem; margin: 0;
+    dt { color: var(--sm-home-muted); font-size: .78rem; font-weight: 600; }
+    dd { margin: .1rem 0 0; color: var(--sm-home-navy); font-size: 1rem; font-weight: 600; }
+}
+.o_sm_navigation_shell .o_sm_dept_warnings { display: flex; flex-direction: column; gap: .4rem; margin: 0; padding: 0; list-style: none; font-size: .88rem;
+    span { color: var(--sm-home-muted); }
+}
+
+/* Department Assignment (Phase 9A). */
+.o_sm_navigation_shell .o_sm_dept {
+    .o_sm_dept_search { width: 100%; max-width: 24rem; padding: .45rem .7rem; border: 1px solid #d0d5dd; border-radius: .4rem; font-size: .88rem; }
+    .o_sm_dept_note { display: block; color: var(--sm-home-muted); font-size: .76rem; }
+    .o_sm_dept_choices { display: flex; flex-direction: column; gap: .5rem; margin: 0; padding: 0; border: 0;
+        legend { margin-bottom: .35rem; color: var(--sm-home-navy); font-size: .85rem; font-weight: 600; }
+        label { display: flex; flex-direction: row; align-items: center; gap: .5rem; margin: 0; font-weight: 400; }
+    }
+}
+
+/* Branch Manager dashboard: KPI row, sales chart beside branch health, then instructions, tasks and objectives. */
 .o_sm_navigation_shell .o_sm_bm .o_sm_ops_alerts .o_sm_bm_list_item { cursor: default; }
+.o_sm_navigation_shell .o_sm_bm {
+    .o_sm_bm_header { flex-wrap: wrap; }
+    .o_sm_bm_header_actions { flex-wrap: wrap; justify-content: flex-end; }
+    .o_sm_dash_caption { display: block; color: var(--sm-home-muted); font-size: .8rem; }
+    .o_sm_dash_kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr)); gap: .85rem;
+        > p { grid-column: 1 / -1; margin: 0; }
+    }
+    .o_sm_dash_kpi { display: flex; flex-direction: column; gap: .2rem; min-width: 0; padding: 1rem 1.15rem; border: 1px solid var(--sm-home-border); border-radius: .85rem; background: #fff; box-shadow: 0 1px 3px rgba(29, 35, 64, .04);
+        small { margin-top: .45rem; color: #5d6480; font-size: .85rem; font-weight: 600; }
+        strong { color: var(--sm-home-navy); font-size: 1.6rem; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere;
+            &.is-missing { color: var(--sm-home-muted); font-size: 1.05rem; font-weight: 600; line-height: 2rem; }
+        }
+        > span:last-child { color: var(--sm-home-muted); font-size: .8rem; &.is-warn { color: #b4321f; font-weight: 600; } }
+    }
+    .o_sm_dash_icon { display: inline-flex; align-items: center; justify-content: center; width: 2.1rem; height: 2.1rem; border-radius: .55rem; background: #f1eefb; color: var(--sm-home-purple);
+        svg { width: 1.2rem; height: 1.2rem; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    }
+    .o_sm_dash_grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .o_sm_dash_sales { grid-column: span 4; }
+    .o_sm_dash_health { grid-column: span 2; }
+    .o_sm_dash_half { grid-column: span 3;
+        &:has(> .o_sm_bm_empty) { align-self: start; }
+    }
+    .o_sm_dash_chart { position: relative; flex: 1 1 auto; width: 100%; min-height: 15rem; margin-bottom: 1.5rem; }
+    .o_sm_dash_tick { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid #eef0f5;
+        small { position: absolute; top: -.5rem; left: 0; width: 3.1rem; color: var(--sm-home-muted); font-size: .72rem; text-align: right; }
+    }
+    .o_sm_dash_bars { position: absolute; inset: 0 0 0 3.6rem; display: flex; gap: 2px; }
+    .o_sm_dash_bar { position: relative; flex: 1 1 0; min-width: 0;
+        i { position: absolute; left: 12%; right: 12%; max-width: 3rem; margin: 0 auto; border-radius: 3px 3px 0 0; background: var(--sm-home-purple); }
+        small { position: absolute; bottom: -1.35rem; left: 50%; transform: translateX(-50%); color: var(--sm-home-muted); font-size: .72rem; white-space: nowrap; }
+        &:hover i { opacity: .75; }
+    }
+    .o_sm_dash_health_rows { display: flex; flex-direction: column; gap: .4rem; width: 100%; }
+    .o_sm_dash_health_row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; width: 100%; padding: .5rem .65rem; border: 1px solid #eef0f5; border-radius: .55rem; background: #fafafd; color: inherit; text-align: left; cursor: pointer;
+        &:hover { border-color: var(--sm-home-purple); }
+        b { color: var(--sm-home-navy); font-size: 1.1rem; font-weight: 700; }
+        i { flex: none; width: .6rem; height: .6rem; border-radius: 50%; background: #c3c7d4; }
+        &.is-ok i { background: #2f8f5b; }
+        &.is-warn i { background: #d9920f; }
+        &.is-bad i { background: #c9402c; }
+    }
+    .o_sm_dash_health_label { display: flex; align-items: center; gap: .6rem; min-width: 0;
+        > span { display: flex; flex-direction: column; }
+        strong { font-size: .88rem; font-weight: 600; }
+        small { color: var(--sm-home-muted); font-size: .78rem; }
+    }
+    .o_sm_dash_deadline { color: #925f0b; font-weight: 600; }
+    .o_sm_dash_half .o_sm_task_counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; width: 100%;
+        > span { display: flex; flex-direction: column; padding: .5rem .7rem; border-radius: .55rem; background: #f7f7fb; }
+        strong { font-size: 1.35rem; font-weight: 700; }
+    }
+}
+@media (max-width: 1100px) {
+    .o_sm_navigation_shell .o_sm_bm .o_sm_dash_grid > * { grid-column: 1 / -1; }
+    .o_sm_navigation_shell .o_sm_bm .o_sm_bm_header_actions { justify-content: flex-start; }
+}
 
 /* Branch reports (Phase 7): the report list, its dialog sections and Head Office feedback. */
 .o_sm_navigation_shell .o_sm_reports {

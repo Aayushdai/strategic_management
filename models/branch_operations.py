@@ -23,15 +23,21 @@ class StrategicPerformanceDashboardBranchOperations(models.AbstractModel):
         # The branch always comes from the manager's account; an invalid assignment is refused here.
         branch = self._strategic_branch_scope(role)[1]
         start, end = self._resolve_period(date_start, date_end)
+        result = self._operations_header(branch, start, end)
+        result.update({
+            "sales": self._operations_section(lambda: self._operations_sales(start, end, result["granularity"])),
+            "inventory": self._operations_section(lambda: self._operations_inventory(start, end, branch)),
+            "purchasing": self._operations_section(lambda: self._operations_purchasing(start, end)),
+        })
+        return result
+
+    @api.model
+    def _operations_header(self, branch, start, end):
         days = (end - start).days + 1
-        granularity = "day" if days <= 31 else "week" if days <= 183 else "month"
         return {
             "branch": {"id": branch.id, "name": branch.display_name},
             "period": {"start": fields.Date.to_string(start), "end": fields.Date.to_string(end)},
-            "granularity": granularity,
-            "sales": self._operations_section(lambda: self._operations_sales(start, end, granularity)),
-            "inventory": self._operations_section(lambda: self._operations_inventory(start, end, branch)),
-            "purchasing": self._operations_section(lambda: self._operations_purchasing(start, end)),
+            "granularity": "day" if days <= 31 else "week" if days <= 183 else "month",
         }
 
     @api.model
@@ -61,21 +67,22 @@ class StrategicPerformanceDashboardBranchOperations(models.AbstractModel):
         }
 
     @api.model
-    def _operations_inventory(self, start, end, branch):
-        data = self.get_inventory_waste_data(fields.Date.to_string(start), fields.Date.to_string(end))
+    def _operations_inventory(self, start, end, branch, product_id=False):
+        data = self.get_inventory_waste_data(fields.Date.to_string(start), fields.Date.to_string(end), False, product_id)
         if not data.get("available"):
             return {"available": False, "messages": data.get("messages") or ["Inventory could not be read with your access rights."]}
         summary = data["summary"]
         expiring = [row for row in data.get("expiring_stock") or [] if row.get("days_left", 99) <= 7]
-        start_utc, end_utc = self._overview_utc_bounds(start, end)
-        receipts = self._overview_safe(lambda: self.env["stock.picking"].search_count([
-            ("picking_type_id.code", "=", "incoming"), ("picking_type_id.warehouse_id", "=", branch.id), ("state", "=", "done"),
-            ("date_done", ">=", fields.Datetime.to_string(start_utc)), ("date_done", "<", fields.Datetime.to_string(end_utc)),
-        ]))
+        receipts = self._operations_receipts_done(start, end, branch)
         return {
             "available": True,
             "currency": data["currency"],
             # Current balances (not period figures): reorder rules and lots as of now.
+            "stock_levels": data.get("stock_levels") or [],
+            "products": data.get("inventory_products") or [],
+            "selected_product_id": data.get("selected_product_id"),
+            "movement": data.get("movement"),
+            "warnings": [{"title": row["title"], "detail": row["detail"], "severity": row["severity"]} for row in data.get("attention") or []],
             "low_stock_count": summary.get("low_stock_count"),
             "low_stock": [{"product_id": row["product_id"], "name": row["name"], "available": row["available_quantity"],
                            "minimum": row["minimum_quantity"], "unit": row["unit"], "status": row["status_label"]}
@@ -95,6 +102,14 @@ class StrategicPerformanceDashboardBranchOperations(models.AbstractModel):
         }
 
     @api.model
+    def _operations_receipts_done(self, start, end, branch):
+        start_utc, end_utc = self._overview_utc_bounds(start, end)
+        return self._overview_safe(lambda: self.env["stock.picking"].search_count([
+            ("picking_type_id.code", "=", "incoming"), ("picking_type_id.warehouse_id", "=", branch.id), ("state", "=", "done"),
+            ("date_done", ">=", fields.Datetime.to_string(start_utc)), ("date_done", "<", fields.Datetime.to_string(end_utc)),
+        ]))
+
+    @api.model
     def _operations_purchasing(self, start, end):
         data = self.get_purchasing_overview_data(fields.Date.to_string(start), fields.Date.to_string(end))
         if not data.get("available"):
@@ -112,7 +127,8 @@ class StrategicPerformanceDashboardBranchOperations(models.AbstractModel):
             "overdue_count": data["overdue_delivery_count"],
             "overdue_value": data["overdue_delivery_value"],
             # No links to purchase orders: Odoo's Purchase screens are not branch-restricted, so they stay Head Office only.
-            "deliveries": [{"name": row["name"], "supplier": row["supplier"], "status": row["status"], "expected_date": row["expected_date"],
+            "period_orders": [{"name": row["name"], "supplier": row["supplier"], "lines": row["lines"]} for row in (data.get("recent_orders") or [])[:_LIST]],
+            "deliveries": [{"name": row["name"], "supplier": row["supplier"], "status": row["status"], "expected_date": row["expected_date"], "lines": row["lines"],
                             "outstanding_value": row["outstanding_value"], "date_order": row["date_order"]}
                            for row in (data.get("open_deliveries") or [])[:_LIST]],
             "messages": data.get("messages") or [],

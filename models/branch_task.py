@@ -141,7 +141,7 @@ class StrategicBranchTask(models.Model):
             raise AccessError("A task can only support company-wide objectives or objectives of its own branch.")
 
     def write(self, vals):
-        if self.env.context.get("strategic_task_workflow") or self.env.su:
+        if self.env.su:
             return super().write(vals)
         if _LIFECYCLE_FIELDS.intersection(vals):
             raise ValidationError("A task's assignee, branch and status change only through its workflow buttons.")
@@ -163,7 +163,8 @@ class StrategicBranchTask(models.Model):
         self.ensure_one()
         if self.state not in allowed_from:
             raise ValidationError("This task is %s, so it cannot be changed this way." % dict(self._fields["state"].selection)[self.state])
-        self.with_context(strategic_task_workflow=True).write(vals)
+        # sudo, not a context flag: a client can send any context key but cannot obtain sudo.
+        self.sudo().write(vals)
         self.message_post(body=message, subtype_xmlid="mail.mt_note", partner_ids=notify.partner_id.ids if notify else [])
         return True
 
@@ -325,7 +326,8 @@ class StrategicBranchTask(models.Model):
                 note = "Branch Manager"
             else:
                 note = "Cannot receive tasks: no Strategic Management employee access"
-        return {"id": user.id, "name": user.name, "can_receive_tasks": user in assignable, "note": note, "counts": self._counts(tasks)}
+        return {"id": user.id, "name": user.name, "can_receive_tasks": user in assignable, "note": note, "counts": self._counts(tasks),
+                "departments": user.sudo().strategic_department_ids.mapped("name")}
 
     @api.model
     def get_employee_management(self):

@@ -44,3 +44,7 @@ from . import test_employee_management
 from . import test_branch_proposals
 from . import test_branch_operations
 from . import test_branch_reports
+from . import test_department_access
+from . import test_department_dashboards
+from . import test_employee_security
+from . import test_branch_manager_security

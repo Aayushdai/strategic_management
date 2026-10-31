@@ -57,6 +57,7 @@ const SIDEBAR_PRIMARY = [
     { id: "configuration", label: "Settings" },
 ];
 const SIDEBAR_MORE = NAVIGATION_ITEMS.filter((item) => ["branches", "people", "tasks_issues", "app_dependencies"].includes(item.id));
+const HEAD_OFFICE_SIDEBAR_MORE = [...SIDEBAR_MORE, { id: "department_assignment", label: "Department Assignment" }];
 // Branch Manager sidebar (Phase 1). Items with a section or action open pages that already exist and are scoped to the
 // manager's branch on the server; "planned" items belong to later phases and are shown disabled, never as working pages.
 // Objectives stay reachable from the dashboard's objective cards and links; notifications from the header bell.
@@ -73,8 +74,9 @@ const BRANCH_SIDEBAR = [
     { id: "propose_objective", label: "Propose Objective", action: "strategic_management.action_business_goals", context: { propose_objective: true } },
     { id: "reports", label: "Reports" },
 ];
-// Employees: their own tasks first, then the pages they could already open.
-const EMPLOYEE_SIDEBAR = [{ id: "my_tasks", label: "My Tasks" }, ...SIDEBAR_PRIMARY];
+// Employees: their dashboard and tasks; assigned departments come from the server (see sidebarMore).
+const EMPLOYEE_SIDEBAR = [{ id: "employee_dashboard", label: "Dashboard" }, { id: "my_tasks", label: "My Tasks" },
+    { id: "my_kpis", label: "My KPI Dashboard", action: "strategic_management.action_strategic_employee_dashboard" }];
 const TASK_MODEL = "strategic.branch.task";
 const REPORT_MODEL = "strategic.branch.report";
 // Report sections, as saved by the server; "(when taken)" figures describe the moment the report's figures were taken.
@@ -94,6 +96,7 @@ const BRANCH_SIDEBAR_MORE = [
     { id: "configuration", label: "Settings" },
 ];
 const PERIOD_PRESETS = [
+    { key: "this_week", label: "This Week" },
     { key: "this_month", label: "This Month" },
     { key: "last_month", label: "Last Month" },
     { key: "last_3_months", label: "Last 3 Months" },
@@ -169,6 +172,14 @@ export class StrategicNavigationShell extends Component {
             branchOps: null,
             branchOpsLoading: false,
             branchOpsError: "",
+            objectiveDeadlines: {},
+            employeeContext: null,
+            departmentProductId: false,
+            departmentAssignments: null,
+            departmentAssignmentsError: "",
+            departmentForm: null,
+            departmentSearch: "",
+            departmentSaving: false,
             opsTab: "sales",
             // Branch reports (Phase 7): the list, the open report, and Head Office's open blockers.
             reports: null,
@@ -246,7 +257,9 @@ export class StrategicNavigationShell extends Component {
 
     refreshActiveSectionSilently() {
         // Hidden sections load on demand when opened, so only the visible live section is refreshed.
+        if (this.state.navContext?.role === "employee") this.loadEmployeeContext();
         const loaders = {
+            employee_dashboard: "loadMyTasks",
             bm_dashboard: "loadBranchObjectives",
             my_tasks: "loadMyTasks",
             task_management: "loadTaskManagement",
@@ -261,7 +274,7 @@ export class StrategicNavigationShell extends Component {
             tasks_issues: "loadTasksIssues",
             app_dependencies: "loadAppDependencies",
         };
-        const loader = loaders[this.state.activeSection];
+        const loader = this.departmentCode ? "loadBranchOps" : loaders[this.state.activeSection];
         if (!loader || this.branchError || document.visibilityState === "hidden") {
             return;
         }
@@ -328,6 +341,9 @@ export class StrategicNavigationShell extends Component {
                 Object.assign(this.state, { dateStart: data.period.start, dateEnd: data.period.end, todayDate: data.period.end });
             }
             if (this.state.activeSection === "overview") { await this.loadObjectiveRequests(); }
+            // Period change only: on landing the first load comes from loadBranchObjectives.
+            if (this.state.activeSection === "bm_dashboard" && this.branchOpsRequestId) { await this.loadBranchOps(); }
+            if (this.departmentCode) { await this.loadBranchOps(); }
             if (this.state.activeSection === "purchasing") { await this.loadPurchasing(); }
             if (this.state.activeSection === "branches") { await this.loadBranches(); }
             if (this.state.activeSection === "people") { await this.loadPeople(); }
@@ -416,6 +432,22 @@ export class StrategicNavigationShell extends Component {
         if (sectionId === "bm_dashboard" && this.isBranchManager) {
             return this.loadBranchObjectives();
         }
+        if (sectionId === "department_assignment") {
+            return this.loadDepartmentAssignments();
+        }
+        if (this.state.navContext?.role === "employee") {
+            this.loadEmployeeContext();
+        }
+        if (this.departmentCode) {
+            this.state.branchOps = null;
+            this.state.branchOpsError = "";
+            this.state.opsTab = this.departmentCode;
+            this.state.departmentProductId = false;
+            return this.loadBranchOps();
+        }
+        if (sectionId === "employee_dashboard") {
+            return this.loadMyTasks();
+        }
         if (sectionId === "my_tasks") {
             return this.loadMyTasks();
         }
@@ -483,7 +515,8 @@ export class StrategicNavigationShell extends Component {
         }
         if (context && context.role === "employee") {
             // Employees land on their own tasks.
-            this.state.activeSection = "my_tasks";
+            this.state.activeSection = "employee_dashboard";
+            await this.loadEmployeeContext();
             await this.loadOverview();
             return this.loadMyTasks();
         }
@@ -500,6 +533,11 @@ export class StrategicNavigationShell extends Component {
         try {
             this.state.branchObjectives = await this.orm.silent.call("strategic.performance.dashboard", "get_branch_objective_summary", []);
             this.state.branchObjectivesError = "";
+            // Instructions carry no deadline of their own; show their objective's. A failure only hides the deadline.
+            if (this.state.branchObjectives.instructions?.length) {
+                const goals = await this.orm.silent.call("strategic.goal.setup", "get_goals", []).catch(() => []);
+                this.state.objectiveDeadlines = Object.fromEntries(goals.map((goal) => [goal.objective_id, goal.deadline]));
+            }
         } catch (error) {
             if (!silent) {
                 this.state.branchObjectives = null;
@@ -778,24 +816,102 @@ export class StrategicNavigationShell extends Component {
     // ------------------------------------------------------------ Branch operations (Phase 6)
     /** Sales, inventory and purchasing for the manager's own branch; the server decides the branch, the shared dates the period. */
     async loadBranchOps({ silent = false } = {}) {
-        if (!this.isBranchManager || this.branchError) return;
+        const code = this.departmentCode;
+        if ((!this.isBranchManager && !code) || this.branchError) return;
         const requestId = (this.branchOpsRequestId = (this.branchOpsRequestId || 0) + 1);
         if (!silent) this.state.branchOpsLoading = true;
         try {
-            const data = await this.orm.silent.call("strategic.performance.dashboard", "get_branch_operations",
-                [this.state.dateStart || false, this.state.dateEnd || false]);
+            const period = [this.state.dateStart || false, this.state.dateEnd || false];
+            const data = await this.orm.silent.call("strategic.performance.dashboard", code ? "get_department_operations" : "get_branch_operations",
+                code ? [code, ...period, this.state.departmentProductId] : period);
             if (requestId === this.branchOpsRequestId) {
                 this.state.branchOps = data;
                 this.state.branchOpsError = "";
             }
         } catch (error) {
             // A failed background refresh keeps the last good figures on screen.
-            if (requestId === this.branchOpsRequestId && !silent) {
+            // Except a department: a refusal means the access is gone, so its figures must not stay on screen.
+            if (requestId === this.branchOpsRequestId && (!silent || code)) {
                 this.state.branchOps = null;
                 this.state.branchOpsError = error.data?.message || error.message || "Branch figures could not be loaded.";
             }
         } finally {
             if (requestId === this.branchOpsRequestId) this.state.branchOpsLoading = false;
+        }
+    }
+
+    // ------------------------------------------------------------ employee departments (Phase 9B)
+    /** The department page being shown; the server re-checks membership on every request. */
+    get departmentCode() {
+        const section = this.state.activeSection;
+        return section.startsWith("department_") && section !== "department_assignment" ? section.slice("department_".length) : null;
+    }
+
+    get departmentName() {
+        return (this.state.employeeContext?.departments || []).find((row) => row.code === this.departmentCode)?.name || "";
+    }
+
+    async loadEmployeeContext() {
+        try {
+            this.state.employeeContext = await this.orm.silent.call("strategic.performance.dashboard", "get_employee_context", []);
+        } catch (error) {
+            this.state.employeeContext = { name: "", branch: false, departments: [], access_error: error.data?.message || error.message || "Your access could not be checked." };
+        }
+    }
+
+    onDepartmentProductChanged(event) {
+        this.state.departmentProductId = Number(event.target.value) || false;
+        return this.loadBranchOps();
+    }
+
+    /** One row per ordered product, keeping each product's own unit. */
+    departmentOrderLines(orders) {
+        return (orders || []).flatMap((order) => order.lines.map((line, index) => ({ ...line, key: `${order.name}-${index}`, order: order.name, supplier: order.supplier })));
+    }
+
+    // ------------------------------------------------------------ department assignment (Phase 9A)
+    async loadDepartmentAssignments() {
+        try {
+            this.state.departmentAssignments = await this.orm.silent.call("strategic.performance.dashboard", "get_department_assignments", []);
+            this.state.departmentAssignmentsError = "";
+        } catch (error) {
+            this.state.departmentAssignments = null;
+            this.state.departmentAssignmentsError = error.data?.message || error.message || "Department assignments could not be loaded.";
+        }
+    }
+
+    get departmentRows() {
+        const search = this.state.departmentSearch.trim().toLowerCase();
+        const rows = this.state.departmentAssignments?.employees || [];
+        return search ? rows.filter((row) => row.name.toLowerCase().includes(search) || (row.branch || "").toLowerCase().includes(search)) : rows;
+    }
+
+    openDepartmentForm(row) {
+        this.state.departmentForm = { row, departmentIds: [...row.department_ids] };
+    }
+
+    closeDepartmentForm() {
+        if (!this.state.departmentSaving) this.state.departmentForm = null;
+    }
+
+    toggleDepartment(id, event) {
+        const form = this.state.departmentForm;
+        form.departmentIds = event.target.checked ? [...form.departmentIds, id] : form.departmentIds.filter((value) => value !== id);
+    }
+
+    async saveDepartments() {
+        const form = this.state.departmentForm;
+        if (!form || this.state.departmentSaving) return;
+        this.state.departmentSaving = true;
+        try {
+            await this.orm.call("strategic.performance.dashboard", "set_employee_departments", [form.row.id, form.departmentIds]);
+            this.notification.add(`Departments saved for ${form.row.name}.`, { type: "success" });
+            this.state.departmentForm = null;
+            await this.loadDepartmentAssignments();
+        } catch (error) {
+            this.notification.add(error.data?.message || error.message || "The departments could not be saved.", { type: "danger" });
+        } finally {
+            this.state.departmentSaving = false;
         }
     }
 
@@ -824,6 +940,42 @@ export class StrategicNavigationShell extends Component {
         const step = Math.ceil(trend.length / 8);
         return trend.map((row, index) => ({ ...row, height: max > 0 ? Math.max(0, Math.round((row.sales / max) * 100)) : 0,
                                              showLabel: index % step === 0 || index === trend.length - 1 }));
+    }
+
+    /** Dashboard sales chart: the server's trend on a round axis, positions in percent; null when the period has no sales. */
+    get opsTrendChart() {
+        const sales = this.state.branchOps?.sales;
+        if (!sales?.trend?.length || !(sales.net_sales || sales.orders)) return null;
+        const values = sales.trend.map((row) => row.sales);
+        const scale = this.niceScale(Math.min(0, ...values), Math.max(0, ...values));
+        const y = (value) => ((value - scale.low) / (scale.high - scale.low)) * 100;
+        const step = Math.ceil(values.length / 8);
+        return {
+            ticks: this.axisTicks(scale, y),
+            bars: sales.trend.map((row, index) => ({
+                key: row.key, label: row.label, title: `${row.label}: ${this.formatOpsMoney(row.sales, sales)}`,
+                bottom: Math.min(y(0), y(row.sales)), height: Math.abs(y(row.sales) - y(0)),
+                showLabel: index === values.length - 1 || (index % step === 0 && values.length - 1 - index >= step / 2),
+            })),
+        };
+    }
+
+    /** Dashboard: one status row per operational area; an unreadable area says so instead of showing zero. */
+    get opsHealth() {
+        const { inventory: inv, purchasing: pur } = this.state.branchOps;
+        const row = (key, label, section, count, status) => ({ key, label, section, value: this.formatOpsCount(count), status,
+            tone: count ? "warn" : "ok" });
+        const missing = (key, label, section, status = "Not available") => ({ key, label, section, value: "—", status, tone: "none" });
+        return [
+            inv.available ? row("low", "Low stock", "inventory_waste", inv.low_stock_count, inv.low_stock_count ? "Below minimum" : "All above minimum")
+                : missing("low", "Low stock", "inventory_waste"),
+            !inv.available ? missing("expiry", "Expiring or expired", "inventory_waste")
+                : !inv.expiry_tracking_available ? missing("expiry", "Expiring or expired", "inventory_waste", "Expiry not tracked")
+                : row("expiry", "Expiring or expired", "inventory_waste", inv.expiring_count, inv.expiring_count ? "Check lots" : "Nothing expiring soon"),
+            !pur.available ? missing("deliveries", "Outstanding deliveries", "purchasing")
+                : { ...row("deliveries", "Outstanding deliveries", "purchasing", pur.awaiting_count, pur.overdue_count ? `${this.formatOpsCount(pur.overdue_count)} overdue` : pur.awaiting_count ? "None overdue" : "Nothing outstanding"),
+                    tone: pur.overdue_count ? "bad" : "ok" },
+        ];
     }
 
     /** Dashboard: what needs action now (low stock, expiring lots, overdue deliveries), at most five. */
@@ -921,7 +1073,15 @@ export class StrategicNavigationShell extends Component {
         }
     }
 
+    get sidebarMoreLabel() {
+        return this.state.navContext?.role === "employee" ? "Assigned Departments" : "More";
+    }
+
     get sidebarMore() {
+        if (this.state.navContext?.role === "employee") {
+            return (this.state.employeeContext?.departments || []).map((department) => ({ id: `department_${department.code}`, label: department.name }));
+        }
+        if (this.state.navContext?.role === "head_office") return HEAD_OFFICE_SIDEBAR_MORE;
         return this.isBranchManager ? BRANCH_SIDEBAR_MORE : SIDEBAR_MORE;
     }
 
@@ -957,6 +1117,7 @@ export class StrategicNavigationShell extends Component {
         const range = {
             this_month: [new Date(year, month, 1), today],
             last_month: [new Date(year, month - 1, 1), new Date(year, month, 0)],
+            this_week: [new Date(year, month, today.getDate() - ((today.getDay() + 6) % 7)), today],
             last_3_months: [new Date(year, month - 2, 1), today],
             this_year: [new Date(year, 0, 1), today],
         }[preset];

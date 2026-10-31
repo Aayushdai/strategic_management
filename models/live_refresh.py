@@ -247,7 +247,7 @@ class ResUsers(models.Model):
 
     def _live_refresh_area(self, vals=None):
         # Branch assignment and role changes alter People staffing figures.
-        if vals is not None and not {"strategic_branch_warehouse_id", "active", "group_ids", "name"} & set(vals):
+        if vals is not None and not {"strategic_branch_warehouse_id", "strategic_department_ids", "active", "group_ids", "name"} & set(vals):
             return False
         return "people"
 

@@ -25,3 +25,4 @@ from . import product_template
 from . import stock_count_plan
 from . import branch_operations
 from . import branch_report
+from . import department_access

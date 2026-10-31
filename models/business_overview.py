@@ -51,7 +51,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         company = self.env.company
         user = self.env.user
         is_head_office = user.has_group("strategic_management.group_strategic_head_office_manager")
-        is_branch_manager = user.has_group("strategic_management.group_strategic_branch_manager") and not is_head_office
+        is_branch_manager = (user.has_group("strategic_management.group_strategic_branch_manager") and not is_head_office) or self._department_read_active()
         is_employee = not is_head_office and not is_branch_manager
 
         Warehouse = self.env["stock.warehouse"]
@@ -396,7 +396,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         company = self.env.company
         user = self.env.user
         is_head_office = user.has_group("strategic_management.group_strategic_head_office_manager")
-        is_branch_manager = user.has_group("strategic_management.group_strategic_branch_manager") and not is_head_office
+        is_branch_manager = (user.has_group("strategic_management.group_strategic_branch_manager") and not is_head_office) or self._department_read_active()
         currency = company.currency_id
         currency_data = {
             "name": currency.name if currency else "",
@@ -537,6 +537,11 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         def lines_for(order):
             lines = order.order_line if "order_line" in order._fields else self.env["purchase.order.line"].browse()
             return lines.filtered(lambda line: bool(line.product_id) and (not getattr(line, "display_type", False)))
+
+        def received_lines(order):
+            # Per product, in the line's own unit: quantities in different units cannot be added up.
+            return [{"product": line.product_id.display_name, "unit": line.uom_id.name, "ordered": float(line.product_qty or 0.0),
+                     "received": float(line.qty_received or 0.0)} for line in lines_for(order)]
 
         def line_remaining(line):
             ordered = float(getattr(line, "product_qty", 0.0) or 0.0)
@@ -738,6 +743,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             status = "Overdue" if order.id in overdue_order_ids else "Partial" if received_any else "Awaiting"
             open_deliveries.append({
                 "name": order.name,
+                "lines": received_lines(order),
                 "supplier": order.partner_id.display_name if order.partner_id else "Unknown supplier",
                 "branch": order_branch(order),
                 "status": status,
@@ -791,6 +797,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             status_label, status_class = order_status(order)
             recent_orders.append({
                 "id": order.id,
+                "lines": received_lines(order),
                 "name": order.name,
                 "supplier": order.partner_id.display_name if order.partner_id else "Unknown supplier",
                 "branch": order_branch(order),
@@ -1039,7 +1046,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         company = self.env.company
         user = self.env.user
         is_head_office = user.has_group("strategic_management.group_strategic_head_office_manager")
-        is_branch_manager = user.has_group("strategic_management.group_strategic_branch_manager") and not is_head_office
+        is_branch_manager = (user.has_group("strategic_management.group_strategic_branch_manager") and not is_head_office) or self._department_read_active()
         currency = company.currency_id
         currency_data = {
             "name": currency.name if currency else "USD",
@@ -1056,7 +1063,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             "selected_warehouse_id": False,
             "currency": currency_data,
             "summary": {"low_stock_count": False, "expiring_soon_count": False, "waste_cost": False, "discrepancy_count": False},
-            "stock_health": [], "waste_by_product": [], "inventory_products": [],
+            "stock_health": [], "stock_levels": [], "waste_by_product": [], "inventory_products": [],
             "selected_product_id": False, "movement": False, "expiry_tracking_available": False, "expiring_stock": [],
             "stock_discrepancies": [], "attention": [], "branch_comparison": [], "messages": [],
         }
@@ -1513,6 +1520,13 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                 "discrepancy_count": discrepancy_count,
             },
             "stock_health": stock_health,
+            # Current balances per product, from the same quants as the figures above.
+            "stock_levels": sorted(
+                ({"product_id": pid, "name": product_meta.get(pid, {}).get("name") or product_labels.get(pid) or "Product",
+                  "unit": product_meta.get(pid, {}).get("uom") or "", "on_hand": round(values["quantity"], 4),
+                  "available": round(values["available_quantity"], 4)}
+                 for (pid, _wid), values in product_wh.items() if values["quant_rows"]),
+                key=lambda row: row["name"].casefold())[:_LIST_LIMIT],
             "waste_by_product": waste_by_product if waste_breakdown_available else [],
             "waste_by_reason": [{"reason": reason, "cost": round(cost, 2)} for reason, cost in sorted(waste_by_reason_map.items())]
                                if waste_breakdown_available else [],

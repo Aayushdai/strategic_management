@@ -22,6 +22,7 @@
     "data": [
         "security/strategic_management_security.xml",
         "security/ir.access.csv",
+        "data/strategic_department_data.xml",
         "views/res_users_views.xml",
         "views/stock_warehouse_views.xml",
         "views/navigation_shell.xml",

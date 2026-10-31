@@ -15,7 +15,7 @@
               name="Strategy &amp; KPIs"
               parent="menu_strategic_management_root"
               sequence="90"
-              groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,strategic_management.group_strategic_employee"/>
+              groups="strategic_management.group_strategic_head_office_manager,strategic_management.group_strategic_branch_manager,-strategic_management.group_strategic_employee"/>
 
     <!-- Top-bar shortcut to Objectives: Head Office and Branch Managers only -->
     <menuitem id="menu_strategic_objective_top"
