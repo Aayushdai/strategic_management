@@ -165,7 +165,17 @@ class StrategicPerformanceDashboardBranches(models.AbstractModel):
 
     @api.model
     def _strategic_role(self):
+        """The role data methods act on. Admin stops here, so no method can treat it as a lesser or a wider role."""
+        role = self._strategic_role_name()
+        if role == "admin":
+            raise AccessError("The Admin role has no access to branch or department data.")
+        return role
+
+    @api.model
+    def _strategic_role_name(self):
         user = self.env.user
+        if user.has_group("strategic_management.group_strategic_admin"):
+            return "admin"
         if user.has_group("strategic_management.group_strategic_head_office_manager"):
             return "head_office"
         if user.has_group("strategic_management.group_strategic_branch_manager"):
@@ -179,7 +189,7 @@ class StrategicPerformanceDashboardBranches(models.AbstractModel):
         The role is known even when a Branch Manager's branch is missing or invalid, so the app can show that
         problem instead of falling back to another role's navigation; data methods keep refusing as before.
         """
-        role = self._strategic_role()
+        role = self._strategic_role_name()
         context = {"role": role, "branch": False, "branch_error": False}
         if role == "branch_manager":
             # sudo only to validate the user's own assignment; a branch in another company may not be readable.

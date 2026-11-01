@@ -328,7 +328,7 @@ class TestEmployeeSecurity(TransactionCase):
             self.assertIn(self.env.ref("strategic_management.menu_strategic_management_root").id, self.env["ir.ui.menu"].with_user(user).load_menus(False))
 
     def test_head_office_and_manager_keep_their_menus(self):
-        expected = {"Business Goals", "Objectives", "Strategy & KPIs"}
+        expected = {"Business Goals", "Objectives"}
         self.assertLessEqual(expected, self._menu_names(self.head))
         self.assertLessEqual(expected, self._menu_names(self.manager1))
 

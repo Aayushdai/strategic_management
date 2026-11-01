@@ -1,6 +1,6 @@
 {
     "name": "Strategic Performance Management",
-    "version": "20.0.1.8.0",
+    "version": "20.0.1.9.0",
     "category": "Productivity",
     "summary": "Strategic objectives, OKRs, KPIs, and performance management",
     "author": "Strategic Management Team",
@@ -13,6 +13,7 @@
         "stock",
         "purchase",
         "purchase_stock",
+        "sale",
         "point_of_sale",
         "pos_stock",
         "mrp",

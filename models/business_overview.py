@@ -38,6 +38,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         The method respects the requesting user's ACLs and record rules. Unavailable
         source data is returned as ``False`` so the UI can show "Not available".
         """
+        self._strategic_role()  # Admin stops here.
         if trend_granularity not in ("day", "week", "month"):
             trend_granularity = "month"
         try:
@@ -360,7 +361,8 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                 "position": company.currency_id.position,
                 "decimal_places": company.currency_id.decimal_places,
             },
-            "branch_options": branch_options,            "currency": {
+            "branch_options": branch_options,
+            "currency": {
                 "name": company.currency_id.name,
                 "symbol": company.currency_id.symbol or company.currency_id.name,
                 "position": company.currency_id.position or "before",
@@ -392,6 +394,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
     @api.model
     def get_purchasing_overview_data(self, date_start=False, date_end=False, warehouse_id=False):
         """Return Purchasing dashboard figures from actual Purchase and Stock records."""
+        self._strategic_role()  # Admin stops here.
         start, end = self._resolve_period(date_start, date_end)
         company = self.env.company
         user = self.env.user
@@ -1034,6 +1037,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
     @api.model
     def get_inventory_waste_data(self, date_start=False, date_end=False, warehouse_id=False, product_id=False):
         """Return actual stock, expiry, scrap and movement data for authorized warehouses."""
+        self._strategic_role()  # Admin stops here.
         start, end = self._resolve_period(date_start, date_end)
         today = fields.Date.context_today(self)
         if end > today:

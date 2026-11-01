@@ -90,6 +90,7 @@ class StrategicPerformanceDashboardAppDependencies(models.AbstractModel):
     @api.model
     def get_app_dependencies_data(self):
         """Read module status and business purpose. This method never installs modules."""
+        self._strategic_role()  # Admin stops here.
         names = sorted({module for app in _APP_DEPENDENCIES for module, _label in app["modules"]})
         rows = self.env["ir.module.module"].sudo().search_read(
             [("name", "in", names)], ["name", "state"], limit=len(names) + 20,

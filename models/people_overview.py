@@ -13,6 +13,7 @@ from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from odoo import api, fields, models
+from odoo.exceptions import AccessError, ValidationError
 
 from .business_overview import _LIST_LIMIT
 
@@ -22,8 +23,75 @@ _WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 _UTC = ZoneInfo("UTC")
 
 
+_ROLE_GROUPS = {
+    "head_office": "strategic_management.group_strategic_head_office_manager",
+    "admin": "strategic_management.group_strategic_admin",
+    "branch_manager": "strategic_management.group_strategic_branch_manager",
+    "employee": "strategic_management.group_strategic_employee",
+}
+_ROLE_LABELS = {"head_office": "Head Office Manager", "admin": "Admin", "branch_manager": "Branch Manager", "employee": "Employee"}
+
+
 class StrategicPerformanceDashboardPeople(models.AbstractModel):
     _inherit = "strategic.performance.dashboard"
+
+    # ------------------------------------------------------------------ roles
+    @api.model
+    def _require_role_admin(self):
+        if self._strategic_role() != "head_office":
+            raise AccessError("Roles are managed by Head Office.")
+
+    @api.model
+    def _user_role_name(self, user):
+        # Same precedence as _strategic_role_name; None for a user who holds no Strategic Management role.
+        return next((role for role in ("admin", "head_office", "branch_manager", "employee") if user.has_group(_ROLE_GROUPS[role])), None)
+
+    @api.model
+    def _role_row(self, user):
+        role = self._user_role_name(user)
+        return {"id": user.id, "name": user.name, "login": user.login, "role": role or False, "role_label": _ROLE_LABELS.get(role, "No role"),
+                "branch_id": user.strategic_branch_warehouse_id.id, "branch": user.strategic_branch_warehouse_id.display_name or False,
+                "departments": user.strategic_department_ids.mapped("name"), "can_change": user != self.env.user}
+
+    @api.model
+    def _role_users(self):
+        return self.env["res.users"].sudo().search([("active", "=", True), ("share", "=", False), ("company_ids", "in", self.env.company.id)], order="name, id")
+
+    @api.model
+    def get_role_assignments(self):
+        """People with a login and their role, for Head Office's People page."""
+        self._require_role_admin()
+        return {"people": [self._role_row(user) for user in self._role_users()],
+                "roles": [{"id": key, "name": label} for key, label in _ROLE_LABELS.items()],
+                "branches": [{"id": branch.id, "name": branch.display_name} for branch in self.env["stock.warehouse"].search([("company_id", "=", self.env.company.id)], order="name")]}
+
+    @api.model
+    def set_user_role(self, user_id, role, warehouse_id=False):
+        """Replace a person's Strategic Management role. Departments are never touched; they apply again if the person returns to Employee."""
+        self._require_role_admin()
+        if role not in _ROLE_GROUPS:
+            raise ValidationError("Choose a valid role.")
+        target = self._role_users().filtered(lambda user: user.id == user_id) if isinstance(user_id, int) and not isinstance(user_id, bool) else self.env["res.users"]
+        if not target:
+            raise AccessError("This person is not in the active company.")
+        if target == self.env.user:
+            raise ValidationError("You cannot change your own role; ask another Head Office Manager.")
+        if role == "admin" and target.has_group("base.group_system"):
+            raise ValidationError("%s is an Odoo system administrator, which would bypass the Admin role's restrictions." % target.name)
+        branch = self.env["stock.warehouse"]
+        if warehouse_id:
+            branch = self.env["stock.warehouse"].sudo().browse(int(warehouse_id)).exists()
+            if not branch or branch.company_id != self.env.company:
+                raise ValidationError("Choose a branch of this company.")
+        if role == "branch_manager" and not (branch or target.strategic_branch_warehouse_id):
+            raise ValidationError("A Branch Manager needs a branch.")
+        commands = [(3, self.env.ref(xmlid).id) for xmlid in _ROLE_GROUPS.values()] + [(4, self.env.ref(_ROLE_GROUPS[role]).id)]
+        # App rights follow in res.users.write, whichever path changes the role.
+        values = {"group_ids": commands}
+        if branch and role in ("branch_manager", "employee"):
+            values["strategic_branch_warehouse_id"] = branch.id
+        target.write(values)
+        return self._role_row(target)
 
     @api.model
     def get_people_overview_data(self, date_start=False, date_end=False, warehouse_id=False):

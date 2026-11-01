@@ -76,6 +76,7 @@ const BRANCH_SIDEBAR = [
     { id: "reports", label: "Reports" },
 ];
 // Employees: their dashboard and tasks; assigned departments come from the server (see sidebarMore).
+const ADMIN_SIDEBAR = [{ id: "admin_home", label: "Home" }];
 const EMPLOYEE_SIDEBAR = [{ id: "employee_dashboard", label: "Dashboard" }, { id: "my_tasks", label: "My Tasks" },
     { id: "my_performance", label: "My Performance" }];
 const TASK_MODEL = "strategic.branch.task";
@@ -225,6 +226,10 @@ export class StrategicNavigationShell extends Component {
             branchesData: null,
             branchesLoading: false,
             peopleData: null,
+            roles: null,
+            rolesError: "",
+            roleForm: null,
+            roleSaving: false,
             peopleLoading: false,
             overviewExtras: null,
             // Purchasing: compact previews; "See more" expands the existing full lists in place.
@@ -506,6 +511,7 @@ export class StrategicNavigationShell extends Component {
             return this.loadBranches();
         }
         if (sectionId === "people") {
+            this.loadRoles();
             return this.loadPeople();
         }
         if (sectionId === "tasks_issues") {
@@ -539,6 +545,11 @@ export class StrategicNavigationShell extends Component {
             console.error("Navigation context could not be loaded", error);
         }
         const context = this.state.navContext;
+        if (context && context.role === "admin") {
+            this.state.activeSection = "admin_home";
+            this.state.loading = false;
+            return;
+        }
         if (context && context.role === "branch_manager") {
             // A Branch Manager lands on their own dashboard.
             this.state.activeSection = "bm_dashboard";
@@ -594,6 +605,10 @@ export class StrategicNavigationShell extends Component {
         return role === "branch_manager";
     }
 
+    get isAdminRole() {
+        return this.state.navContext?.role === "admin";
+    }
+
     get isHeadOffice() {
         return (this.state.navContext?.role || this.state.data?.role) === "head_office";
     }
@@ -604,6 +619,7 @@ export class StrategicNavigationShell extends Component {
 
     get sidebarPrimary() {
         if (this.isBranchManager) return BRANCH_SIDEBAR;
+        if (this.isAdminRole) return ADMIN_SIDEBAR;
         return this.state.navContext?.role === "employee" ? EMPLOYEE_SIDEBAR : SIDEBAR_PRIMARY;
     }
 
@@ -1373,6 +1389,7 @@ export class StrategicNavigationShell extends Component {
         if (this.state.navContext?.role === "employee") {
             return (this.state.employeeContext?.departments || []).map((department) => ({ id: `department_${department.code}`, label: department.name }));
         }
+        if (this.isAdminRole) return [];
         if (this.state.navContext?.role === "head_office") return HEAD_OFFICE_SIDEBAR_MORE;
         return this.isBranchManager ? BRANCH_SIDEBAR_MORE : SIDEBAR_MORE;
     }
@@ -2089,6 +2106,36 @@ export class StrategicNavigationShell extends Component {
             if (requestId === this.peopleRequestId) {
                 this.state.peopleLoading = false;
             }
+        }
+    }
+
+    async loadRoles() {
+        if (!this.isHeadOffice) return;
+        try {
+            this.state.roles = await this.orm.silent.call("strategic.performance.dashboard", "get_role_assignments", []);
+            this.state.rolesError = "";
+        } catch (error) {
+            this.state.rolesError = error.data?.message || error.message || "Roles could not be loaded.";
+        }
+    }
+
+    openRoleForm(person) {
+        this.state.roleForm = { person, role: person.role || "", warehouse_id: person.branch_id ? String(person.branch_id) : "" };
+    }
+
+    async saveRoleForm() {
+        const form = this.state.roleForm;
+        if (this.state.roleSaving) return;
+        this.state.roleSaving = true;
+        try {
+            await this.orm.call("strategic.performance.dashboard", "set_user_role", [form.person.id, form.role, form.warehouse_id ? Number(form.warehouse_id) : false]);
+            this.notification.add(`Role saved for ${form.person.name}. It applies the next time they open the app.`, { type: "success" });
+            this.state.roleForm = null;
+            await this.loadRoles();
+        } catch (error) {
+            this.notification.add(error.data?.message || error.message || "The role could not be saved.", { type: "danger" });
+        } finally {
+            this.state.roleSaving = false;
         }
     }
 

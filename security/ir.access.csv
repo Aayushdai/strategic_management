@@ -84,3 +84,10 @@ access_strategic_task_extension_employee,Task Extension - Employee (own task),st
 access_strategic_task_blocker_head_office,Task Blocker - Head Office,strategic.task.blocker,strategic_management.group_strategic_head_office_manager,r,
 access_strategic_task_blocker_branch_manager,Task Blocker - Branch Manager (own branch),strategic.task.blocker,strategic_management.group_strategic_branch_manager,r,"[('task_id.warehouse_id', '=', user.strategic_branch_warehouse_id.id)]"
 access_strategic_task_blocker_employee,Task Blocker - Employee (own task),strategic.task.blocker,strategic_management.group_strategic_employee,r,"[('task_id.assigned_user_id', '=', user.id)]"
+access_strategic_admin_purchase_order,Strategic Admin restriction - purchase.order,purchase.order,,crud,"user._strategic_access_domain('purchase.order', 'branch')"
+access_strategic_admin_purchase_line,Strategic Admin restriction - purchase.order.line,purchase.order.line,,crud,"user._strategic_access_domain('purchase.order.line', 'branch')"
+access_strategic_admin_warehouse,Strategic Admin restriction - stock.warehouse,stock.warehouse,,crud,"user._strategic_access_domain('stock.warehouse', 'branch')"
+access_strategic_admin_lot,Strategic Admin restriction - stock.lot,stock.lot,,crud,"user._strategic_access_domain('stock.lot', 'branch')"
+access_strategic_admin_sale_order,Strategic Admin restriction - sale.order,sale.order,,crud,"user._strategic_access_domain('sale.order', 'branch')"
+access_strategic_admin_sale_line,Strategic Admin restriction - sale.order.line,sale.order.line,,crud,"user._strategic_access_domain('sale.order.line', 'branch')"
+access_strategic_admin_sale_report,Strategic Admin restriction - sale.report,sale.report,,crud,"user._strategic_access_domain('sale.report', 'branch')"

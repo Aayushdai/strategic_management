@@ -1359,6 +1359,12 @@
         </t>
     </div>
 </t>
+                <t t-elif="this.state.activeSection === 'admin_home'">
+    <div class="o_sm_bm o_sm_tasks">
+        <header class="o_sm_bm_header"><div class="o_sm_bm_title"><span class="o_sm_bm_kicker">Admin</span><h1 t-esc="this.userName"/><p>Your Admin workspace will appear here.</p></div></header>
+        <p class="o_sm_bm_empty">This role has no branch or department data.</p>
+    </div>
+</t>
                 <t t-elif="this.state.activeSection === 'people'">
     <div class="o_sm_people_ui">
         <t t-set="pp" t-value="this.state.peopleData"/>
@@ -1376,6 +1382,7 @@
             </div>
         </header>
 
+        <t t-if="this.isHeadOffice"><t t-call="strategic_management.PeopleRoles"/></t>
         <div t-if="this.state.peopleLoading" class="o_sm_br_notice">Loading live people data…</div>
         <t t-if="!this.state.peopleLoading and pp">
             <div t-foreach="pp.messages or []" t-as="message" t-key="message_index" class="o_sm_br_notice"><t t-esc="message"/></div>
@@ -1629,7 +1636,7 @@
     <g t-elif="item.id === 'tasks_issues'"><rect x="5" y="4.5" width="14" height="17" rx="2"/><path d="M9 4.5v-2h6v2M8 11l2 2 4-4M8 17h8"/></g>
     <g t-elif="item.id === 'reports'"><path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></g>
     <g t-elif="item.id === 'app_dependencies'"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><path d="M16.5 13.5v6M13.5 16.5h6"/></g>
-    <g t-elif="item.id === 'bm_dashboard' or item.id === 'employee_dashboard' or item.id === 'my_performance'"><rect x="3.5" y="3.5" width="7" height="8" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="5" rx="1.5"/><rect x="13.5" y="11.5" width="7" height="9" rx="1.5"/><rect x="3.5" y="14.5" width="7" height="6" rx="1.5"/></g>
+    <g t-elif="item.id === 'bm_dashboard' or item.id === 'employee_dashboard' or item.id === 'admin_home' or item.id === 'my_performance'"><rect x="3.5" y="3.5" width="7" height="8" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="5" rx="1.5"/><rect x="13.5" y="11.5" width="7" height="9" rx="1.5"/><rect x="3.5" y="14.5" width="7" height="6" rx="1.5"/></g>
     <g t-elif="item.id === 'my_tasks' or item.id === 'task_management'"><rect x="5" y="4.5" width="14" height="17" rx="2"/><path d="M9 4.5v-2h6v2M8 11l2 2 4-4M8 17h8"/></g>
     <g t-elif="item.id === 'employee_management' or item.id === 'department_assignment' or item.id === 'staffing_requests' or item.id === 'employee_performance'"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1.4a6 6 0 0 1 12 0V20Z"/><path d="M16 5.5a3 3 0 0 1 0 5.8M18 14a5 5 0 0 1 3 4.6V20h-4"/></g>
     <g t-elif="item.id === 'propose_objective'"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></g>
@@ -1702,6 +1709,37 @@
                     <button type="submit" class="o_sm_req_btn is-solid" t-att-disabled="this.state.departmentSaving">Save</button>
                 </footer>
             </form>
+        </div>
+    </t>
+    <t t-name="strategic_management.PeopleRoles">
+        <div class="o_sm_bm o_sm_tasks o_sm_people_roles">
+            <t t-set="rl" t-value="this.state.roles"/>
+            <p t-if="this.state.rolesError" class="o_sm_bm_notice is-error" role="alert" t-esc="this.state.rolesError"/>
+            <article t-elif="rl" class="o_sm_bm_card is-wide">
+                <div class="o_sm_bm_card_head"><h2>Roles</h2><span class="o_sm_emp_hint">A role is separate from departments; changing it leaves departments as they are.</span></div>
+                <div class="o_sm_task_table_wrap"><table class="o_sm_task_table">
+                    <thead><tr><th>Person</th><th>Role</th><th>Branch</th><th>Departments</th><th class="is-action">Action</th></tr></thead>
+                    <tbody><tr t-foreach="rl.people" t-as="person" t-key="person.id">
+                        <td data-label="Person"><strong t-esc="person.name"/><small t-esc="person.login"/></td>
+                        <td data-label="Role" t-esc="person.role_label"/>
+                        <td data-label="Branch" t-esc="person.branch || 'None'"/>
+                        <td data-label="Departments" t-esc="person.departments.length ? person.departments.join(', ') : 'None'"/>
+                        <td class="is-action"><button t-if="person.can_change" type="button" class="o_sm_task_btn" t-on-click="() => this.openRoleForm(person)">Change role</button></td>
+                    </tr></tbody>
+                </table></div>
+            </article>
+            <t t-set="rf" t-value="this.state.roleForm"/>
+            <div t-if="rf" class="o_sm_req_overlay" t-on-click="() => { this.state.roleForm = null; }">
+                <form class="o_sm_req_dialog o_sm_task_form o_sm_role_form" role="dialog" aria-modal="true" aria-label="Change role" t-on-click.stop="() => {}" t-on-submit.prevent="() => this.saveRoleForm()">
+                    <header class="o_sm_req_dialog_head"><div><span class="o_sm_req_kicker">Change role</span><h2 t-esc="rf.person.name"/></div><button type="button" class="o_sm_req_close" aria-label="Close" t-on-click="() => { this.state.roleForm = null; }">×</button></header>
+                    <div class="o_sm_req_dialog_body">
+                        <label>Role<select required="required" t-on-change="(ev) => { rf.role = ev.target.value; }"><option value="">Choose a role</option><option t-foreach="rl.roles" t-as="option" t-key="option.id" t-att-value="option.id" t-att-selected="option.id === rf.role" t-esc="option.name"/></select></label>
+                        <label t-if="rf.role === 'branch_manager' or rf.role === 'employee'">Branch<select t-att-required="rf.role === 'branch_manager'" t-on-change="(ev) => { rf.warehouse_id = ev.target.value; }"><option value="">Choose a branch</option><option t-foreach="rl.branches" t-as="branch" t-key="branch.id" t-att-value="branch.id" t-att-selected="('' + branch.id) === rf.warehouse_id" t-esc="branch.name"/></select></label>
+                        <p t-if="rf.role === 'admin'" class="o_sm_bm_notice">Admin has no branch or department data. Point of Sale, Inventory, Purchase, Sales, Accounting, Manufacturing and HR app access is set aside while they are Admin, and given back when their role changes.</p>
+                    </div>
+                    <footer class="o_sm_req_dialog_foot"><button type="submit" class="o_sm_req_btn is-solid" t-att-disabled="this.state.roleSaving">Save</button></footer>
+                </form>
+            </div>
         </div>
     </t>
     <t t-name="strategic_management.StaffingRequestForm">

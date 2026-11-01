@@ -2255,3 +2255,4 @@
 .o_sm_navigation_shell .o_sm_my_performance .o_sm_bm_card { margin-bottom: .85rem; }
 @media (max-width: 62rem) { .o_sm_navigation_shell .o_sm_emp_work { grid-template-columns: minmax(0, 1fr); } }
 .o_sm_navigation_shell .o_sm_staff_pending { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .85rem; }
+.o_sm_navigation_shell .o_sm_people_roles { padding: 0; margin-bottom: 1rem; }

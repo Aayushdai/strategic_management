@@ -50,3 +50,4 @@ from . import test_employee_security
 from . import test_branch_manager_security
 from . import test_pos_recipe_lots
 from . import test_staffing
+from . import test_admin_role

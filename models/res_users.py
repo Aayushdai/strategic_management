@@ -2,6 +2,18 @@ from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
 _NOTHING = [("id", "=", False)]
+# Restricted for the Admin role only; every other role keeps what its groups allow on these.
+_ADMIN_ONLY_RESTRICTED = {"purchase.order", "purchase.order.line", "stock.warehouse", "stock.lot", "sale.order", "sale.order.line", "sale.report"}
+_ADMIN_GROUP = "strategic_management.group_strategic_admin"
+# Rights to operational apps: set aside on becoming Admin, and the only rights changed on leaving it.
+_OPERATIONAL_GROUPS = (
+    "stock.group_stock_manager", "stock.group_stock_user", "point_of_sale.group_pos_manager", "point_of_sale.group_pos_user",
+    "purchase.group_purchase_manager", "purchase.group_purchase_user", "sales_team.group_sale_manager", "sales_team.group_sale_salesman_all_leads",
+    "sales_team.group_sale_salesman", "account.group_account_manager", "account.group_account_user", "account.group_account_invoice",
+    "account.group_account_readonly", "mrp.group_mrp_manager", "mrp.group_mrp_user", "hr.group_hr_manager", "hr.group_hr_user",
+    "hr_attendance.group_hr_attendance_manager", "hr_attendance.group_hr_attendance_user", "hr_attendance.group_hr_attendance_officer",
+    "product.group_product_manager",
+)
 _POS_PATH = {
     "pos.config": "picking_type_id.warehouse_id",
     "pos.session": "config_id.picking_type_id.warehouse_id",
@@ -31,6 +43,50 @@ class ResUsers(models.Model):
         groups="base.group_erp_manager",
         help="Operational departments this Employee belongs to. Grants no management rights.",
     )
+
+    # What the person had when they became Admin, given back when they leave that role.
+    strategic_admin_saved_group_ids = fields.Many2many(
+        "res.groups", "strategic_admin_saved_group_rel", "user_id", "group_id", string="App Rights Held Before Admin", groups="base.group_erp_manager", copy=False)
+
+    # ------------------------------------------------------------------ app rights across the Admin role
+    @api.model
+    def _strategic_operational_groups(self):
+        groups = (self.env.ref(xmlid, raise_if_not_found=False) for xmlid in _OPERATIONAL_GROUPS)
+        return self.env["res.groups"].sudo().browse(group.id for group in groups if group)
+
+    def _strategic_admin_snapshot(self):
+        admin, operational = self.env.ref(_ADMIN_GROUP), self._strategic_operational_groups()
+        return {user.id: (admin in user.group_ids, user.group_ids & operational) for user in self.sudo()}
+
+    def _strategic_apply_admin_change(self, before):
+        """Becoming Admin saves what the person holds; leaving restores exactly that, so anything granted meanwhile is dropped."""
+        admin, operational = self.env.ref(_ADMIN_GROUP), self._strategic_operational_groups()
+        for user in self.sudo():
+            was_admin, held = before.get(user.id, (False, operational.browse()))
+            is_admin = admin in user.group_ids
+            if is_admin == was_admin:
+                continue
+            removed = [(3, group.id) for group in operational]
+            if is_admin:
+                values = {"strategic_admin_saved_group_ids": [(6, 0, held.ids)], "group_ids": removed}
+            else:
+                values = {"strategic_admin_saved_group_ids": [(5,)], "group_ids": removed + [(4, group.id) for group in user.strategic_admin_saved_group_ids]}
+            # super: this is the correction itself, not another role change.
+            super(ResUsers, user).write(values)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        users = super().create(vals_list)
+        users._strategic_apply_admin_change({})
+        return users
+
+    def write(self, vals):
+        if "group_ids" not in vals:
+            return super().write(vals)
+        before = self._strategic_admin_snapshot()
+        result = super().write(vals)
+        self._strategic_apply_admin_change(before)
+        return result
 
     @api.constrains("strategic_department_ids")
     def _check_strategic_departments(self):
@@ -85,6 +141,10 @@ class ResUsers(models.Model):
         closes sessions as that cashier, so a POS User keeps their branch's POS records and POS operation types, while
         receipts and transfers need Inventory / User (or, for a manager, Purchase / User).
         """
+        if self.has_group("strategic_management.group_strategic_admin"):
+            return [("user_id", "=", self.id)] if model_name in ("hr.employee", "hr.employee.public") else _NOTHING
+        if model_name in _ADMIN_ONLY_RESTRICTED:
+            return []
         if not self.has_group("strategic_management.group_strategic_employee") \
                 or self.has_group("strategic_management.group_strategic_head_office_manager"):
             return []
@@ -115,3 +175,17 @@ class ResUsers(models.Model):
             return pos_only
         return self._strategic_stock_domain(model_name, branch) if manager or "inventory" in departments else pos_only
 
+
+
+class ResGroups(models.Model):
+    _inherit = "res.groups"
+
+    def write(self, vals):
+        """Odoo's group form changes membership without writing to the user, so it needs the same treatment."""
+        if "user_ids" not in vals or self.env.ref(_ADMIN_GROUP) not in self:
+            return super().write(vals)
+        users = self.env["res.users"].sudo().with_context(active_test=False).search([])
+        before = users._strategic_admin_snapshot()
+        result = super().write(vals)
+        users._strategic_apply_admin_change(before)
+        return result
