@@ -182,6 +182,7 @@ class TestStrategicKpiScheduledActions(TransactionCase):
 
     def test_submitted_employee_measurement_notifies_branch_manager_once(self):
         kpi = self._make_kpi("SCHED_MANUAL_REVIEW", calculation_type="manual_value")
+        kpi.individual_outcome = True
         target = self._make_target(kpi, scope="user")
         measurement = self.env["strategic.kpi.measurement"].with_user(
             self.employee_user

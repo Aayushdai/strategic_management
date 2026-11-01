@@ -51,6 +51,7 @@ class TestStrategicKpiManualMeasurement(TransactionCase):
             "direction": "higher",
             "source_type": "manual",
             "description": "Manual submission acceptance test.",
+            "individual_outcome": True,
             "company_id": self.company.id,
         })
 

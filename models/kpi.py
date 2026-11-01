@@ -202,6 +202,14 @@ class StrategicKpiDefinition(models.Model):
         tracking=True,
     )
     description = fields.Text()
+    individual_outcome = fields.Boolean(
+        "Individual Employee KPI",
+        tracking=True,
+        help=(
+            "On only when one employee owns the outcome and it can be measured for that person alone. "
+            "Organization and branch results are never an employee's personal result, even when the employee contributes to them."
+        ),
+    )
     calculation_type = fields.Selection(
         [
             ("manual_value", "Manual Value"),
@@ -272,6 +280,15 @@ class StrategicKpiDefinition(models.Model):
     baseline_ids = fields.One2many(
         "strategic.kpi.baseline", "kpi_id", string="Approved Baselines"
     )
+
+    @api.constrains("individual_outcome", "calculation_type")
+    def _check_individual_outcome(self):
+        for kpi in self.filtered("individual_outcome"):
+            if kpi.calculation_type != "manual_value":
+                raise ValidationError("%s is calculated from business records, so it cannot be an individual employee KPI." % kpi.display_name)
+        for kpi in self.filtered(lambda definition: not definition.individual_outcome):
+            if self.env["strategic.kpi.target"].sudo().search_count([("kpi_id", "=", kpi.id), ("scope", "=", "user"), ("state", "=", "approved")], limit=1):
+                raise ValidationError("Archive the employee targets of %s before removing its individual ownership." % kpi.display_name)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -884,6 +901,15 @@ class StrategicKpiTarget(models.Model):
             if target.scope != "user" and target.user_id:
                 raise ValidationError("Only employee KPI targets may set an employee.")
 
+    @api.constrains("scope", "kpi_id")
+    def _check_individual_ownership(self):
+        for target in self:
+            if target.scope == "user" and not target.kpi_id.individual_outcome:
+                raise ValidationError(
+                    "%s is not an individual employee KPI, so it cannot have an employee target. "
+                    "Set it at organization or branch level, and link the employee's work through tasks." % target.kpi_id.display_name
+                )
+
     @api.constrains("target_value", "range_min", "range_max", "kpi_id", "date_start", "date_end")
     def _check_target_values(self):
         for target in self:
@@ -961,6 +987,7 @@ class StrategicKpiTarget(models.Model):
     def action_approve(self):
         for target in self:
             target._check_target_scope_and_dates()
+            target._check_individual_ownership()
             target._check_target_values()
             target._check_target_baseline_contract()
         self.write({"state": "approved"})

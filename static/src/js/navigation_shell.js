@@ -77,7 +77,7 @@ const BRANCH_SIDEBAR = [
 ];
 // Employees: their dashboard and tasks; assigned departments come from the server (see sidebarMore).
 const EMPLOYEE_SIDEBAR = [{ id: "employee_dashboard", label: "Dashboard" }, { id: "my_tasks", label: "My Tasks" },
-    { id: "my_kpis", label: "My KPI Dashboard", action: "strategic_management.action_strategic_employee_dashboard" }];
+    { id: "my_performance", label: "My Performance" }];
 const TASK_MODEL = "strategic.branch.task";
 const REPORT_MODEL = "strategic.branch.report";
 // Report sections, as saved by the server; "(when taken)" figures describe the moment the report's figures were taken.
@@ -190,6 +190,13 @@ export class StrategicNavigationShell extends Component {
             performanceOverview: null,
             performanceOverviewError: "",
             myPerformance: null,
+            myPerformanceError: "",
+            // Its own period: tasks can be due later this month, which the business reports' "until today" would hide.
+            myPerformanceStart: this.asDateInput(new Date(new Date().getFullYear(), new Date().getMonth() - 5, 1)),
+            myPerformanceEnd: this.asDateInput(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)),
+            pendingStaffing: 0,
+            employeeWorkspace: null,
+            employeeWorkspaceError: "",
             departmentProductId: false,
             departmentAssignments: null,
             departmentAssignmentsError: "",
@@ -275,7 +282,8 @@ export class StrategicNavigationShell extends Component {
         // Hidden sections load on demand when opened, so only the visible live section is refreshed.
         if (this.state.navContext?.role === "employee") this.loadEmployeeContext();
         const loaders = {
-            employee_dashboard: "loadMyTasks",
+            employee_dashboard: "loadEmployeeHome",
+            my_performance: "loadMyPerformance",
             bm_dashboard: "loadBranchObjectives",
             my_tasks: "loadMyTasks",
             task_management: "loadTaskManagement",
@@ -356,7 +364,7 @@ export class StrategicNavigationShell extends Component {
             if (!this.state.todayDate && data.period) {
                 Object.assign(this.state, { dateStart: data.period.start, dateEnd: data.period.end, todayDate: data.period.end });
             }
-            if (this.state.activeSection === "overview") { await this.loadObjectiveRequests(); }
+            if (this.state.activeSection === "overview") { this.loadPendingStaffing(); await this.loadObjectiveRequests(); }
             // Period change only: on landing the first load comes from loadBranchObjectives.
             if (this.state.activeSection === "bm_dashboard" && this.branchOpsRequestId) { await this.loadBranchOps(); }
             if (this.departmentCode) { await this.loadBranchOps(); }
@@ -445,6 +453,7 @@ export class StrategicNavigationShell extends Component {
             this.loadAreaGoals(sectionId);
         }
         if (sectionId === "overview") {
+            this.loadPendingStaffing();
             return this.loadObjectiveRequests();
         }
         if (sectionId === "bm_dashboard" && this.isBranchManager) {
@@ -470,8 +479,10 @@ export class StrategicNavigationShell extends Component {
             return this.loadBranchOps();
         }
         if (sectionId === "employee_dashboard") {
-            this.loadMyPerformance();
-            return this.loadMyTasks();
+            return this.loadEmployeeHome();
+        }
+        if (sectionId === "my_performance") {
+            return this.loadMyPerformance();
         }
         if (sectionId === "my_tasks") {
             return this.loadMyTasks();
@@ -542,9 +553,8 @@ export class StrategicNavigationShell extends Component {
             // Employees land on their own tasks.
             this.state.activeSection = "employee_dashboard";
             await this.loadEmployeeContext();
-            this.loadMyPerformance();
             await this.loadOverview();
-            return this.loadMyTasks();
+            return this.loadEmployeeHome();
         }
         return this.loadOverview();
     }
@@ -1063,11 +1073,34 @@ export class StrategicNavigationShell extends Component {
         }
     }
 
-    async loadMyPerformance() {
+    onMyPerformancePeriod(field, event) {
+        if (!event.target.value) return;
+        this.state[field] = event.target.value;
+        return this.loadMyPerformance();
+    }
+
+    /** Head Office's Overview says when a branch is waiting for a staffing decision. */
+    async loadPendingStaffing() {
+        if (!this.isHeadOffice) return;
         try {
-            this.state.myPerformance = await this.orm.silent.call("strategic.performance.dashboard", "get_my_performance", [this.state.dateStart || false, this.state.dateEnd || false]);
+            const data = await this.orm.silent.call("strategic.staffing.request", "get_staffing_requests", [{ state: "submitted" }]);
+            this.state.pendingStaffing = data.requests.length;
         } catch {
+            this.state.pendingStaffing = 0;
+        }
+    }
+
+    async loadMyPerformance() {
+        const requestId = (this.myPerformanceRequestId = (this.myPerformanceRequestId || 0) + 1);
+        try {
+            const data = await this.orm.silent.call("strategic.performance.dashboard", "get_my_performance", [this.state.myPerformanceStart, this.state.myPerformanceEnd]);
+            if (requestId !== this.myPerformanceRequestId) return;
+            this.state.myPerformance = data;
+            this.state.myPerformanceError = "";
+        } catch (error) {
+            if (requestId !== this.myPerformanceRequestId) return;
             this.state.myPerformance = null;
+            this.state.myPerformanceError = error.data?.message || error.message || "Your performance could not be loaded.";
         }
     }
 
@@ -1247,8 +1280,23 @@ export class StrategicNavigationShell extends Component {
         }
     }
 
+    /** The task dialog reads My Tasks, so both load together. */
+    loadEmployeeHome() {
+        return Promise.all([this.loadMyTasks({ silent: true }), this.loadEmployeeWorkspace()]);
+    }
+
+    async loadEmployeeWorkspace() {
+        try {
+            this.state.employeeWorkspace = await this.orm.silent.call(TASK_MODEL, "get_employee_workspace", []);
+            this.state.employeeWorkspaceError = "";
+        } catch (error) {
+            this.state.employeeWorkspaceError = error.data?.message || error.message || "Your work could not be loaded.";
+        }
+    }
+
     refreshTasks() {
         return Promise.all([
+            this.state.activeSection === "employee_dashboard" ? this.loadEmployeeWorkspace() : null,
             this.state.myTasks ? this.loadMyTasks({ silent: true }) : null,
             this.isBranchManager ? this.loadTaskManagement({ silent: true }) : null,
             this.isBranchManager ? this.loadTaskSummary() : null,

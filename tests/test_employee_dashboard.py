@@ -12,7 +12,7 @@ class TestEmployeeDashboard(StrategyFixture):
         self, employee, code, actual=9.0, target_value=12.0,
         date_start="2026-10-01", date_end="2026-10-31",
     ):
-        kpi = self._mk_kpi(code)
+        kpi = self._mk_kpi(code, individual=True)
         target = self.env["strategic.kpi.target"].with_user(self.head_user).create({
             "kpi_id": kpi.id,
             "date_start": date_start,
@@ -122,6 +122,7 @@ class TestEmployeeDashboard(StrategyFixture):
             "direction": "higher",
             "source_type": "manual",
             "description": "Employee dashboard submission-state test.",
+            "individual_outcome": True,
             "company_id": self.company.id,
         })
         target = self.env["strategic.kpi.target"].with_user(self.head_user).create({
@@ -154,8 +155,66 @@ class TestEmployeeDashboard(StrategyFixture):
         self.assertEqual(row["state_label"], "Submitted for Review")
         self.assertEqual(data["measurement_summary"]["submitted_count"], 1)
 
-    def test_employee_dashboard_menu_uses_custom_client_action(self):
-        action = self.env.ref("strategic_management.action_strategic_employee_dashboard")
-        menu = self.env.ref("strategic_management.menu_strategic_kpi_dashboard_employee")
-        self.assertEqual(action.tag, "strategic_management.employee_dashboard")
-        self.assertEqual(menu.action, action)
+    def test_personal_kpi_menu_is_gone(self):
+        self.assertFalse(self.env.ref("strategic_management.menu_strategic_kpi_dashboard_employee", raise_if_not_found=False))
+
+    # ------------------------------------------------------------------ KPI ownership
+    def _legacy_employee_target(self, code="OWN_LEGACY"):
+        """As the real database has it: a business KPI given an employee target before the ownership rule existed."""
+        kpi = self._mk_kpi(code, individual=True)
+        target = self.env["strategic.kpi.target"].with_user(self.head_user).create({
+            "kpi_id": kpi.id, "date_start": "2026-10-01", "date_end": "2026-10-31", "scope": "user", "user_id": self.emp_user.id, "target_value": 10.0, "state": "approved"})
+        evaluation = self._mk_evaluation(target, actual=8.0, has_actual=True)
+        self.env.cr.execute("UPDATE strategic_kpi_definition SET individual_outcome = false WHERE id = %s", (kpi.id,))
+        kpi.invalidate_recordset(["individual_outcome"])
+        self.env.transaction.invalidate_ormcache()
+        return kpi, target, evaluation
+
+    def test_business_kpi_cannot_get_an_employee_target(self):
+        kpi = self._mk_kpi("OWN_BUSINESS")
+        values = {"kpi_id": kpi.id, "date_start": "2026-10-01", "date_end": "2026-10-31", "target_value": 10.0}
+        with self.assertRaisesRegex(ValidationError, "not an individual employee KPI"):
+            self.env["strategic.kpi.target"].with_user(self.head_user).create(dict(values, scope="user", user_id=self.emp_user.id))
+        organization = self.env["strategic.kpi.target"].with_user(self.head_user).create(dict(values, scope="organization", state="approved"))
+        self.assertEqual(organization.scope, "organization", "the KPI stays usable at its own level")
+        branch = self.env["strategic.kpi.target"].with_user(self.head_user).create(dict(values, scope="branch", warehouse_id=self.branch_user_a.strategic_branch_warehouse_id.id))
+        self.assertEqual(branch.scope, "branch")
+
+    def test_individual_ownership_needs_a_manual_kpi_and_no_stranded_targets(self):
+        kpi = self._mk_kpi("OWN_FLAG", individual=True)
+        self.env["strategic.kpi.target"].with_user(self.head_user).create({
+            "kpi_id": kpi.id, "date_start": "2026-10-01", "date_end": "2026-10-31", "scope": "user", "user_id": self.emp_user.id, "target_value": 10.0, "state": "approved"})
+        with self.assertRaisesRegex(ValidationError, "Archive the employee targets"):
+            kpi.individual_outcome = False
+        kpi.flush_recordset()
+
+    def test_legacy_business_result_is_not_a_personal_result_anywhere(self):
+        _kpi, target, evaluation = self._legacy_employee_target()
+        Service = self.env["strategic.performance.dashboard"]
+        self.assertEqual(Service.with_user(self.emp_user).get_employee_data("2026-10-01", "2026-10-31")["kpis"], [])
+        self.assertEqual(self.env["strategic.kpi.evaluation"].with_user(self.emp_user).search_count([("id", "=", evaluation.id)]), 0, "not even by a direct request")
+        self.assertEqual(self.env["strategic.kpi.target"].with_user(self.emp_user).search_count([("id", "=", target.id)]), 0)
+        self.assertEqual(self.env["strategic.kpi.evaluation"].with_user(self.head_user).search_count([("id", "=", evaluation.id)]), 1, "kept for audit")
+
+    def test_migration_archives_with_a_note_and_keeps_history(self):
+        import importlib.util
+        import os
+        kpi, target, evaluation = self._legacy_employee_target("OWN_MIGRATE")
+        _ik, kept = self._make_user_target_evaluation(self.emp_user, "OWN_REAL")[0].kpi_id, self._make_user_target_evaluation(self.emp_user, "OWN_REAL2")[0]
+        path = os.path.join(os.path.dirname(__file__), "..", "migrations", "20.0.1.8.0", "post-migration.py")
+        spec = importlib.util.spec_from_file_location("sm_ownership_migration", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.migrate(self.env.cr, "20.0.1.7.0")
+        self.assertEqual(target.state, "archived")
+        self.assertTrue(evaluation.exists())
+        self.assertIn("ownership correction", target.message_ids[0].body)
+        self.assertEqual(kept.state, "approved", "a real individual KPI is untouched")
+
+    def test_employee_reads_no_organization_baseline_or_definition(self):
+        kpi = self._mk_kpi("OWN_ORG")
+        self.env["strategic.kpi.target"].with_user(self.head_user).create({
+            "kpi_id": kpi.id, "date_start": "2026-10-01", "date_end": "2026-10-31", "scope": "organization", "target_value": 10.0, "state": "approved"})
+        self.assertEqual(self.env["strategic.kpi.definition"].with_user(self.emp_user).search_count([("id", "=", kpi.id)]), 0)
+        self.assertEqual(self.env["strategic.kpi.target"].with_user(self.emp_user).search_count([("kpi_id", "=", kpi.id)]), 0)
+        self.assertEqual(self.env["strategic.kpi.baseline"].with_user(self.emp_user).search_count([("scope", "=", "organization")]), 0)

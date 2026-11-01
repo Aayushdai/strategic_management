@@ -423,6 +423,45 @@ class TestStaffing(TransactionCase):
         self.assertEqual(employee.parent_id.user_id, self.manager1, "the branch's manager is the default")
         self.assertIn(employee.id, [row["id"] for row in self.Task.with_user(self.manager1).get_employee_management()["without_login"]])
 
+    # ------------------------------------------------------------------ employee workspace and My Performance
+    def test_employee_workspace_comes_from_their_own_tasks(self):
+        late, returned, today_task, soon, far = self._task(-2), self._task(5), self._task(0), self._task(3, "1"), self._task(30)
+        other = self._task(0, assignee=self.emp2, manager=self.manager2)
+        waiting = self._task(1)
+        self._submit(waiting)
+        self._submit(returned)
+        returned.with_user(self.manager1).action_request_changes("Use the new checklist.")
+        far.with_user(self.emp1).action_report_blocker("No gloves.", "Please order them.")
+        self.company.partner_id.tz = "UTC"
+        data = self.Task.with_user(self.emp1).get_employee_workspace()
+        self.assertEqual((data["counts"]["overdue"], data["counts"]["review"], data["counts"]["correction"], data["counts"]["open"]), (1, 1, 1, 6))
+        self.assertEqual(data["counts"]["due_today"], 1)
+        self.assertEqual([row["id"] for row in data["tasks"]][:3], [late.id, returned.id, today_task.id], "late, then corrections, then today")
+        self.assertNotIn(other.id, [row["id"] for row in data["tasks"]])
+        self.assertIn(soon.id, [row["id"] for row in data["upcoming"]])
+        self.assertNotIn(far.id, [row["id"] for row in data["upcoming"]])
+        self.assertEqual((data["instructions"][0]["note"], data["instructions"][0]["by"]), ("Use the new checklist.", self.manager1.name))
+        self.assertEqual((data["blockers"][0]["problem"], data["blockers"][0]["status"]), ("No gloves.", "Open"))
+        self.assertTrue(data["activity"])
+        for actor in (self.manager1, self.head):
+            with self.assertRaises(AccessError):
+                self.Task.with_user(actor).get_employee_workspace()
+
+    def test_my_performance_is_operational_and_only_mine(self):
+        done = self._task(1)
+        self._submit(done)
+        done.with_user(self.manager1).action_request_changes("Redo the count.")
+        done.with_user(self.emp1).action_start()
+        done.with_user(self.emp1).action_submit("Done again.")
+        done.with_user(self.manager1).action_accept()
+        self._task(1, assignee=self.emp2, manager=self.manager2)
+        data = self.Dashboard.with_user(self.emp1).get_my_performance(str(self.today - timedelta(days=5)), str(self.today + timedelta(days=5)))
+        self.assertEqual((data["figures"]["assigned"], data["figures"]["completed"], data["figures"]["returned"]), (1, 1, 1))
+        self.assertEqual(sum(row["completed"] for row in data["history"]), 1)
+        self.assertEqual(data["feedback"][0]["note"], "Redo the count.")
+        self.assertEqual(data["individual_kpis"], [])
+        self.assertFalse({"score", "overall", "assessments"} & set(data), "no invented score, no private assessments")
+
     # ------------------------------------------------------------------ directory
     def test_standard_directory_is_limited_to_the_branch(self):
         for model in ("hr.employee", "hr.employee.public"):

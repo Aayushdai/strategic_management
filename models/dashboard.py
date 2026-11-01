@@ -204,6 +204,7 @@ class StrategicPerformanceDashboard(models.AbstractModel):
         employee_rows = Evaluation.search_read(
             base_domain + [
                 ("scope", "=", "user"),
+                ("kpi_id.individual_outcome", "=", True),
                 ("user_id.strategic_branch_warehouse_id", "=", warehouse.id),
             ],
             evaluation_fields, order="evaluated_at desc, id desc", limit=3000,
@@ -320,6 +321,7 @@ class StrategicPerformanceDashboard(models.AbstractModel):
             [
                 ("company_id", "=", self.env.company.id),
                 ("scope", "=", "user"),
+                ("kpi_id.individual_outcome", "=", True),
                 ("user_id", "=", user.id),
                 ("superseded_by_id", "=", False),
                 ("date_start", "<=", end_text),
@@ -548,9 +550,11 @@ class StrategicPerformanceDashboard(models.AbstractModel):
         branch is resolved from the employee user's strategic_branch_warehouse_id,
         matching the branch-scope rule used by the Branch Manager dashboard.
         """
+        kpi_ids = [row["kpi_id"][0] for row in current_evaluations if row.get("scope") == "user" and row.get("kpi_id")]
+        individual = set(self.env["strategic.kpi.definition"].sudo().search([("id", "in", kpi_ids), ("individual_outcome", "=", True)]).ids)
         employee_rows = [
             row for row in current_evaluations
-            if row.get("scope") == "user" and row.get("user_id")
+            if row.get("scope") == "user" and row.get("user_id") and row.get("kpi_id") and row["kpi_id"][0] in individual
         ]
         user_ids = sorted({row["user_id"][0] for row in employee_rows if row.get("user_id")})
         users_by_id = {}

@@ -1125,7 +1125,6 @@ class TestStrategicKpiRoleDashboards(TransactionCase):
         role_menu_pairs = (
             ("head_office", "group_strategic_head_office_manager"),
             ("branch", "group_strategic_branch_manager"),
-            ("employee", "group_strategic_employee"),
         )
         for role, group_name in role_menu_pairs:
             with self.subTest(role=role):

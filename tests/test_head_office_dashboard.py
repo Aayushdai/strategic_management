@@ -55,7 +55,7 @@ class TestHeadOfficeDashboard(StrategyFixture):
     def test_employee_kpi_results_sync_to_head_office_by_assigned_branch(self):
         """The same employee evaluation shown to a branch manager is visible at Head Office."""
         self.emp_user.write({"strategic_branch_warehouse_id": self.wh1.id})
-        kpi = self._mk_kpi("HO_EMPLOYEE_SYNC")
+        kpi = self._mk_kpi("HO_EMPLOYEE_SYNC", individual=True)
         target = self.env["strategic.kpi.target"].create({
             "kpi_id": kpi.id,
             "date_start": "2026-10-01",

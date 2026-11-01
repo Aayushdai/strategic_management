@@ -346,7 +346,7 @@ class TestBranchManagerPos(TransactionCase):
 class TestEmployeeKpiAccess(StrategyFixture):
     def _target(self, employee, code):
         target = self.env["strategic.kpi.target"].with_user(self.head_user).create({
-            "kpi_id": self._mk_kpi(code).id, "date_start": "2026-10-01", "date_end": "2026-10-31", "scope": "user",
+            "kpi_id": self._mk_kpi(code, individual=True).id, "date_start": "2026-10-01", "date_end": "2026-10-31", "scope": "user",
             "user_id": employee.id, "target_value": 12.0, "state": "approved"})
         return target, self._mk_evaluation(target, actual=9.0, has_actual=True)
 

@@ -101,7 +101,7 @@ class StrategyFixture(TransactionCase):
             }
         )
 
-    def _mk_kpi(self, code, direction="higher", company=None):
+    def _mk_kpi(self, code, direction="higher", company=None, individual=False):
         company = company or self.company
         return self.env["strategic.kpi.definition"].with_company(company).create(
             {
@@ -110,6 +110,7 @@ class StrategyFixture(TransactionCase):
                 "unit": "%",
                 "direction": direction,
                 "company_id": company.id,
+                "individual_outcome": individual,
             }
         )
 

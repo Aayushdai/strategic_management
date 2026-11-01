@@ -1,6 +1,6 @@
 {
     "name": "Strategic Performance Management",
-    "version": "20.0.1.7.0",
+    "version": "20.0.1.8.0",
     "category": "Productivity",
     "summary": "Strategic objectives, OKRs, KPIs, and performance management",
     "author": "Strategic Management Team",

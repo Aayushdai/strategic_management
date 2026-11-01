@@ -433,7 +433,25 @@ class StrategicPerformanceDashboardStaffing(models.AbstractModel):
         """The signed-in person's own task figures. Manager assessments are not included."""
         start, end = self._period(date_start, date_end)
         tasks = self.env["strategic.branch.task"].search([("assigned_user_id", "=", self.env.user.id), ("company_id", "=", self.env.company.id)])
-        return {"figures": self._task_performance(tasks, start, end), "period": {"start": fields.Date.to_string(start), "end": fields.Date.to_string(end)}}
+        figures = self._task_performance(tasks, start, end)
+        figures["blockers"] = self._reported_blockers(self.env.user, tasks, start, end)
+        in_period = tasks.sudo().filtered(lambda task: start <= task.date_deadline <= end and task.state != "cancelled")
+        months = {}
+        for task in in_period.sorted("date_deadline"):
+            row = months.setdefault(task.date_deadline.strftime("%Y-%m"), {"month": task.date_deadline.strftime("%B %Y"), "assigned": 0, "completed": 0, "on_time": 0})
+            row["assigned"] += 1
+            row["completed"] += task.state == "done"
+            row["on_time"] += task.state == "done" and task.submitted_on_time
+        feedback = in_period.filtered("review_note").sorted(lambda task: task.reviewed_at or task.write_date, reverse=True)[:10]
+        role_employee = self._strategic_role() == "employee"
+        return {
+            "figures": figures, "period": {"start": fields.Date.to_string(start), "end": fields.Date.to_string(end)},
+            "history": list(months.values()),
+            "feedback": [{"id": task.id, "task": task.name, "note": task.review_note, "by": task.reviewed_by_id.name or "", "state": task.state,
+                          "at": fields.Datetime.to_string(task.reviewed_at) if task.reviewed_at else False} for task in feedback],
+            # Only KPIs with one individual owner; organization and branch results never appear here.
+            "individual_kpis": self.get_employee_data(date_start, date_end)["kpis"] if role_employee else [],
+        }
 
     @api.model
     def save_employee_assessment(self, user_id, values, date_start=False, date_end=False):

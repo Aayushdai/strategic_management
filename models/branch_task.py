@@ -15,6 +15,7 @@ kept as their own records and only change through the actions here.
 
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.tools import html2plaintext
 
 _HEAD = "strategic_management.group_strategic_head_office_manager"
 _MANAGER = "strategic_management.group_strategic_branch_manager"
@@ -331,6 +332,38 @@ class StrategicBranchTask(models.Model):
         """Tasks assigned to the current user (any role), newest work first."""
         tasks = self.search([("assigned_user_id", "=", self.env.user.id), ("company_id", "=", self.env.company.id)])
         return {"tasks": [task._row() for task in tasks], "counts": self._counts(tasks)}
+
+    @api.model
+    def get_employee_workspace(self):
+        """The signed-in Employee's working day, from their own tasks only."""
+        self.env["strategic.performance.dashboard"]._require_employee_dashboard_access()
+        company = self.env.company
+        tasks = self.search([("assigned_user_id", "=", self.env.user.id), ("company_id", "=", company.id)])
+        today = fields.Date.context_today(self.with_context(tz=company.partner_id.tz or "UTC"))
+        working = tasks.filtered(lambda task: task.state in WORKING_STATES)
+        # Most urgent first: late, sent back for correction, due today, high priority, then by due date.
+        ordered = working.sorted(lambda task: (not task.is_overdue, task.state != "changes_requested", task.date_deadline != today, task.priority != "1", task.date_deadline, task.id))
+        upcoming = working.filtered(lambda task: today < task.date_deadline <= fields.Date.add(today, days=7)).sorted("date_deadline")
+        blockers = self.env["strategic.task.blocker"].sudo().search([("task_id", "in", tasks.ids)], limit=5)
+        messages = self.env["mail.message"].sudo().search([
+            ("model", "=", self._name), ("res_id", "in", tasks.ids), ("message_type", "!=", "user_notification")], order="date desc, id desc", limit=30)
+        names = {task.id: task.name for task in tasks}
+        activity = [{"id": message.id, "task": names[message.res_id], "text": text, "author": message.author_id.name or "", "date": fields.Datetime.to_string(message.date)}
+                    for message, text in ((message, html2plaintext(message.body or "").strip()) for message in messages) if text][:8]
+        return {
+            "counts": {"open": len(tasks.filtered(lambda task: task.state in OPEN_STATES)), "due_today": len(working.filtered(lambda task: task.date_deadline == today)),
+                       "overdue": len(working.filtered("is_overdue")), "review": len(tasks.filtered(lambda task: task.state == "submitted")),
+                       "correction": len(working.filtered(lambda task: task.state == "changes_requested"))},
+            "today": fields.Date.to_string(today),
+            "tasks": [task._row() for task in ordered[:10]],
+            "tasks_total": len(ordered),
+            "upcoming": [task._row() for task in upcoming[:5]],
+            "activity": activity,
+            "blockers": [{"id": row.id, "task": row.task_id.name, "problem": row.problem, "state": row.state, "status": "Open" if row.state == "open" else "Resolved",
+                          "resolution": row.resolution or ""} for row in blockers],
+            "instructions": [{"id": task.id, "task": task.name, "note": task.review_note, "by": task.sudo().reviewed_by_id.name or task.sudo().assigned_by_id.name}
+                             for task in working.filtered(lambda task: task.state == "changes_requested" and task.review_note)],
+        }
 
     @api.model
     def _managed_tasks(self, branch):
