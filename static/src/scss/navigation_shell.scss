@@ -2274,3 +2274,8 @@
     &:hover { border-color: #b9acee !important; box-shadow: 0 2px 8px rgba(61, 45, 104, .12); }
     &:focus-visible { outline: 2px solid #6f5bd3; outline-offset: 2px; }
 }
+.o_sm_navigation_shell .o_sm_drill_option { display: flex; align-items: center; justify-content: space-between; gap: 1rem; width: 100%; padding: .85rem 1rem; border: 1px solid #e3e5ee; border-radius: .6rem; background: #fff; color: #1d2340; text-align: left;
+    span { color: #6f5bd3; font-size: .85rem; font-weight: 600; white-space: nowrap; }
+    &:hover { border-color: #b9acee; background: #f6f3fd; }
+    &:focus-visible { outline: 2px solid #6f5bd3; outline-offset: 2px; }
+}

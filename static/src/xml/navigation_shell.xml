@@ -19,6 +19,16 @@
             </aside>
 
             <main class="o_sm_workspace">
+                <div t-if="this.state.drillChoice" class="o_sm_req_overlay" t-on-click="() => { this.state.drillChoice = null; }">
+                    <section class="o_sm_req_dialog o_sm_drill_choice" role="dialog" aria-modal="true" aria-labelledby="o_sm_drill_choice_title" t-on-click.stop="() => {}">
+                        <header class="o_sm_req_dialog_head"><div><span class="o_sm_req_kicker">This figure comes from</span><h2 id="o_sm_drill_choice_title">Which records do you want to see?</h2></div>
+                            <button type="button" class="o_sm_req_close" aria-label="Close" t-on-click="() => { this.state.drillChoice = null; }">×</button></header>
+                        <div class="o_sm_req_dialog_body">
+                            <button t-foreach="this.state.drillChoice" t-as="option" t-key="option_index" type="button" class="o_sm_drill_option" t-on-click="() => this.openDrill(option)">
+                                <strong t-esc="option.name"/><span><t t-esc="option.count"/> <t t-esc="option.count === 1 ? 'record' : 'records'"/> →</span></button>
+                        </div>
+                    </section>
+                </div>
                 <nav t-if="this.peopleTabs.length" class="o_sm_people_tabs" aria-label="Employee Management">
                     <button t-foreach="this.peopleTabs" t-as="tab" t-key="tab.id" type="button" t-att-class="'o_sm_people_tab' + (tab.id === this.state.activeSection ? ' is-active' : '')"
                             t-att-aria-current="tab.id === this.state.activeSection ? 'page' : false" t-on-click="() => this.selectSection(tab.id)" t-esc="tab.label"/>
@@ -792,7 +802,7 @@
                 <div class="o_sm_sf_metric_copy">
     <span>Total Sales (excl. tax)</span>
     <strong><t t-esc="this.formatCurrency(this.state.data.sales)"/></strong>
-    <small>POS order totals for the selected period</small>
+    <small>POS sales and customer invoices for the selected period</small>
 </div>
             </article>
             <article t-att-class="'o_sm_sf_metric' + (this.state.data.drill and this.state.data.drill.orders ? ' is-drill' : '')" t-att-role="this.state.data.drill and this.state.data.drill.orders ? 'button' : false" t-att-tabindex="this.state.data.drill and this.state.data.drill.orders ? 0 : false" t-on-click="() => this.openDrill(this.state.data.drill and this.state.data.drill.orders)" t-on-keydown="(ev) => this.onDrillKey(ev, this.state.data.drill and this.state.data.drill.orders)">
@@ -800,7 +810,7 @@
                 <div class="o_sm_sf_metric_copy">
     <span>Total Orders</span>
     <strong><t t-esc="this.formatNumber(this.state.data.order_count)"/></strong>
-    <small>Eligible POS orders in the selected period</small>
+    <small>POS orders and customer invoices in the selected period</small>
 </div>
             </article>
             <article t-att-class="'o_sm_sf_metric' + (this.state.data.drill and this.state.data.drill.sales ? ' is-drill' : '')" t-att-role="this.state.data.drill and this.state.data.drill.sales ? 'button' : false" t-att-tabindex="this.state.data.drill and this.state.data.drill.sales ? 0 : false" t-on-click="() => this.openDrill(this.state.data.drill and this.state.data.drill.sales)" t-on-keydown="(ev) => this.onDrillKey(ev, this.state.data.drill and this.state.data.drill.sales)">
@@ -832,7 +842,7 @@
     <button type="button" t-att-class="this.state.trendGranularity === 'month' ? 'is-active' : ''" t-on-click="() => this.setTrendGranularity('month')">Monthly</button>
 </div></div>
                 <div class="o_sm_sf_legend">
-    <span><i class="o_sm_sf_legend_current"/>POS sales for the selected period</span>
+    <span><i class="o_sm_sf_legend_current"/>POS sales and customer invoices for the selected period</span>
 </div>
                 <svg class="o_sm_sf_trend_chart" viewBox="0 0 600 190"
      role="img" aria-label="Monthly POS sales trend">

@@ -197,6 +197,7 @@ export class StrategicNavigationShell extends Component {
             myPerformanceStart: this.asDateInput(new Date(new Date().getFullYear(), new Date().getMonth() - 5, 1)),
             myPerformanceEnd: this.asDateInput(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)),
             pendingStaffing: 0,
+            drillChoice: null,
             staffingWork: [],
             employeeWorkspace: null,
             employeeWorkspaceError: "",
@@ -609,8 +610,14 @@ export class StrategicNavigationShell extends Component {
 
     /** A summary card opens Odoo's own list of the records behind its number (the server decides which, and whether). */
     openDrill(drill) {
-        if (!drill) return;
-        return this.action.doAction({ type: "ir.actions.act_window", name: drill.name, res_model: drill.model, domain: drill.domain,
+        const options = (Array.isArray(drill) ? drill : [drill]).filter(Boolean);
+        if (!options.length) return;
+        if (options.length > 1) {
+            this.state.drillChoice = options;
+            return;
+        }
+        this.state.drillChoice = null;
+        return this.action.doAction({ type: "ir.actions.act_window", name: options[0].name, res_model: options[0].model, domain: options[0].domain,
                                       views: [[false, "list"], [false, "form"]], target: "current" });
     }
 

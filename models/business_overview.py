@@ -169,6 +169,22 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                 branch_sales_map[branch_id or ("pos", config_id)] ["orders"] += count
                 branch_sales_map[branch_id or ("pos", config_id)]["name"] = branch_name
 
+        # Customer invoices count as sales too. POS-generated invoices are left out: their POS order is already counted.
+        invoice_branch = False if (is_head_office and not selected_warehouse) else (selected_warehouse.ids if selected_warehouse else scope_warehouse_ids)
+        invoices = self._overview_safe(lambda: self._overview_invoices(start, end, invoice_branch))
+        if invoices:
+            sales_total = sales_total or 0.0
+            for invoice in invoices:
+                amount = invoice.amount_untaxed_signed  # negative for credit notes
+                counted = 1 if invoice.move_type == "out_invoice" else 0
+                sales_total += amount
+                order_count += counted
+                warehouse = invoice.invoice_line_ids.sale_line_ids.order_id.warehouse_id[:1]
+                key = warehouse.id or ("invoice", 0)
+                branch_sales_map[key]["sales"] += amount
+                branch_sales_map[key]["orders"] += counted
+                branch_sales_map[key]["name"] = warehouse.display_name if warehouse else "Invoices without a branch"
+
         trend_groupby = "date_order:month" if trend_granularity == "month" else "date_order:day"
         trend_groups = self._overview_safe(lambda: [
             {"period_value": period_value, "amount_total": (amount or 0.0) - (tax or 0.0)}
@@ -193,6 +209,11 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                     period_key = group_date.strftime("%Y-%m")
                 if period_key in trend_sales:
                     trend_sales[period_key]["sales"] += float(row.get("amount_total") or 0.0)
+        for invoice in invoices or []:
+            day = invoice.invoice_date
+            period_key = (day - timedelta(days=day.weekday())).isoformat() if trend_granularity == "week" else day.isoformat() if trend_granularity == "day" else day.strftime("%Y-%m")
+            if period_key in trend_sales:
+                trend_sales[period_key]["sales"] += invoice.amount_untaxed_signed
 
         # Aggregate POS sales by hour-of-day, reusing the same authorized order domain.
         # Odoo groups each calendar date/hour separately; combine those hourly buckets
@@ -262,6 +283,10 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
     )
 ])
         discounts_refunds = self._overview_safe(lambda: self._overview_discounts_refunds(order_domain, product_domain))
+        credit_notes = (invoices or self.env["account.move"]).filtered(lambda invoice: invoice.move_type == "out_refund")
+        if discounts_refunds and credit_notes:
+            discounts_refunds["refund_total"] = round(discounts_refunds["refund_total"] - sum(credit_notes.mapped("amount_untaxed_signed")), 2)
+            discounts_refunds["refund_count"] += len(credit_notes)
         sales_by_category = []
         if product_groups is not False:
             grouped_product_ids = sorted({
@@ -372,9 +397,12 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             "sales": round(sales_total, 2) if sales_total is not False else False,
             "order_count": order_count if sales_total is not False else False,
             "drill": {
-                "sales": self._overview_drill("pos.order", order_domain, "POS orders behind total sales"),
-                "orders": self._overview_drill("pos.order", order_domain + [("is_refund", "=", False)], "POS orders"),
-                "discounts_refunds": self._overview_drill("pos.order", order_domain + ["|", ("is_refund", "=", True), ("lines.discount", ">", 0)], "Discounted and refund POS orders"),
+                "sales": self._overview_drills(self._overview_drill("pos.order", order_domain, "POS orders"),
+                                               self._overview_drill("account.move", None, "Customer invoices", ids=(invoices or self.env["account.move"]).ids)),
+                "orders": self._overview_drills(self._overview_drill("pos.order", order_domain + [("is_refund", "=", False)], "POS orders"),
+                                                self._overview_drill("account.move", None, "Customer invoices", ids=(invoices or self.env["account.move"]).filtered(lambda invoice: invoice.move_type == "out_invoice").ids)),
+                "discounts_refunds": self._overview_drills(self._overview_drill("pos.order", order_domain + ["|", ("is_refund", "=", True), ("lines.discount", ">", 0)], "Discounted and refund POS orders"),
+                                                           self._overview_drill("account.move", None, "Credit notes", ids=credit_notes.ids)),
             } if sales_total is not False else {},
             "net_profit": financial.get("net_profit") if financial else False,
             "expenses": financial.get("expenses") if financial else False,
@@ -898,6 +926,32 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         }
 
     @api.model
+    def _overview_invoices(self, start, end, warehouse_ids=False):
+        """Posted customer invoices and credit notes dated in the period, except those made by the POS.
+
+        An invoice belongs to the branch of the sales order it came from; one without a sales order counts only in the
+        company-wide total. Read with sudo: the period and branch here come from the server, never the browser.
+        """
+        if "account.move" not in self.env.registry.models:
+            return self.env["account.move"]
+        Move = self.env["account.move"].sudo()
+        domain = [("company_id", "=", self.env.company.id), ("move_type", "in", ["out_invoice", "out_refund"]), ("state", "=", "posted"),
+                  ("invoice_date", ">=", start), ("invoice_date", "<=", end)]
+        if "pos_order_ids" in Move._fields:
+            domain.append(("pos_order_ids", "=", False))
+        if warehouse_ids is not False:
+            if "sale_line_ids" not in self.env["account.move.line"]._fields:
+                return Move.browse()
+            domain.append(("invoice_line_ids.sale_line_ids.order_id.warehouse_id", "in", list(warehouse_ids)))
+        return Move.search(domain, order="invoice_date, id")
+
+    @api.model
+    def _overview_drills(self, *drills):
+        """One card backed by several kinds of record: the user picks which list to open."""
+        drills = [drill for drill in drills if drill]
+        return drills[0] if len(drills) == 1 else drills or False
+
+    @api.model
     def _overview_drill(self, model, domain, name, ids=None):
         """What a summary card opens: Odoo's own list of exactly the records behind its number.
 
@@ -916,9 +970,10 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         if ids is not None:
             domain = [("id", "in", list(ids))]  # an empty list opens an empty list, never everything
         # Nothing to show, nothing to click: Odoo fills an empty list with made-up sample rows.
-        if not self.env[model].search_count(domain, limit=1):
+        count = self.env[model].search_count(domain)
+        if not count:
             return False
-        return {"model": model, "domain": domain, "name": name}
+        return {"model": model, "domain": domain, "name": name, "count": count}
 
     @api.model
     def _overview_safe(self, function):
