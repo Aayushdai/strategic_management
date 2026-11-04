@@ -2256,3 +2256,9 @@
 @media (max-width: 62rem) { .o_sm_navigation_shell .o_sm_emp_work { grid-template-columns: minmax(0, 1fr); } }
 .o_sm_navigation_shell .o_sm_staff_pending { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .85rem; }
 .o_sm_navigation_shell .o_sm_people_roles { padding: 0; margin-bottom: 1rem; }
+.o_sm_navigation_shell .o_sm_people_tabs { display: flex; flex-wrap: wrap; gap: .25rem; margin: 0 1.75rem; padding-top: 1rem; border-bottom: 1px solid #e3e5ee; }
+.o_sm_navigation_shell .o_sm_people_tab { margin-bottom: -1px; padding: .55rem .9rem; border: 0; border-bottom: 2px solid transparent; background: none; color: #5b6178; font-size: .9rem; font-weight: 600;
+    &:hover { color: #3d2d68; }
+    &:focus-visible { outline: 2px solid #c9bdf5; outline-offset: -2px; }
+    &.is-active { border-bottom-color: #6f5bd3; color: #3d2d68; }
+}

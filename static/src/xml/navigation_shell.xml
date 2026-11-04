@@ -19,6 +19,10 @@
             </aside>
 
             <main class="o_sm_workspace">
+                <nav t-if="this.peopleTabs.length" class="o_sm_people_tabs" aria-label="Employee Management">
+                    <button t-foreach="this.peopleTabs" t-as="tab" t-key="tab.id" type="button" t-att-class="'o_sm_people_tab' + (tab.id === this.state.activeSection ? ' is-active' : '')"
+                            t-att-aria-current="tab.id === this.state.activeSection ? 'page' : false" t-on-click="() => this.selectSection(tab.id)" t-esc="tab.label"/>
+                </nav>
                 <t t-if="this.branchError">
     <div class="o_sm_bm">
         <header class="o_sm_bm_header">
@@ -1620,8 +1624,8 @@
     </t>
     <t t-name="strategic_management.NavigationButton">
         <button type="button"
-                t-att-class="(this.state.activeSection === item.id ? 'o_sm_nav_item active' : 'o_sm_nav_item') + (item.planned ? ' is-planned' : '')"
-                t-att-aria-current="this.state.activeSection === item.id ? 'page' : false"
+                t-att-class="(this.isNavActive(item) ? 'o_sm_nav_item active' : 'o_sm_nav_item') + (item.planned ? ' is-planned' : '')"
+                t-att-aria-current="this.isNavActive(item) ? 'page' : false"
                 t-att-disabled="item.planned"
                 t-att-title="item.planned ? 'Planned for a later phase' : false"
                 t-on-click="() => this.openNavItem(item)">

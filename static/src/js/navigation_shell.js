@@ -57,8 +57,10 @@ const SIDEBAR_PRIMARY = [
     { id: "configuration", label: "Settings" },
 ];
 const SIDEBAR_MORE = NAVIGATION_ITEMS.filter((item) => ["branches", "people", "tasks_issues", "app_dependencies"].includes(item.id));
-const HEAD_OFFICE_SIDEBAR_MORE = [...SIDEBAR_MORE, { id: "department_assignment", label: "Department Assignment" },
-    { id: "employee_management", label: "Employee Management" }, { id: "staffing_requests", label: "Staffing Requests" }, { id: "employee_performance", label: "Employee Performance" }];
+// Head Office's people pages share one sidebar entry and switch between themselves with tabs.
+const HEAD_OFFICE_PEOPLE_TABS = [{ id: "employee_management", label: "Employees" }, { id: "staffing_requests", label: "Staffing Requests" },
+    { id: "employee_performance", label: "Performance" }, { id: "department_assignment", label: "Department Assignment" }];
+const HEAD_OFFICE_SIDEBAR_MORE = [...SIDEBAR_MORE, { id: "employee_management", label: "Employee Management" }];
 // Branch Manager sidebar (Phase 1). Items with a section or action open pages that already exist and are scoped to the
 // manager's branch on the server; "planned" items belong to later phases and are shown disabled, never as working pages.
 // Objectives stay reachable from the dashboard's objective cards and links; notifications from the header bell.
@@ -607,6 +609,14 @@ export class StrategicNavigationShell extends Component {
 
     get isAdminRole() {
         return this.state.navContext?.role === "admin";
+    }
+
+    get peopleTabs() {
+        return this.isHeadOffice && HEAD_OFFICE_PEOPLE_TABS.some((tab) => tab.id === this.state.activeSection) ? HEAD_OFFICE_PEOPLE_TABS : [];
+    }
+
+    isNavActive(item) {
+        return this.state.activeSection === item.id || (item.id === "employee_management" && this.peopleTabs.length > 0);
     }
 
     get isHeadOffice() {
