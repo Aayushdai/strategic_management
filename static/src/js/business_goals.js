@@ -55,7 +55,7 @@ export class BusinessGoalsAction extends Component {
             section: "goals", loading: true, options: null, goals: [],
             progressSort: "asc",
             showAllProgress: false, showAllMissed: false, showAllAttention: false,
-            selectedGoalId: null, setupForm: null, chooseOption: true, productResults: [], productSearched: false, busy: false,
+            selectedGoalId: null, setupForm: null, chooseOption: true, templateDetails: false, productResults: [], productSearched: false, busy: false,
             createOpen: false, newGoal: this.blankGoal(),
             // Monitoring time breakdown: the open interval per goal, its drill-down path, and stock snapshots shown inline.
             monitorDetail: null, monitorSnapshot: null,

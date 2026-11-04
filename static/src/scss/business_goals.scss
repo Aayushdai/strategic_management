@@ -637,3 +637,6 @@
     &.is-returned { background: #fffaeb; color: #b54708; }
 }
 .o_sm_business_goals .o_sm_bg_fixed_branch strong { display: block; padding: 7px 0; color: #344054; font-weight: 600; }
+// Options show just their name; "See more" adds the description and how each is measured.
+.o_sm_business_goals .o_sm_bg_step .o_sm_bg_see_more { margin-left: auto; font-size: 12px; }
+.o_sm_business_goals .o_sm_bg_setup_card .o_sm_bg_template { min-height: 0; }

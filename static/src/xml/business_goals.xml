@@ -336,12 +336,15 @@
                                 <t t-set="form" t-value="this.state.setupForm"/>
                                 <div class="o_sm_bg_setup_card">
                                     <t t-if="this.isTemplateGoal">
-                                        <div class="o_sm_bg_step"><span class="o_sm_bg_step_no">1</span>What do you want to achieve?</div>
+                                        <div class="o_sm_bg_step"><span class="o_sm_bg_step_no">1</span>What do you want to achieve?
+                                            <button type="button" class="o_sm_bg_text_button o_sm_bg_see_more" t-att-aria-expanded="this.state.templateDetails ? 'true' : 'false'"
+                                                    t-on-click="() => { this.state.templateDetails = !this.state.templateDetails; }" t-esc="this.state.templateDetails ? 'See less' : 'See more'"/></div>
                                         <t t-set="chosen" t-value="this.selectedTemplate"/>
                                         <div t-if="chosen and !this.state.chooseOption" class="o_sm_bg_templates">
                                             <div class="o_sm_bg_template is-selected">
-                                                <strong t-esc="chosen.title"/><small t-esc="chosen.description"/>
-                                                <em class="o_sm_bg_measured_in" t-esc="chosen.goal_type_label + ' · ' + this.measuredIn(chosen)"/>
+                                                <strong t-esc="chosen.title"/>
+                                                <t t-if="this.state.templateDetails"><small t-esc="chosen.description"/>
+                                                <em class="o_sm_bg_measured_in" t-esc="chosen.goal_type_label + ' · ' + this.measuredIn(chosen)"/></t>
                                             </div>
                                             <button type="button" class="o_sm_bg_text_button" t-on-click="this.changeOption">Choose a different option</button>
                                         </div>
@@ -351,15 +354,16 @@
                                                 <button t-foreach="group.templates" t-as="tpl" t-key="tpl.key" type="button"
                                                         t-att-class="'o_sm_bg_template' + (tpl.key === form.template_key ? ' is-selected' : '') + (tpl.status !== 'available' ? ' is-unavailable' : '')"
                                                         t-on-click="() => this.pickTemplate(tpl)">
-                                                    <strong t-esc="tpl.title"/><small t-esc="tpl.description"/>
+                                                    <strong t-esc="tpl.title"/>
                                                     <em t-if="tpl.status !== 'available'" t-esc="tpl.status === 'setup' ? 'Requires setup' : 'Not supported yet'"/>
-                                                    <em t-else="" class="o_sm_bg_measured_in" t-esc="tpl.goal_type_label + ' · ' + this.measuredIn(tpl)"/>
+                                                    <t t-if="this.state.templateDetails"><small t-esc="tpl.description"/>
+                                                    <em t-if="tpl.status === 'available'" class="o_sm_bg_measured_in" t-esc="tpl.goal_type_label + ' · ' + this.measuredIn(tpl)"/></t>
                                                 </button>
                                             </t>
                                         </div>
                                         <t t-set="tpl" t-value="this.selectedTemplate"/>
-                                        <div t-if="tpl and tpl.status === 'available'" class="o_sm_bg_callout"><i class="oi" data-icon="info"/><span t-esc="tpl.how"/></div>
-                                        <div t-elif="tpl" class="o_sm_bg_callout is-warn"><i class="oi" data-icon="info"/><span><strong t-esc="tpl.status === 'setup' ? 'Requires setup. ' : 'Not supported yet. '"/><t t-esc="tpl.needs"/></span></div>
+                                        <div t-if="tpl and tpl.status === 'available' and this.state.templateDetails" class="o_sm_bg_callout"><i class="oi" data-icon="info"/><span t-esc="tpl.how"/></div>
+                                        <div t-elif="tpl and tpl.status !== 'available'" class="o_sm_bg_callout is-warn"><i class="oi" data-icon="info"/><span><strong t-esc="tpl.status === 'setup' ? 'Requires setup. ' : 'Not supported yet. '"/><t t-esc="tpl.needs"/></span></div>
                                         <div t-if="tpl and tpl.company_only and goal.scope !== 'Entire business'" class="o_sm_bg_callout is-warn"><i class="oi" data-icon="info"/><span>This option is measured for the whole company only.</span></div>
                                         <div t-if="tpl and tpl.branch_only and goal.scope === 'Entire business'" class="o_sm_bg_callout is-warn"><i class="oi" data-icon="info"/><span>This option is measured for one branch; create the goal for that branch.</span></div>
                                     </t>
