@@ -45,14 +45,13 @@ const SECTION_LINKS = {
     ],
 };
 
-// Sidebar: short labels in the Overview design's order. Business Goals opens its own client action; the sections the
+// Sidebar: short labels in the Overview design's order. Business Goals is in the top bar, so it is not repeated here; the sections the
 // design does not list stay one click away under "More", so no existing page becomes unreachable.
 const SIDEBAR_PRIMARY = [
     { id: "overview", label: "Overview" },
     { id: "sales_finance", label: "Sales" },
     { id: "purchasing", label: "Purchasing" },
     { id: "inventory_waste", label: "Inventory" },
-    { id: "business_goals", label: "Business Goals", action: "strategic_management.action_business_goals" },
     { id: "reports", label: "Reports" },
     { id: "configuration", label: "Settings" },
 ];
