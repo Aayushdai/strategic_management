@@ -60,6 +60,7 @@ class StrategicPerformanceDashboardBranchOperations(models.AbstractModel):
             # Paid POS sales excluding tax, net of refunds; refund orders are not counted as orders.
             "net_sales": sales,
             "orders": orders,
+            "drill": data.get("drill") or {},
             # Per completed (non-refund) order; no orders means no average, not zero.
             "average_order_value": round(sales / orders, 2) if orders else False,
             "trend": [{"key": row["month_key"], "label": row["label"], "sales": round(row["sales"], 2)} for row in data.get("sales_trend") or []],
@@ -98,16 +99,19 @@ class StrategicPerformanceDashboardBranchOperations(models.AbstractModel):
                                  for row in (data.get("waste_by_product") or [])[:_LIST]],
             "waste_breakdown_available": data.get("waste_breakdown_available", False),
             "receipts_done": receipts,
+            "drill": dict(data.get("drill") or {}, receipts=self._overview_drill("stock.picking", self._operations_receipts_domain(start, end, branch), "Supplier receipts completed")),
             "messages": data.get("messages") or [],
         }
 
     @api.model
-    def _operations_receipts_done(self, start, end, branch):
+    def _operations_receipts_domain(self, start, end, branch):
         start_utc, end_utc = self._overview_utc_bounds(start, end)
-        return self._overview_safe(lambda: self.env["stock.picking"].search_count([
-            ("picking_type_id.code", "=", "incoming"), ("picking_type_id.warehouse_id", "=", branch.id), ("state", "=", "done"),
-            ("date_done", ">=", fields.Datetime.to_string(start_utc)), ("date_done", "<", fields.Datetime.to_string(end_utc)),
-        ]))
+        return [("picking_type_id.code", "=", "incoming"), ("picking_type_id.warehouse_id", "=", branch.id), ("state", "=", "done"),
+                ("date_done", ">=", fields.Datetime.to_string(start_utc)), ("date_done", "<", fields.Datetime.to_string(end_utc))]
+
+    @api.model
+    def _operations_receipts_done(self, start, end, branch):
+        return self._overview_safe(lambda: self.env["stock.picking"].search_count(self._operations_receipts_domain(start, end, branch)))
 
     @api.model
     def _operations_purchasing(self, start, end):
@@ -126,6 +130,7 @@ class StrategicPerformanceDashboardBranchOperations(models.AbstractModel):
             "awaiting_value": data["pending_delivery_value"],
             "overdue_count": data["overdue_delivery_count"],
             "overdue_value": data["overdue_delivery_value"],
+            "drill": data.get("drill") or {},
             # No links to purchase orders: Odoo's Purchase screens are not branch-restricted, so they stay Head Office only.
             "period_orders": [{"name": row["name"], "supplier": row["supplier"], "lines": row["lines"]} for row in (data.get("recent_orders") or [])[:_LIST]],
             "deliveries": [{"name": row["name"], "supplier": row["supplier"], "status": row["status"], "expected_date": row["expected_date"], "lines": row["lines"],

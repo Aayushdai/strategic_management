@@ -160,9 +160,13 @@ class TestDepartmentDashboards(TransactionCase):
         manager = self._manager_ops()
         for code in CODES:
             mine = dict(self._read(code)[code])
+            theirs = dict(manager[code])
+            # The figures are identical; only the manager's cards open Odoo's own lists, which Employees cannot read.
+            self.assertFalse(any(mine.pop("drill", {}).values()), code)
+            theirs.pop("drill", None)
             if code == "purchasing":
                 self.assertEqual(mine.pop("receipts_done"), manager["inventory"]["receipts_done"])
-            self.assertEqual(mine, manager[code], code)
+            self.assertEqual(mine, theirs, code)
         sales = self._read("sales")["sales"]
         self.assertEqual((sales["net_sales"], sales["orders"], sales["average_order_value"]), (30.0, 1, 30.0))
         self.assertEqual(sales["currency"]["name"], self.company.currency_id.name)

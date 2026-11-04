@@ -2269,3 +2269,8 @@
     .o_sm_req_source { display: inline-block; margin-left: .5rem; padding: .1rem .55rem; border-radius: 999px; background: #e6f2fe; color: #175cd3; font-size: .72rem; font-weight: 600; vertical-align: middle; white-space: nowrap; }
     .o_sm_req_badge.is-staff-approved { background: #e6f2fe; color: #175cd3; }
 }
+/* Summary cards that open the records behind their number. */
+.o_sm_navigation_shell .is-drill { cursor: pointer; transition: border-color .12s, box-shadow .12s;
+    &:hover { border-color: #b9acee !important; box-shadow: 0 2px 8px rgba(61, 45, 104, .12); }
+    &:focus-visible { outline: 2px solid #6f5bd3; outline-offset: 2px; }
+}

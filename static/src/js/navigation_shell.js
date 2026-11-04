@@ -607,6 +607,20 @@ export class StrategicNavigationShell extends Component {
         return role === "branch_manager";
     }
 
+    /** A summary card opens Odoo's own list of the records behind its number (the server decides which, and whether). */
+    openDrill(drill) {
+        if (!drill) return;
+        return this.action.doAction({ type: "ir.actions.act_window", name: drill.name, res_model: drill.model, domain: drill.domain,
+                                      views: [[false, "list"], [false, "form"]], target: "current" });
+    }
+
+    onDrillKey(event, drill) {
+        if (drill && (event.key === "Enter" || event.key === " ")) {
+            event.preventDefault();
+            this.openDrill(drill);
+        }
+    }
+
     get isAdminRole() {
         return this.state.navContext?.role === "admin";
     }

@@ -371,6 +371,11 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             "selected_warehouse_id": selected_warehouse.id if selected_warehouse else False,
             "sales": round(sales_total, 2) if sales_total is not False else False,
             "order_count": order_count if sales_total is not False else False,
+            "drill": {
+                "sales": self._overview_drill("pos.order", order_domain, "POS orders behind total sales"),
+                "orders": self._overview_drill("pos.order", order_domain + [("is_refund", "=", False)], "POS orders"),
+                "discounts_refunds": self._overview_drill("pos.order", order_domain + ["|", ("is_refund", "=", True), ("lines.discount", ">", 0)], "Discounted and refund POS orders"),
+            } if sales_total is not False else {},
             "net_profit": financial.get("net_profit") if financial else False,
             "expenses": financial.get("expenses") if financial else False,
             "financial_available": bool(financial),
@@ -685,6 +690,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         total_order_count = len(confirmed)
 
         supplier_stats = defaultdict(lambda: {"name": "", "eligible": 0, "on_time": 0})
+        on_time_eligible = PurchaseOrder.browse()
         orders_attention = []
         for order in orders:
             partner = order.partner_id
@@ -703,6 +709,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                 stats = supplier_stats[partner.id if partner else 0]
                 stats["name"] = supplier_name
                 stats["eligible"] += 1
+                on_time_eligible |= order
                 if max(actual_dates) <= max(expected_dates):
                     stats["on_time"] += 1
 
@@ -817,6 +824,12 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             "branch_options": branch_options,
             "selected_warehouse_id": selected_warehouse.id if selected_warehouse else False,
             "purchase_order_count": len(confirmed),
+            "drill": {
+                "purchase_orders": self._overview_drill("purchase.order", None, "Confirmed purchase orders", ids=confirmed.ids),
+                "pending": self._overview_drill("stock.picking", None, "Pending deliveries", ids=open_receipts.ids) if receipts_available else False,
+                "overdue": self._overview_drill("stock.picking", None, "Overdue deliveries", ids=overdue_receipts.ids) if receipts_available else False,
+                "on_time": self._overview_drill("purchase.order", None, "Completed purchase orders measured for on-time delivery", ids=on_time_eligible.ids),
+            },
             "purchase_order_value": round(purchase_order_value, 2) if purchase_order_value is not None else False,
             "pending_delivery_count": len(open_receipts) if receipts_available else False,
             "pending_delivery_value": round(pending_delivery_value, 2),
@@ -883,6 +896,29 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             "refund_count": int(refund_count or 0),
             "mixed_currency": mixed_currency,
         }
+
+    @api.model
+    def _overview_drill(self, model, domain, name, ids=None):
+        """What a summary card opens: Odoo's own list of exactly the records behind its number.
+
+        Offered only when this user can open that list themselves; Odoo's own access rules still filter it, so a Branch
+        Manager sees their branch only. Never offered from sudo reads (an Employee's department page) or for purchase
+        orders outside Head Office, whose Odoo screens are not branch-restricted.
+        """
+        if self.env.su or model not in self.env.registry.models:
+            return False
+        if model in ("purchase.order", "purchase.order.line") and not self.env.user.has_group("strategic_management.group_strategic_head_office_manager"):
+            return False
+        try:
+            self.env[model].check_access("read")
+        except AccessError:
+            return False
+        if ids is not None:
+            domain = [("id", "in", list(ids))]  # an empty list opens an empty list, never everything
+        # Nothing to show, nothing to click: Odoo fills an empty list with made-up sample rows.
+        if not self.env[model].search_count(domain, limit=1):
+            return False
+        return {"model": model, "domain": domain, "name": name}
 
     @api.model
     def _overview_safe(self, function):
@@ -1155,6 +1191,8 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         lot_quantity_by_branch = defaultdict(float)
         lot_info = {}
         discrepancy_delta = defaultdict(float)
+        lot_quant_ids = defaultdict(list)
+        discrepancy_quant_ids = []
         for row in quant_rows:
             product_ref = row.get("product_id")
             location_ref = row.get("location_id")
@@ -1181,11 +1219,13 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                 delta = float(row.get("inventory_diff_quantity") or 0.0)
                 if abs(delta) > 0.000001:
                     discrepancy_delta[(product_id_row, warehouse_ref)] += delta
+                    discrepancy_quant_ids.append(row["id"])
             lot_ref = row.get("lot_id")
             expiry_value = row.get("expiration_date") if "expiration_date" in quant_fields else False
             if lot_ref:
                 lot_key = (lot_ref[0], warehouse_ref)
                 lot_quantity_by_branch[lot_key] += quantity
+                lot_quant_ids[lot_key].append(row["id"])
                 lot_info.setdefault(lot_key, {
                     "lot_id": lot_ref[0], "lot_name": lot_ref[1], "product_id": product_id_row,
                     "expiry": expiry_value, "warehouse_id": warehouse_ref,
@@ -1243,6 +1283,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                 available = float(quantities.get("available_quantity", 0.0))
                 meta = product_meta.get(pid, {"name": product_ref[1], "uom": "", "category": "Uncategorized"})
                 low_stock_all.append({
+                    "orderpoint_id": row["id"],
                     "product_id": pid, "name": meta.get("name") or product_ref[1], "category": meta.get("category") or "Uncategorized",
                     "warehouse_id": wid, "branch_name": warehouse_ref[1], "available_quantity": round(available, 4),
                     "forecast_quantity": round(forecast, 4), "minimum_quantity": round(minimum, 4),
@@ -1306,6 +1347,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                 else:
                     status = "In %s days" % days_left
                 expiring_stock.append({
+                    "quant_ids": lot_quant_ids.get(key, []),
                     "lot_id": info["lot_id"], "lot_name": info.get("lot_name") or "Tracked lot",
                     "product_id": pid, "product": product.get("name") or "Product",
                     "branch": warehouse.display_name if warehouse else "Unknown branch",
@@ -1517,6 +1559,12 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             "branch_options": branch_options,
             "selected_warehouse_id": selected_warehouse.id if selected_warehouse else False,
             "currency": currency_data,
+            "drill": {
+                "low_stock": self._overview_drill("stock.warehouse.orderpoint", None, "Products below their minimum stock", ids=[item["orderpoint_id"] for item in low_stock_all]),
+                "expiring": self._overview_drill("stock.quant", None, "Stock expiring within 7 days", ids=[qid for item in expiring_stock if 0 <= item["days_left"] <= 7 for qid in item["quant_ids"]]) if expiry_available else False,
+                "waste": self._overview_drill("stock.move", self._overview_waste_domain(start, end, selected_warehouse), "Recorded waste") if waste_cost is not False else False,
+                "issues": self._overview_drill("stock.quant", None, "Counted stock that differs from the system", ids=discrepancy_quant_ids),
+            },
             "summary": {
                 "low_stock_count": low_stock_count,
                 "expiring_soon_count": expiring_soon_count,
@@ -1546,11 +1594,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             "messages": messages,
         }
     @api.model
-    def _overview_waste_cost(self, start, end, warehouse=False):
-        Move = self.env["stock.move"]
-        required_fields = {"is_scrap", "date", "state", "company_id", "scrap_reason_tag_ids", "location_id"}
-        if not required_fields.issubset(Move._fields):
-            return False
+    def _overview_waste_domain(self, start, end, warehouse=False):
         start_utc, end_utc = self._overview_utc_bounds(start, end)
         domain = [
             ("company_id", "=", self.env.company.id),
@@ -1561,6 +1605,14 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         ]
         if warehouse:
             domain.append(("location_id", "child_of", warehouse.view_location_id.id))
+        return domain
+
+    def _overview_waste_cost(self, start, end, warehouse=False):
+        Move = self.env["stock.move"]
+        required_fields = {"is_scrap", "date", "state", "company_id", "scrap_reason_tag_ids", "location_id"}
+        if not required_fields.issubset(Move._fields):
+            return False
+        domain = self._overview_waste_domain(start, end, warehouse)
         moves = self._overview_safe(lambda: Move.search(domain))
         if moves is False:
             return False
