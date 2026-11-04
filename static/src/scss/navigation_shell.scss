@@ -2262,3 +2262,10 @@
     &:focus-visible { outline: 2px solid #c9bdf5; outline-offset: -2px; }
     &.is-active { border-bottom-color: #6f5bd3; color: #3d2d68; }
 }
+.o_sm_navigation_shell .o_sm_staff_work { margin-bottom: 1rem; }
+.o_sm_navigation_shell .o_sm_staff_work .o_sm_req_actions { white-space: normal; }
+.o_sm_navigation_shell .o_sm_staff_work { border-left: 4px solid #2e90fa;
+    .o_sm_req_card_head h2 { display: inline; }
+    .o_sm_req_source { display: inline-block; margin-left: .5rem; padding: .1rem .55rem; border-radius: 999px; background: #e6f2fe; color: #175cd3; font-size: .72rem; font-weight: 600; vertical-align: middle; white-space: nowrap; }
+    .o_sm_req_badge.is-staff-approved { background: #e6f2fe; color: #175cd3; }
+}

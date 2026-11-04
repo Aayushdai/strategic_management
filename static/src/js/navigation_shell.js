@@ -197,6 +197,7 @@ export class StrategicNavigationShell extends Component {
             myPerformanceStart: this.asDateInput(new Date(new Date().getFullYear(), new Date().getMonth() - 5, 1)),
             myPerformanceEnd: this.asDateInput(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)),
             pendingStaffing: 0,
+            staffingWork: [],
             employeeWorkspace: null,
             employeeWorkspaceError: "",
             departmentProductId: false,
@@ -988,6 +989,7 @@ export class StrategicNavigationShell extends Component {
             if (done) done(result);
             await this.loadStaffing();
             if (this.state.activeSection === "employee_management") await this.loadEmployeeManagement({ silent: true });
+            if (this.state.activeSection === "overview") await this.loadPendingStaffing();
             return true;
         } catch (error) {
             this.notification.add(error.data?.message || error.message || "This could not be saved.", { type: "danger" });
@@ -1104,13 +1106,15 @@ export class StrategicNavigationShell extends Component {
         return this.loadMyPerformance();
     }
 
-    /** Head Office's Overview says when a branch is waiting for a staffing decision. */
+    /** Head Office's Overview lists the staffing requests waiting on Head Office: a decision, or employees to register. */
     async loadPendingStaffing() {
         if (!this.isHeadOffice) return;
         try {
-            const data = await this.orm.silent.call("strategic.staffing.request", "get_staffing_requests", [{ state: "submitted" }]);
-            this.state.pendingStaffing = data.requests.length;
+            const data = await this.orm.silent.call("strategic.staffing.request", "get_staffing_requests", [{}]);
+            this.state.staffingWork = data.requests.filter((row) => row.state === "submitted" || (row.state === "approved" && row.remaining));
+            this.state.pendingStaffing = this.state.staffingWork.length;
         } catch {
+            this.state.staffingWork = [];
             this.state.pendingStaffing = 0;
         }
     }

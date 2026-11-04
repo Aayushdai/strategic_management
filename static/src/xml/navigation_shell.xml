@@ -55,8 +55,32 @@
             </label>
         </header>
 
-        <div t-if="this.state.pendingStaffing" class="o_sm_req_notice o_sm_staff_pending" role="status"><span><strong t-esc="this.state.pendingStaffing"/> staffing <t t-esc="this.state.pendingStaffing === 1 ? 'request is' : 'requests are'"/> waiting for your decision.</span>
-            <button type="button" class="o_sm_req_btn is-solid" t-on-click="() => this.selectSection('staffing_requests')">Review requests</button></div>
+        <section t-if="this.isHeadOffice and this.state.staffingWork.length" class="o_sm_req_card is-from-branch o_sm_staff_work" aria-labelledby="o_sm_staff_work_title">
+            <div class="o_sm_req_card_head">
+                <div><h2 id="o_sm_staff_work_title">Staffing Requests</h2><span class="o_sm_req_source is-branch">From Branch Manager</span><p>Branches asking for staff. Decide, then register the people you approved.</p></div>
+                <div class="o_sm_req_head_actions"><span class="o_sm_req_count"><t t-esc="this.state.staffingWork.length"/> to act on</span>
+                    <button type="button" class="o_sm_req_link" t-on-click="() => this.selectSection('staffing_requests')">View all →</button></div>
+            </div>
+            <div class="o_sm_req_table_wrap"><table class="o_sm_req_table">
+                <thead><tr><th>Request</th><th>Branch</th><th>Requested By</th><th>Joining</th><th>Status</th><th class="o_sm_req_actions_col">Actions</th></tr></thead>
+                <tbody><tr t-foreach="this.state.staffingWork" t-as="row" t-key="row.id">
+                    <td data-label="Request" class="o_sm_req_objective"><strong><t t-esc="row.quantity"/> × <t t-esc="row.position"/></strong><small t-att-title="row.reason" t-esc="row.reason"/></td>
+                    <td data-label="Branch" t-esc="row.branch"/>
+                    <td data-label="Requested By" t-esc="row.requested_by"/>
+                    <td data-label="Joining" class="o_sm_req_date" t-esc="this.formatPurchaseDate(row.expected_date)"/>
+                    <td data-label="Status"><span t-if="row.state === 'submitted'" class="o_sm_req_badge is-pending">Waiting for your decision</span>
+                        <span t-else="" class="o_sm_req_badge is-staff-approved">Approved · <t t-esc="row.registered"/> of <t t-esc="row.quantity"/> registered</span></td>
+                    <td data-label="Actions" class="o_sm_req_actions">
+                        <t t-if="row.state === 'submitted'">
+                            <button type="button" class="o_sm_req_btn is-approve" t-att-disabled="this.state.staffingBusy" t-on-click="() => this.approveStaffing(row)">Approve</button>
+                            <button type="button" class="o_sm_req_btn is-reject" t-att-disabled="this.state.staffingBusy" t-on-click="() => { this.state.staffingDecision = { row: row, reason: '' }; }">Reject</button>
+                        </t>
+                        <button t-else="" type="button" class="o_sm_req_btn is-approve" t-on-click="() => this.openRegister(row)">Register employee</button>
+                    </td>
+                </tr></tbody>
+            </table></div>
+        </section>
+        <t t-if="this.isHeadOffice"><t t-call="strategic_management.StaffingRejectForm"/><t t-call="strategic_management.EmployeeRegisterForm"/></t>
         <div t-if="this.state.requestsLoading and !rq" class="o_sm_req_notice">Loading objective requests…</div>
         <div t-foreach="(rq and !rq.available and rq.messages) || []" t-as="message" t-key="message_index" class="o_sm_req_notice"><t t-esc="message"/></div>
 
@@ -1746,6 +1770,16 @@
             </div>
         </div>
     </t>
+    <t t-name="strategic_management.StaffingRejectForm">
+            <t t-set="sd" t-value="this.state.staffingDecision"/>
+            <div t-if="sd" class="o_sm_req_overlay" t-on-click="() => { this.state.staffingDecision = null; }">
+                <form class="o_sm_req_dialog o_sm_task_form" role="dialog" aria-modal="true" aria-label="Reject request" t-on-click.stop="() => {}" t-on-submit.prevent="() => this.confirmReject()">
+                    <header class="o_sm_req_dialog_head"><div><span class="o_sm_req_kicker">Reject request</span><h2><t t-esc="sd.row.quantity"/> × <t t-esc="sd.row.position"/></h2></div></header>
+                    <div class="o_sm_req_dialog_body"><label>Reason<textarea rows="3" required="required" t-on-input="(ev) => { sd.reason = ev.target.value; }"/></label></div>
+                    <footer class="o_sm_req_dialog_foot"><button type="submit" class="o_sm_req_btn is-reject is-solid">Reject request</button></footer>
+                </form>
+            </div>
+    </t>
     <t t-name="strategic_management.StaffingRequestForm">
             <t t-set="sf" t-value="this.state.staffingForm"/>
             <div t-if="sf" class="o_sm_req_overlay" t-on-click="() => { this.state.staffingForm = null; }">
@@ -1829,14 +1863,7 @@
                 </article>
             </t>
             <t t-call="strategic_management.StaffingRequestForm"/>
-            <t t-set="sd" t-value="this.state.staffingDecision"/>
-            <div t-if="sd" class="o_sm_req_overlay" t-on-click="() => { this.state.staffingDecision = null; }">
-                <form class="o_sm_req_dialog o_sm_task_form" role="dialog" aria-modal="true" aria-label="Reject request" t-on-click.stop="() => {}" t-on-submit.prevent="() => this.confirmReject()">
-                    <header class="o_sm_req_dialog_head"><div><span class="o_sm_req_kicker">Reject request</span><h2><t t-esc="sd.row.quantity"/> × <t t-esc="sd.row.position"/></h2></div></header>
-                    <div class="o_sm_req_dialog_body"><label>Reason<textarea rows="3" required="required" t-on-input="(ev) => { sd.reason = ev.target.value; }"/></label></div>
-                    <footer class="o_sm_req_dialog_foot"><button type="submit" class="o_sm_req_btn is-reject is-solid">Reject request</button></footer>
-                </form>
-            </div>
+            <t t-call="strategic_management.StaffingRejectForm"/>
             <t t-call="strategic_management.EmployeeRegisterForm"/>
         </div>
     </t>

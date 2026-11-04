@@ -130,6 +130,14 @@ class TestStaffing(TransactionCase):
             self._register(request, "stf.three@example.com", "STF Three")
         self.assertEqual(request._row()["remaining"], 0)
 
+    def test_filling_a_request_closes_its_open_to_dos(self):
+        request = self._approved()
+        self.assertTrue(request.activity_ids, "the manager is told it was approved")
+        self._register(request, "stf.one@example.com", "STF One")
+        self.assertTrue(request.activity_ids, "one place is still open")
+        self._register(request, "stf.two@example.com", "STF Two")
+        self.assertFalse(request.activity_ids, "filled: nothing left to do")
+
     def test_registered_employee_is_a_real_hr_employee_without_a_login(self):
         users = self.env["res.users"].with_context(active_test=False).search_count([])
         employee = self._register(self._approved())

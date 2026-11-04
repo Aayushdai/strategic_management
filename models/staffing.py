@@ -264,6 +264,9 @@ class StrategicStaffingRequest(models.Model):
             "department_id": department.id or False, "parent_id": manager.id or False, "company_id": request.company_id.id,
             "strategic_branch_warehouse_id": request.warehouse_id.id, "strategic_staffing_request_id": request.id})
         request.message_post(body="Employee registered: %s" % name, subtype_xmlid="mail.mt_note")
+        if len(request.with_context(active_test=False).employee_ids) >= request.quantity:
+            # Nothing is left to do on a filled request, so its to-dos stop showing as open or overdue.
+            request.activity_ids.action_feedback(feedback="All employees registered.")
         return request._row() | {"new_employee_id": employee.id}
 
     @api.model
