@@ -395,7 +395,6 @@ def _pending_pos_issue(moves):
 def _collect_historical_stock_balance(target, version, start_utc, end_utc, calc):
     env = target.env
     Quant = env["stock.quant"].sudo()
-    Location = env["stock.location"].sudo()
     locations, issue = _get_internal_scope_locations(target)
     if issue:
         return source_result(target, version, DATA_QUALITY, None, issue, "stock.quant+stock.move", Quant.browse())

@@ -8,7 +8,7 @@ or stock. Notifications reuse Odoo To-Do activities and chatter.
 
 from datetime import timedelta
 
-from markupsafe import Markup, escape
+from markupsafe import Markup
 
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError

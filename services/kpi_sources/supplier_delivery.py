@@ -110,7 +110,6 @@ def collect_supplier_delivery_result(target, version):
 
     start_text, end_text = fields.Datetime.to_string(start_utc), fields.Datetime.to_string(end_utc)
     now_utc = fields.Datetime.to_datetime(fields.Datetime.now())
-    now_text = fields.Datetime.to_string(now_utc)
 
     # Existing confirmed PO lines from before this baseline feature cannot safely be
     # assigned to a due cohort by their current editable promise date. Flag likely

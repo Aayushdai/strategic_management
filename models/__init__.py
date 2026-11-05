@@ -13,8 +13,12 @@ from . import live_refresh
 from . import kpi_scheduler
 from . import dashboard
 from . import business_overview
+from . import business_overview_purchasing
+from . import business_overview_inventory
 from . import app_dependencies
 from . import goal_setup
+from . import goal_setup_monitoring
+from . import goal_setup_payload
 from . import branch_overview
 from . import people_overview
 from . import overview_extras

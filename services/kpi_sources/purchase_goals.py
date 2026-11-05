@@ -8,7 +8,6 @@ warehouse, amounts excluding tax converted to company currency at the confirmati
 
 from collections import defaultdict
 from datetime import timedelta
-import math
 
 from odoo import fields
 from odoo.exceptions import ValidationError

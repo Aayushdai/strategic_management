@@ -3,7 +3,7 @@
 import math
 
 from odoo import fields
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import ValidationError
 
 from .common import (
     DATA_QUALITY,
@@ -137,7 +137,6 @@ def collect_purchase_result(target, version):
     if issue:
         return source_result(target, version, DATA_QUALITY, None, issue, "", target.env["purchase.order"].browse())
 
-    env = target.env
     if calc == "purchase_ordered_quantity":
         return _collect_confirmed_order_quantity(target, version, start_utc, end_utc)
     return _collect_completed_supplier_receipts(target, version, start_utc, end_utc)
