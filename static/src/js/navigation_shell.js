@@ -6,7 +6,7 @@ import { user } from "@web/core/user";
 import { useService } from "@web/core/utils/hooks";
 
 const NAVIGATION_ITEMS = [
-    { id: "overview", label: "Overview", icon: "home", description: "See overall business performance and important changes." },
+    { id: "overview", label: "Inbox", icon: "home", description: "Branch requests waiting for Head Office: staffing and objectives." },
     { id: "sales_finance", label: "Sales & Finance", icon: "bar_chart", description: "Review sales, revenue trends, orders, and financial results." },
     { id: "inventory_waste", label: "Inventory & Waste", icon: "inventory_2", description: "Monitor stock, ingredient consumption, waste, and discrepancies." },
     { id: "purchasing", label: "Purchasing", icon: "shopping_cart", description: "Review supplier orders, deliveries, and purchasing activity." },
@@ -48,7 +48,7 @@ const SECTION_LINKS = {
 // Sidebar: short labels in the Overview design's order. Business Goals is in the top bar, so it is not repeated here; the sections the
 // design does not list stay one click away under "More", so no existing page becomes unreachable.
 const SIDEBAR_PRIMARY = [
-    { id: "overview", label: "Overview" },
+    { id: "overview", label: "Inbox" },
     { id: "sales_finance", label: "Sales" },
     { id: "purchasing", label: "Purchasing" },
     { id: "inventory_waste", label: "Inventory" },

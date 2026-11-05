@@ -1664,7 +1664,7 @@
                 t-att-title="item.planned ? 'Planned for a later phase' : false"
                 t-on-click="() => this.openNavItem(item)">
             <svg class="o_sm_nav_svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-    <g t-if="item.id === 'overview'"><path d="M3.5 10.5 12 3.8l8.5 6.7"/><path d="M5.5 9.5v10.8h13V9.5"/><path d="M9.5 20.3v-6h5v6"/></g>
+    <g t-if="item.id === 'overview'"><path d="M4 13.5 6.5 5h11l2.5 8.5"/><path d="M4 13.5v6h16v-6"/><path d="M4 13.5h4.5l1 2h5l1-2H20"/></g>
     <g t-elif="item.id === 'sales_finance' or item.id === 'department_sales'"><path d="M5 20v-7M10 20V8M15 20v-9M20 20V4"/></g>
     <g t-elif="item.id === 'inventory_waste' or item.id === 'department_inventory'"><path d="m12 3 8 4.2v9.6L12 21l-8-4.2V7.2Z"/><path d="m4.3 7.3 7.7 4.1 7.7-4.1M12 11.5V21"/></g>
     <g t-elif="item.id === 'purchasing' or item.id === 'department_purchasing'"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 4h2l2.1 11.2a2 2 0 0 0 2 1.6h9.5a2 2 0 0 0 1.9-1.5L22 8H6"/></g>
