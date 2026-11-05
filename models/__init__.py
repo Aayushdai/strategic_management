@@ -28,3 +28,4 @@ from . import branch_operations
 from . import branch_report
 from . import department_access
 from . import staffing
+from . import kpi_work_request

@@ -24,6 +24,9 @@ _PRODUCT_MONEY_CALCULATIONS = {"inventory_recorded_waste_cost", "pos_product_net
 _UNIT_PRICE_CALCULATIONS = {"purchase_average_unit_price", "pos_average_unit_price"}
 _DAYS_CALCULATIONS = {"purchase_average_receipt_lead_days", "purchase_average_delivery_delay_days"}
 
+REPORTING_FREQUENCIES = [("daily", "Daily"), ("weekly", "Weekly"), ("monthly", "Monthly"), ("quarterly", "Quarterly"), ("yearly", "Yearly")]
+# Sales measures the POS collector can restrict to hours of the day.
+TIME_WINDOW_CALCULATIONS = {"pos_net_sales", "pos_average_order_value"}
 _SOURCE_CALCULATIONS = {
     "accounting_net_profit": "accounting",
     "accounting_net_profit_margin_pct": "accounting",
@@ -201,6 +204,11 @@ class StrategicKpiDefinition(models.Model):
         default="manual",
         tracking=True,
     )
+    has_time_window = fields.Boolean("Limited to a Time Window", tracking=True)
+    time_window_start = fields.Float("Window From", help="Hours of the day in the company time zone, inclusive.")
+    time_window_end = fields.Float("Window To", help="Hours of the day in the company time zone, exclusive.")
+    reporting_frequency = fields.Selection(REPORTING_FREQUENCIES, tracking=True, help="How often results are produced, through this KPI's reporting schedules.")
+    reporting_schedule_ids = fields.One2many("strategic.kpi.reporting.schedule", "kpi_id")
     description = fields.Text()
     individual_outcome = fields.Boolean(
         "Individual Employee KPI",
@@ -319,6 +327,9 @@ class StrategicKpiDefinition(models.Model):
                     "calculation_type": kpi.calculation_type,
                     "source_product_id": kpi.source_product_id.id or False,
                     "description": kpi.description,
+                    "has_time_window": kpi.has_time_window,
+                    "time_window_start": kpi.time_window_start,
+                    "time_window_end": kpi.time_window_end,
                     # The initial contract is the legacy contract for any
                     # backfilled historical reporting period. Subsequent
                     # revisions use explicit effective dates.
@@ -333,7 +344,7 @@ class StrategicKpiDefinition(models.Model):
     def write(self, vals):
         versioned_fields = {
             "unit", "direction", "source_type", "calculation_type",
-            "source_product_id", "description",
+            "source_product_id", "description", "has_time_window", "time_window_start", "time_window_end",
         }
         if versioned_fields.intersection(vals):
             raise ValidationError(
@@ -351,6 +362,9 @@ class StrategicKpiDefinition(models.Model):
             "calculation_type": version.calculation_type,
             "source_product_id": version.source_product_id.id or False,
             "description": version.description,
+            "has_time_window": version.has_time_window,
+            "time_window_start": version.time_window_start,
+            "time_window_end": version.time_window_end,
         })
 
     def _get_definition_version_for_period(self, date_start, date_end):
@@ -513,6 +527,18 @@ class StrategicKpiDefinitionVersion(models.Model):
         for version in self:
             label = version.kpi_id.code or version.kpi_id.name or "KPI"
             version.name = "%s — Version %s" % (label, version.version_number or "new")
+
+    has_time_window = fields.Boolean("Limited to a Time Window")
+    time_window_start = fields.Float("Window From", help="Hours of the day in the company time zone, inclusive.")
+    time_window_end = fields.Float("Window To", help="Hours of the day in the company time zone, exclusive.")
+
+    @api.constrains("has_time_window", "time_window_start", "time_window_end", "calculation_type")
+    def _check_time_window(self):
+        for version in self.filtered("has_time_window"):
+            if version.calculation_type not in TIME_WINDOW_CALCULATIONS:
+                raise ValidationError("A time window applies only to POS net sales and POS average order value.")
+            if not 0 <= version.time_window_start < version.time_window_end <= 24:
+                raise ValidationError("The time window must start before it ends, within one day.")
 
     @api.model_create_multi
     def create(self, vals_list):

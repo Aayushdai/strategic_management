@@ -91,3 +91,12 @@ access_strategic_admin_lot,Strategic Admin restriction - stock.lot,stock.lot,,cr
 access_strategic_admin_sale_order,Strategic Admin restriction - sale.order,sale.order,,crud,"user._strategic_access_domain('sale.order', 'branch')"
 access_strategic_admin_sale_line,Strategic Admin restriction - sale.order.line,sale.order.line,,crud,"user._strategic_access_domain('sale.order.line', 'branch')"
 access_strategic_admin_sale_report,Strategic Admin restriction - sale.report,sale.report,,crud,"user._strategic_access_domain('sale.report', 'branch')"
+access_strategic_kpi_work_request_head_office,KPI/OKR Work Request - Head Office,strategic.kpi.work.request,strategic_management.group_strategic_head_office_manager,r,
+access_strategic_kpi_work_request_admin,KPI/OKR Work Request - assigned Admin,strategic.kpi.work.request,strategic_management.group_strategic_admin,r,"[('admin_user_id', '=', user.id), ('state', 'in', ['assigned', 'in_progress', 'changes_requested', 'pending_review', 'approved', 'rejected'])]"
+access_strategic_kpi_work_proposal_head_office,KPI/OKR Proposal - Head Office,strategic.kpi.work.proposal,strategic_management.group_strategic_head_office_manager,r,
+access_strategic_kpi_work_proposal_admin,KPI/OKR Proposal - assigned Admin,strategic.kpi.work.proposal,strategic_management.group_strategic_admin,r,"[('request_id.admin_user_id', '=', user.id)]"
+access_strategic_kpi_work_proposal_kr_head_office,KPI/OKR Proposal Key Result - Head Office,strategic.kpi.work.proposal.key.result,strategic_management.group_strategic_head_office_manager,r,
+access_strategic_kpi_work_proposal_kr_admin,KPI/OKR Proposal Key Result - assigned Admin,strategic.kpi.work.proposal.key.result,strategic_management.group_strategic_admin,r,"[('proposal_id.request_id.admin_user_id', '=', user.id)]"
+access_strategic_kpi_work_history_head_office,KPI/OKR Request History - Head Office,strategic.kpi.work.history,strategic_management.group_strategic_head_office_manager,r,
+access_strategic_kpi_work_history_admin,KPI/OKR Request History - assigned Admin,strategic.kpi.work.history,strategic_management.group_strategic_admin,r,"[('request_id.admin_user_id', '=', user.id)]"
+access_strategic_kpi_schedule_head_office,KPI Reporting Schedule - Head Office,strategic.kpi.reporting.schedule,strategic_management.group_strategic_head_office_manager,r,

@@ -290,6 +290,26 @@ def window_sales(env, company, date_from, date_to, window_start, window_end, war
             "products": sorted(products.values(), key=lambda item: (-item["qty"], item["name"])), "facts": facts}
 
 
+def _collect_window_sales(target, version, warehouse):
+    """Net sales or average order value limited to the version's hours of the day, through window_sales."""
+    env, calc = target.env, version.calculation_type
+    data = window_sales(env, target.company_id, target.date_start, target.date_end, version.time_window_start, version.time_window_end, warehouse)
+    if data["problem"]:
+        return _result(target, version, DATA_QUALITY, None, data["problem"], "pos.order", [], [])
+    orders = env["pos.order"].sudo().browse(fact["order"].id for fact in data["facts"])
+    tokens, refs = _record_tokens(orders), _refs(orders)
+    label = "%s to %s company time" % tuple("%02d:%02d" % (int(hour), round((hour - int(hour)) * 60)) for hour in (version.time_window_start, version.time_window_end))
+    if not orders:
+        return _result(target, version, NOT_EVALUATED, None,
+                       "No paid or posted POS orders were found between %s for this scope and period; zero sales have not been assumed." % label, "pos.order", tokens, refs)
+    total, count = data["total"]["revenue"], data["total"]["orders"]
+    if calc == "pos_net_sales":
+        return _result(target, version, VALID, total, "Net sales excluding tax between %s from %s POS orders; refunds are subtracted." % (label, len(orders)), "pos.order", tokens, refs)
+    if not count:
+        return _result(target, version, NOT_EVALUATED, None, "There were only refunds between %s, so no average can be calculated." % label, "pos.order", tokens, refs)
+    return _result(target, version, VALID, total / count, "Net sales excluding tax between %s (%.2f) divided by %s customer orders." % (label, total, count), "pos.order", tokens, refs)
+
+
 def _collect_sales(target, version):
     calc = version.calculation_type
     env = target.env
@@ -317,6 +337,9 @@ def _collect_sales(target, version):
     if problem:
         return _result(target, version, DATA_QUALITY, None, problem, "", [], [])
     warehouse = target.warehouse_id if target.scope == "branch" else False
+    # Goal set-up previews pass a stand-in version without this field; those are never time-limited.
+    if getattr(version, "has_time_window", False):
+        return _collect_window_sales(target, version, warehouse)
     if calc == "pos_sales_growth_pct" and end_utc > fields.Datetime.to_datetime(fields.Datetime.now()):
         return _result(target, version, NOT_EVALUATED, None,
                        "Growth is compared once the period has ended; a partial period would not be comparable.", "", [], [])

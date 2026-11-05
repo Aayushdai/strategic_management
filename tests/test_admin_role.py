@@ -236,7 +236,8 @@ class TestAdminRole(TransactionCase):
 
     # ------------------------------------------------------------------ no data by any route
     def test_every_data_method_refuses_admin(self):
-        allowed = {"get_navigation_context"}
+        # Only the Admin's own assigned requests, and no business figures; covered by test_kpi_work_request.
+        allowed = {"get_navigation_context", "get_my_work_requests"}
         leaks, checked = [], []
         Models = [name for name in self.env.registry if name.startswith("strategic.")]
         for name in Models:
