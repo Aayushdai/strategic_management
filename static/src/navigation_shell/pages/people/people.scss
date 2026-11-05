@@ -49,11 +49,7 @@
 .o_sm_navigation_shell .o_sm_people_staff_info span { color:#667085; font-size:.65rem; line-height:1.4; }
 .o_sm_navigation_shell .o_sm_people_staff_track { height:.55rem; overflow:hidden; border-radius:1rem; background:#eef2f6; }
 .o_sm_navigation_shell .o_sm_people_staff_fill { display:block; height:100%; border-radius:1rem; }
-.o_sm_navigation_shell .o_sm_people_fill_green { background:#24a56a; }
-.o_sm_navigation_shell .o_sm_people_fill_amber { background:#f3a12f; }
-.o_sm_navigation_shell .o_sm_people_fill_red { background:#e85b55; }
 .o_sm_navigation_shell .o_sm_people_coverage { display:inline-flex; padding:.25rem .42rem; border-radius:.35rem; font-size:.63rem; white-space:nowrap; }
-.o_sm_navigation_shell .o_sm_people_coverage_good { background:#dcfce7; color:#067647; }
 .o_sm_navigation_shell .o_sm_people_coverage_warn { background:#fff0d3; color:#b54708; }
 .o_sm_navigation_shell .o_sm_people_coverage_critical { background:#fee4e2; color:#b42318; }
 .o_sm_navigation_shell .o_sm_people_panel_note { margin:.55rem 0 0; color:#98a2b3; font-size:.64rem; line-height:1.45; }
@@ -70,14 +66,11 @@
 .o_sm_navigation_shell .o_sm_people_badge { padding:.25rem .42rem; border-radius:.35rem; font-size:.63rem; white-space:nowrap; }
 .o_sm_navigation_shell .o_sm_people_badge_high { background:#fee4e2; color:#b42318; }
 .o_sm_navigation_shell .o_sm_people_badge_medium { background:#fff0d3; color:#b54708; }
-.o_sm_navigation_shell .o_sm_people_badge_low { background:#e0f2fe; color:#245b9a; }
 .o_sm_navigation_shell .o_sm_people_actions_panel { width:100%; }
 .o_sm_navigation_shell .o_sm_people_table_wrap { width:100%; overflow-x:auto; }
 .o_sm_navigation_shell .o_sm_people_table { width:100%; border-collapse:collapse; color:#344054; font-size:.72rem; }
 .o_sm_navigation_shell .o_sm_people_table th { padding:.5rem .45rem; background:#f8fafc; color:#475467; font-weight:600; text-align:left; white-space:nowrap; }
 .o_sm_navigation_shell .o_sm_people_table td { padding:.58rem .45rem; border-top:1px solid #eef0f3; white-space:nowrap; }
-.o_sm_navigation_shell .o_sm_people_task_open { background:#fee4e2; color:#b42318; }
-.o_sm_navigation_shell .o_sm_people_task_progress { background:#fff0d3; color:#b54708; }
 @media (max-width: 1100px) {
     .o_sm_navigation_shell .o_sm_people_summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
     .o_sm_navigation_shell .o_sm_people_top_grid { grid-template-columns:minmax(0,1fr); }

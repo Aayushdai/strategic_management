@@ -54,12 +54,8 @@
 .o_sm_navigation_shell .o_sm_pur_supplier_row > b { font-weight:600; text-align:right; }
 .o_sm_navigation_shell .o_sm_pur_bar_track { height:.62rem; overflow:hidden; border-radius:1rem; background:#edf1f5; }
 .o_sm_navigation_shell .o_sm_pur_bar_track i { display:block; height:100%; border-radius:inherit; }
-.o_sm_navigation_shell .o_sm_pur_bar_good { background:#26ae78; }
-.o_sm_navigation_shell .o_sm_pur_bar_medium { background:#f59e0b; }
-.o_sm_navigation_shell .o_sm_pur_bar_bad { background:#ef5148; }
 .o_sm_navigation_shell .o_sm_pur_count { display:grid; place-items:center; min-width:1.65rem; height:1.65rem; border-radius:50%; background:#f2f4f7; color:#344054; font-size:.7rem; }
 .o_sm_navigation_shell .o_sm_pur_status { display:inline-block; padding:.18rem .4rem; border-radius:.32rem; font-size:.63rem; white-space:nowrap; }
-.o_sm_navigation_shell .o_sm_pur_status_info { background:#ece5ff; color:#6941c6; }
 .o_sm_navigation_shell .o_sm_pur_text_bad { color:#d92d20; }
 .o_sm_navigation_shell .o_sm_pur_text_warn { color:#b54708; }
 @media (max-width:1200px) {
@@ -77,12 +73,6 @@
     .o_sm_navigation_shell .o_sm_pur_supplier_row { grid-template-columns:7rem minmax(2rem,1fr) 2.2rem; gap:.4rem; }
     .o_sm_navigation_shell .o_sm_pur_line_chart { padding-left:3.4rem; }
 }
-
-.o_sm_navigation_shell .o_sm_area_goal_status.is-good { background: #e8f7ef; color: #17754f; }
-
-/* Purchasing page look. Every rule starts with .o_sm_purchasing_ui, so
-the older .o_sm_pur_* defaults and the shared goals table keep their look elsewhere. */
-.o_sm_navigation_shell .o_sm_workspace:has(> .o_sm_purchasing_ui) { padding: 0; background: #f7f7fb; }
 
 .o_sm_navigation_shell .o_sm_purchasing_ui {
     gap: 1rem; padding: 1.1rem 1.5rem 1.5rem 1.75rem; color: var(--sm-home-navy);
@@ -121,10 +111,6 @@ the older .o_sm_pur_* defaults and the shared goals table keep their look elsewh
 
     /* KPI cards */
     .o_sm_pur_summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .85rem; }
-    .o_sm_pur_metric {
-        display: flex; align-items: flex-start; gap: .75rem; min-width: 0; min-height: 6.2rem; padding: .95rem 1rem; border: 1px solid var(--sm-home-border);
-        border-radius: .75rem; background: #fff; box-shadow: 0 1px 3px rgba(29, 35, 64, .04);
-    }
     .o_sm_pur_metric_icon {
         display: inline-flex; flex: 0 0 2.5rem; align-items: center; justify-content: center; width: 2.5rem; height: 2.5rem; border-radius: 50%; color: #fff;
         svg { width: 1.2rem; height: 1.2rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -201,6 +187,7 @@ the older .o_sm_pur_* defaults and the shared goals table keep their look elsewh
         tbody tr:first-child td { border-top: 0; }
     }
 }
+
 @media (max-width: 1200px) {
     .o_sm_navigation_shell .o_sm_purchasing_ui {
         .o_sm_pur_summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
