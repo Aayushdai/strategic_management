@@ -11,6 +11,16 @@ from odoo import api, fields, models
 from odoo.exceptions import AccessError, ValidationError
 
 
+# Alignment link types: the alignment and its revision wizard offer the same choices.
+XMATRIX_LINK_TYPES = [
+    ("B>A", "Breakthrough Objective to Annual Objective"),
+    ("I>A", "Initiative to Annual Objective"),
+    ("I>M", "Initiative to KPI / Metric"),
+    ("B>M", "Breakthrough Objective to KPI / Metric"),
+    ("I>O", "Initiative to Owner"),
+]
+
+
 class StrategicObjectiveHoshin(models.Model):
     """Add a Hoshin horizon as a dimension independent of BSC perspective."""
 
@@ -273,13 +283,7 @@ class StrategicXMatrixAlignment(models.Model):
 
     name = fields.Char(compute="_compute_name", store=True)
     link_type = fields.Selection(
-        [
-            ("B>A", "Breakthrough Objective to Annual Objective"),
-            ("I>A", "Initiative to Annual Objective"),
-            ("I>M", "Initiative to KPI / Metric"),
-            ("B>M", "Breakthrough Objective to KPI / Metric"),
-            ("I>O", "Initiative to Owner"),
-        ],
+        XMATRIX_LINK_TYPES,
         required=True,
         index=True,
         tracking=True,
@@ -757,13 +761,7 @@ class StrategicXMatrixAlignmentRevisionWizard(models.TransientModel):
         "strategic.xmatrix.alignment", required=True, readonly=True
     )
     link_type = fields.Selection(
-        [
-            ("B>A", "Breakthrough Objective to Annual Objective"),
-            ("I>A", "Initiative to Annual Objective"),
-            ("I>M", "Initiative to KPI / Metric"),
-            ("B>M", "Breakthrough Objective to KPI / Metric"),
-            ("I>O", "Initiative to Owner"),
-        ], required=True, readonly=True
+        XMATRIX_LINK_TYPES, required=True, readonly=True
     )
     relationship_type = fields.Selection(
         [("primary", "Primary"), ("supporting", "Supporting")],

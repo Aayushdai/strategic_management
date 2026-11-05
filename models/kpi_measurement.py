@@ -5,6 +5,8 @@ import math
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, ValidationError
 
+from .kpi import KPI_SCOPES
+
 
 _GROUP_HEAD = "strategic_management.group_strategic_head_office_manager"
 _GROUP_BRANCH = "strategic_management.group_strategic_branch_manager"
@@ -27,7 +29,7 @@ class StrategicKpiMeasurement(models.Model):
     date_start = fields.Date(required=True, readonly=True, index=True)
     date_end = fields.Date(required=True, readonly=True, index=True)
     scope = fields.Selection(
-        [("organization", "Organization"), ("branch", "Branch"), ("user", "Employee")],
+        KPI_SCOPES,
         required=True, readonly=True, index=True,
     )
     warehouse_id = fields.Many2one("stock.warehouse", readonly=True, index=True)
@@ -407,7 +409,7 @@ class StrategicKpiMeasurementRevision(models.Model):
     definition_version_id = fields.Many2one("strategic.kpi.definition.version", required=True, readonly=True, ondelete="restrict")
     date_start = fields.Date(required=True, readonly=True)
     date_end = fields.Date(required=True, readonly=True)
-    scope = fields.Selection([("organization", "Organization"), ("branch", "Branch"), ("user", "Employee")], required=True, readonly=True)
+    scope = fields.Selection(KPI_SCOPES, required=True, readonly=True)
     warehouse_id = fields.Many2one("stock.warehouse", readonly=True)
     user_id = fields.Many2one("res.users", readonly=True)
     actual_value = fields.Float(required=True, readonly=True)

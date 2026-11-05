@@ -163,6 +163,76 @@ def _validate_calculation_contract(env, source_type, calculation_type, product_i
             % (base_unit or "missing")
         )
 
+
+# Shared by a KPI definition and the versions frozen from it: one list, so a new choice reaches both.
+KPI_DIRECTIONS = [
+    ("higher", "Higher is Better"),
+    ("lower", "Lower is Better"),
+    ("range", "Target Range"),
+]
+KPI_SOURCE_TYPES = [
+    ("manual", "Controlled Manual Submission"),
+    ("accounting", "Accounting"),
+    ("purchase", "Purchase"),
+    ("pos", "Point of Sale"),
+    ("inventory", "Inventory"),
+    ("other", "Other"),
+]
+KPI_CALCULATION_TYPES = [
+    ("manual_value", "Manual Value"),
+    ("accounting_net_profit", "Net Profit (Posted Accounting)"),
+    ("accounting_net_profit_margin_pct", "Net Profit Margin (Posted Accounting)"),
+    ("pos_sold_quantity", "POS Sold Quantity"),
+    ("pos_recipe_consumption_estimate", "POS Recipe-Based Estimated Consumption"),
+    ("purchase_ordered_quantity", "Confirmed Purchase Order Quantity"),
+    ("purchase_received_quantity", "Completed Supplier Receipt Quantity"),
+    ("supplier_on_time_delivery_pct", "Supplier On-Time Delivery Percentage"),
+    ("purchase_confirmed_amount", "Confirmed Purchase Commitments (excluding tax)"),
+    ("purchase_product_quantity_limit", "Ordered Quantity of a Product (limit)"),
+    ("purchase_unit_price_change_pct", "Unit Price Change vs Previous Period"),
+    ("purchase_top_supplier_share_pct", "Largest Supplier Share of Purchasing"),
+    ("purchase_outstanding_amount", "Purchase Value Awaiting Delivery"),
+    ("purchase_average_receipt_lead_days", "Average Days from Order to Receipt"),
+    ("purchase_on_time_delivery_count_pct", "Deliveries Received in Full on Time"),
+    ("purchase_average_delivery_delay_days", "Average Delivery Delay (days)"),
+    ("accounting_overdue_supplier_bills_amount", "Overdue Supplier Bills"),
+    ("inventory_recorded_waste_quantity", "Recorded Waste Quantity"),
+    ("inventory_validated_waste_quantity", "Validated Waste Quantity"),
+    ("inventory_opening_stock_quantity", "Opening Stock Quantity"),
+    ("inventory_closing_stock_quantity", "Closing Stock Quantity"),
+    ("inventory_actual_consumption_quantity", "Actual Consumption Quantity (production and sales issues)"),
+    ("inventory_transfer_in_quantity", "Inter-Warehouse Transfer In Quantity"),
+    ("inventory_transfer_out_quantity", "Inter-Warehouse Transfer Out Quantity"),
+    ("inventory_adjustment_quantity", "Net Inventory Adjustment Quantity"),
+    ("inventory_unexplained_variance_quantity", "Unexplained Stock-Flow Variance Quantity"),
+    ("inventory_waste_cost_amount", "Validated Waste Cost"),
+    ("inventory_waste_cost_to_sales_pct", "Waste Cost as % of Net POS Sales"),
+    ("inventory_count_difference_quantity", "Physical Count Difference Quantity"),
+    ("inventory_recipe_coverage_pct", "Recipe Coverage % (menu items sold with a valid recipe)"),
+    ("inventory_count_plan_completion_pct", "Planned Stock Count Completion %"),
+    ("inventory_waste_recording_pct", "Waste Recording Compliance %"),
+    ("inventory_ingredient_use_difference_quantity", "Unexplained Ingredient Difference (between stock counts)"),
+    ("inventory_recorded_waste_cost", "Recorded Waste Cost of a Product"),
+    ("pos_net_sales", "POS Net Sales (excluding tax)"),
+    ("pos_sales_growth_pct", "POS Sales Growth vs Previous Period"),
+    ("pos_average_order_value", "POS Average Order Value"),
+    ("pos_product_net_sales", "POS Net Sales of a Product"),
+    ("accounting_total_expenses", "Total Expenses and Direct Costs (Posted)"),
+    ("accounting_expense_to_income_pct", "Expenses as % of Income (Posted)"),
+    ("purchase_average_unit_price", "Average Purchase Price per Unit"),
+    ("pos_average_unit_price", "Average Selling Price per Unit (POS)"),
+    ("inventory_closing_stock_value", "Closing Stock Value of a Product"),
+]
+
+
+# Who a KPI figure is for; also used by measurements.
+KPI_SCOPES = [
+    ("organization", "Organization"),
+    ("branch", "Branch"),
+    ("user", "Employee"),
+]
+
+
 class StrategicKpiDefinition(models.Model):
     _name = "strategic.kpi.definition"
     _description = "Strategic KPI Definition"
@@ -179,24 +249,13 @@ class StrategicKpiDefinition(models.Model):
     )
     unit = fields.Char(required=True, default="Unit")
     direction = fields.Selection(
-        [
-            ("higher", "Higher is Better"),
-            ("lower", "Lower is Better"),
-            ("range", "Target Range"),
-        ],
+        KPI_DIRECTIONS,
         required=True,
         default="higher",
         tracking=True,
     )
     source_type = fields.Selection(
-        [
-            ("manual", "Controlled Manual Submission"),
-            ("accounting", "Accounting"),
-            ("purchase", "Purchase"),
-            ("pos", "Point of Sale"),
-            ("inventory", "Inventory"),
-            ("other", "Other"),
-        ],
+        KPI_SOURCE_TYPES,
         required=True,
         default="manual",
         tracking=True,
@@ -211,51 +270,7 @@ class StrategicKpiDefinition(models.Model):
         ),
     )
     calculation_type = fields.Selection(
-        [
-            ("manual_value", "Manual Value"),
-            ("accounting_net_profit", "Net Profit (Posted Accounting)"),
-            ("accounting_net_profit_margin_pct", "Net Profit Margin (Posted Accounting)"),
-            ("pos_sold_quantity", "POS Sold Quantity"),
-            ("pos_recipe_consumption_estimate", "POS Recipe-Based Estimated Consumption"),
-            ("purchase_ordered_quantity", "Confirmed Purchase Order Quantity"),
-            ("purchase_received_quantity", "Completed Supplier Receipt Quantity"),
-            ("supplier_on_time_delivery_pct", "Supplier On-Time Delivery Percentage"),
-            ("purchase_confirmed_amount", "Confirmed Purchase Commitments (excluding tax)"),
-            ("purchase_product_quantity_limit", "Ordered Quantity of a Product (limit)"),
-            ("purchase_unit_price_change_pct", "Unit Price Change vs Previous Period"),
-            ("purchase_top_supplier_share_pct", "Largest Supplier Share of Purchasing"),
-            ("purchase_outstanding_amount", "Purchase Value Awaiting Delivery"),
-            ("purchase_average_receipt_lead_days", "Average Days from Order to Receipt"),
-            ("purchase_on_time_delivery_count_pct", "Deliveries Received in Full on Time"),
-            ("purchase_average_delivery_delay_days", "Average Delivery Delay (days)"),
-            ("accounting_overdue_supplier_bills_amount", "Overdue Supplier Bills"),
-            ("inventory_recorded_waste_quantity", "Recorded Waste Quantity"),
-            ("inventory_validated_waste_quantity", "Validated Waste Quantity"),
-            ("inventory_opening_stock_quantity", "Opening Stock Quantity"),
-            ("inventory_closing_stock_quantity", "Closing Stock Quantity"),
-            ("inventory_actual_consumption_quantity", "Actual Consumption Quantity (production and sales issues)"),
-            ("inventory_transfer_in_quantity", "Inter-Warehouse Transfer In Quantity"),
-            ("inventory_transfer_out_quantity", "Inter-Warehouse Transfer Out Quantity"),
-            ("inventory_adjustment_quantity", "Net Inventory Adjustment Quantity"),
-            ("inventory_unexplained_variance_quantity", "Unexplained Stock-Flow Variance Quantity"),
-            ("inventory_waste_cost_amount", "Validated Waste Cost"),
-            ("inventory_waste_cost_to_sales_pct", "Waste Cost as % of Net POS Sales"),
-            ("inventory_count_difference_quantity", "Physical Count Difference Quantity"),
-            ("inventory_recipe_coverage_pct", "Recipe Coverage % (menu items sold with a valid recipe)"),
-            ("inventory_count_plan_completion_pct", "Planned Stock Count Completion %"),
-            ("inventory_waste_recording_pct", "Waste Recording Compliance %"),
-            ("inventory_ingredient_use_difference_quantity", "Unexplained Ingredient Difference (between stock counts)"),
-            ("inventory_recorded_waste_cost", "Recorded Waste Cost of a Product"),
-            ("pos_net_sales", "POS Net Sales (excluding tax)"),
-            ("pos_sales_growth_pct", "POS Sales Growth vs Previous Period"),
-            ("pos_average_order_value", "POS Average Order Value"),
-            ("pos_product_net_sales", "POS Net Sales of a Product"),
-            ("accounting_total_expenses", "Total Expenses and Direct Costs (Posted)"),
-            ("accounting_expense_to_income_pct", "Expenses as % of Income (Posted)"),
-            ("purchase_average_unit_price", "Average Purchase Price per Unit"),
-            ("pos_average_unit_price", "Average Selling Price per Unit (POS)"),
-            ("inventory_closing_stock_value", "Closing Stock Value of a Product"),
-        ],
+        KPI_CALCULATION_TYPES,
         required=True,
         default="manual_value",
         tracking=True,
@@ -410,66 +425,15 @@ class StrategicKpiDefinitionVersion(models.Model):
     version_number = fields.Integer(required=True, readonly=True, copy=False)
     unit = fields.Char(required=True)
     direction = fields.Selection(
-        [("higher", "Higher is Better"), ("lower", "Lower is Better"), ("range", "Target Range")],
+        KPI_DIRECTIONS,
         required=True,
     )
     source_type = fields.Selection(
-        [
-            ("manual", "Controlled Manual Submission"),
-            ("accounting", "Accounting"),
-            ("purchase", "Purchase"),
-            ("pos", "Point of Sale"),
-            ("inventory", "Inventory"),
-            ("other", "Other"),
-        ],
+        KPI_SOURCE_TYPES,
         required=True,
     )
     calculation_type = fields.Selection(
-        [
-            ("manual_value", "Manual Value"),
-            ("accounting_net_profit", "Net Profit (Posted Accounting)"),
-            ("accounting_net_profit_margin_pct", "Net Profit Margin (Posted Accounting)"),
-            ("pos_sold_quantity", "POS Sold Quantity"),
-            ("pos_recipe_consumption_estimate", "POS Recipe-Based Estimated Consumption"),
-            ("purchase_ordered_quantity", "Confirmed Purchase Order Quantity"),
-            ("purchase_received_quantity", "Completed Supplier Receipt Quantity"),
-            ("supplier_on_time_delivery_pct", "Supplier On-Time Delivery Percentage"),
-            ("purchase_confirmed_amount", "Confirmed Purchase Commitments (excluding tax)"),
-            ("purchase_product_quantity_limit", "Ordered Quantity of a Product (limit)"),
-            ("purchase_unit_price_change_pct", "Unit Price Change vs Previous Period"),
-            ("purchase_top_supplier_share_pct", "Largest Supplier Share of Purchasing"),
-            ("purchase_outstanding_amount", "Purchase Value Awaiting Delivery"),
-            ("purchase_average_receipt_lead_days", "Average Days from Order to Receipt"),
-            ("purchase_on_time_delivery_count_pct", "Deliveries Received in Full on Time"),
-            ("purchase_average_delivery_delay_days", "Average Delivery Delay (days)"),
-            ("accounting_overdue_supplier_bills_amount", "Overdue Supplier Bills"),
-            ("inventory_recorded_waste_quantity", "Recorded Waste Quantity"),
-            ("inventory_validated_waste_quantity", "Validated Waste Quantity"),
-            ("inventory_opening_stock_quantity", "Opening Stock Quantity"),
-            ("inventory_closing_stock_quantity", "Closing Stock Quantity"),
-            ("inventory_actual_consumption_quantity", "Actual Consumption Quantity (production and sales issues)"),
-            ("inventory_transfer_in_quantity", "Inter-Warehouse Transfer In Quantity"),
-            ("inventory_transfer_out_quantity", "Inter-Warehouse Transfer Out Quantity"),
-            ("inventory_adjustment_quantity", "Net Inventory Adjustment Quantity"),
-            ("inventory_unexplained_variance_quantity", "Unexplained Stock-Flow Variance Quantity"),
-            ("inventory_waste_cost_amount", "Validated Waste Cost"),
-            ("inventory_waste_cost_to_sales_pct", "Waste Cost as % of Net POS Sales"),
-            ("inventory_count_difference_quantity", "Physical Count Difference Quantity"),
-            ("inventory_recipe_coverage_pct", "Recipe Coverage % (menu items sold with a valid recipe)"),
-            ("inventory_count_plan_completion_pct", "Planned Stock Count Completion %"),
-            ("inventory_waste_recording_pct", "Waste Recording Compliance %"),
-            ("inventory_ingredient_use_difference_quantity", "Unexplained Ingredient Difference (between stock counts)"),
-            ("inventory_recorded_waste_cost", "Recorded Waste Cost of a Product"),
-            ("pos_net_sales", "POS Net Sales (excluding tax)"),
-            ("pos_sales_growth_pct", "POS Sales Growth vs Previous Period"),
-            ("pos_average_order_value", "POS Average Order Value"),
-            ("pos_product_net_sales", "POS Net Sales of a Product"),
-            ("accounting_total_expenses", "Total Expenses and Direct Costs (Posted)"),
-            ("accounting_expense_to_income_pct", "Expenses as % of Income (Posted)"),
-            ("purchase_average_unit_price", "Average Purchase Price per Unit"),
-            ("pos_average_unit_price", "Average Selling Price per Unit (POS)"),
-            ("inventory_closing_stock_value", "Closing Stock Value of a Product"),
-        ],
+        KPI_CALCULATION_TYPES,
         required=True,
         default="manual_value",
         help="Controlled calculation method frozen as part of this KPI definition version.",
@@ -632,11 +596,7 @@ class StrategicKpiTarget(models.Model):
     date_start = fields.Date(required=True, index=True)
     date_end = fields.Date(required=True, index=True)
     scope = fields.Selection(
-        [
-            ("organization", "Organization"),
-            ("branch", "Branch"),
-            ("user", "Employee"),
-        ],
+        KPI_SCOPES,
         required=True,
         default="organization",
         index=True,
@@ -1032,11 +992,7 @@ class StrategicKpiEvaluation(models.Model):
     date_start = fields.Date(required=True, index=True)
     date_end = fields.Date(required=True, index=True)
     scope = fields.Selection(
-        [
-            ("organization", "Organization"),
-            ("branch", "Branch"),
-            ("user", "Employee"),
-        ],
+        KPI_SCOPES,
         required=True,
         default="organization",
         index=True,
@@ -1554,11 +1510,7 @@ class StrategicKpiBaseline(models.Model):
         related="kpi_id.company_id", store=True, readonly=True, index=True
     )
     scope = fields.Selection(
-        [
-            ("organization", "Organization"),
-            ("branch", "Branch"),
-            ("user", "Employee"),
-        ],
+        KPI_SCOPES,
         required=True,
         default="organization",
         index=True,

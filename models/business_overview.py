@@ -1039,10 +1039,6 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             return False
 
     @api.model
-    def _overview_month_buckets(self, start, end):
-        return self._overview_period_buckets(start, end, "month")
-
-    @api.model
     def _overview_month_key(self, value):
         if not value:
             return False

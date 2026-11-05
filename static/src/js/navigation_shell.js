@@ -106,7 +106,6 @@ const PERIOD_PRESETS = [
     { key: "this_year", label: "This Year" },
     { key: "custom", label: "Custom dates" },
 ];
-const BAR_COLORS = ["#7b68d9", "#8b7add", "#9d8fe3", "#b0a5ea"];
 // Purchasing category colours, purple first like the Overview (donut and legend share them).
 const PURCHASE_COLORS = ["#6f5bd3", "#35b56f", "#f5a524", "#4a8fe7", "#a39bc8", "#e86a5a"];
 
@@ -132,9 +131,7 @@ export class StrategicNavigationShell extends Component {
         const today = new Date();
         const [monthStart, todayInput] = [this.asDateInput(new Date(today.getFullYear(), today.getMonth(), 1)), this.asDateInput(today)];
         this.state = proxy({
-            items: NAVIGATION_ITEMS,
             activeSection: "overview",
-            loading: true,
             error: "",
             dateStart: monthStart,
             dateEnd: todayInput,
@@ -196,7 +193,6 @@ export class StrategicNavigationShell extends Component {
             // Its own period: tasks can be due later this month, which the business reports' "until today" would hide.
             myPerformanceStart: this.asDateInput(new Date(new Date().getFullYear(), new Date().getMonth() - 5, 1)),
             myPerformanceEnd: this.asDateInput(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)),
-            pendingStaffing: 0,
             drillChoice: null,
             staffingWork: [],
             employeeWorkspace: null,
@@ -356,7 +352,6 @@ export class StrategicNavigationShell extends Component {
             }
             return;
         }
-        this.state.loading = true;
         this.state.error = "";
         try {
             const selectedWarehouse = this.state.warehouseId === "all" ? false : Number(this.state.warehouseId);
@@ -387,8 +382,6 @@ export class StrategicNavigationShell extends Component {
             this.state.data = null;
             this.state.error = error.message || "The business overview could not be loaded.";
             this.notification.add(this.state.error, { type: "danger" });
-        } finally {
-            this.state.loading = false;
         }
     }
 
@@ -550,16 +543,12 @@ export class StrategicNavigationShell extends Component {
         const context = this.state.navContext;
         if (context && context.role === "admin") {
             this.state.activeSection = "admin_home";
-            this.state.loading = false;
             return;
         }
         if (context && context.role === "branch_manager") {
             // A Branch Manager lands on their own dashboard.
             this.state.activeSection = "bm_dashboard";
-            if (context.branch_error) {
-                this.state.loading = false;
-                return;
-            }
+            if (context.branch_error) return;
             await this.loadOverview();
             return this.loadBranchObjectives();
         }
@@ -1133,10 +1122,8 @@ export class StrategicNavigationShell extends Component {
         try {
             const data = await this.orm.silent.call("strategic.staffing.request", "get_staffing_requests", [{}]);
             this.state.staffingWork = data.requests.filter((row) => row.state === "submitted" || (row.state === "approved" && row.remaining));
-            this.state.pendingStaffing = this.state.staffingWork.length;
         } catch {
             this.state.staffingWork = [];
-            this.state.pendingStaffing = 0;
         }
     }
 
@@ -1167,10 +1154,6 @@ export class StrategicNavigationShell extends Component {
             this.state.departmentAssignments = null;
             this.state.departmentAssignmentsError = error.data?.message || error.message || "Department assignments could not be loaded.";
         }
-    }
-
-    get departmentChoices() {
-        return (this.state.activeSection === "employee_management" ? this.state.employees : this.state.departmentAssignments)?.departments || [];
     }
 
     get departmentChoices() {
@@ -1488,51 +1471,6 @@ export class StrategicNavigationShell extends Component {
         return this.loadOverview();
     }
 
-    onCustomDateChanged(which, event) {
-        const start = which === "start" ? event.target.value : this.state.dateStart;
-        const end = which === "end" ? event.target.value : this.state.dateEnd;
-        if (start && end && start <= end) {
-            this.state.trendGranularity = this.granularityFor(start, end);
-        }
-        return which === "start" ? this.onStartDateChanged(event) : this.onEndDateChanged(event);
-    }
-
-    get periodPhrase() {
-        return {
-            this_month: "this month", last_month: "last month", last_3_months: "over the last three months", this_year: "this year",
-        }[this.state.periodPreset] || "in the selected period";
-    }
-
-    get trendCaption() {
-        const unit = { day: "Daily", week: "Weekly", month: "Monthly" }[this.state.trendGranularity] || "";
-        return `${unit} · ${this.formatDate(this.state.dateStart)} – ${this.formatDate(this.state.dateEnd)}`;
-    }
-
-    /** Change versus the previous equal period, or null when no truthful comparison exists (missing data, zero base). */
-    changeInfo(current, previous) {
-        const missing = (value) => value === false || value === null || value === undefined || !Number.isFinite(Number(value));
-        if (missing(current) || missing(previous) || Number(previous) === 0) {
-            return null;
-        }
-        const change = ((Number(current) - Number(previous)) / Math.abs(Number(previous))) * 100;
-        return { up: change >= 0, text: `${change >= 0 ? "+" : ""}${change.toLocaleString("en-US", { maximumFractionDigits: 1 })}%` };
-    }
-
-    /** Small trend line of one series of the sales trend (sales or profit); null unless two real points exist. */
-    sparkline(key) {
-        const values = (this.state.data?.sales_trend || [])
-            .map((point) => point[key])
-            .filter((value) => value !== undefined && value !== null && value !== false && Number.isFinite(Number(value)))
-            .map(Number);
-        if (values.length < 2) {
-            return null;
-        }
-        const low = Math.min(...values);
-        const span = Math.max(...values) - low || 1;
-        const line = values.map((value, index) => `${((index * 100) / (values.length - 1)).toFixed(1)},${(34 - ((value - low) / span) * 28).toFixed(1)}`).join(" ");
-        return { line, area: `0,40 ${line} 100,40` };
-    }
-
     /** Round axis bounds and step covering [low, high]. */
     niceScale(low, high) {
         const span = high - low || Math.abs(high) || 1;
@@ -1550,58 +1488,6 @@ export class StrategicNavigationShell extends Component {
         return ticks;
     }
 
-    /** Sales over the selected period from the existing sales trend; null when no POS order was completed. */
-    get salesTrendChart() {
-        const data = this.state.data;
-        const points = data?.sales_trend || [];
-        if (!points.length || !data.order_count) {
-            return null;
-        }
-        const [left, right, top, bottom] = [58, 620, 12, 178];
-        const values = points.map((point) => Number(point.sales) || 0);
-        const scale = this.niceScale(Math.min(0, ...values), Math.max(0, ...values));
-        const y = (value) => bottom - ((value - scale.low) / (scale.high - scale.low)) * (bottom - top);
-        const x = (index) => (points.length === 1 ? (left + right) / 2 : left + (index * (right - left)) / (points.length - 1));
-        const last = points.length - 1;
-        const step = Math.max(1, Math.ceil(points.length / 8));
-        const dots = points.map((point, index) => ({
-            key: point.month_key || String(index), x: x(index), y: y(values[index]),
-            title: `${point.label || ""}: ${this.formatCurrency(values[index])}`,
-            label: index === last || (index % step === 0 && last - index >= step / 2) ? point.label : "",
-        }));
-        const line = dots.map((dot) => `${dot.x.toFixed(1)},${dot.y.toFixed(1)}`).join(" ");
-        const base = y(Math.max(scale.low, 0)).toFixed(1);
-        return {
-            dots, line, ticks: this.axisTicks(scale, y), left, right, bottom,
-            area: `${dots[0].x.toFixed(1)},${base} ${line} ${dots[last].x.toFixed(1)},${base}`,
-        };
-    }
-
-    /** Sales per branch from the existing branch performance (already limited to the user's branches). */
-    get branchChart() {
-        const rows = this.state.data?.branch_performance || [];
-        if (!rows.length) {
-            return null;
-        }
-        const [left, right, top, bottom] = [52, 620, 22, 176];
-        const values = rows.map((row) => Number(row.sales) || 0);
-        const scale = this.niceScale(0, Math.max(0, ...values));
-        const y = (value) => bottom - ((Math.max(value, 0) - scale.low) / (scale.high - scale.low)) * (bottom - top);
-        const slot = (right - left) / rows.length;
-        const width = Math.min(70, slot * 0.58);
-        const bars = rows.map((row, index) => {
-            const center = left + slot * (index + 0.5);
-            const barTop = y(values[index]);
-            const name = row.name || "";
-            return {
-                key: String(row.branch_id || index), x: center - width / 2, center, y: barTop, width, height: Math.max(0, bottom - barTop),
-                color: BAR_COLORS[index % BAR_COLORS.length], value: this.formatCompactCurrency(values[index]),
-                name: name.length > 16 ? `${name.slice(0, 15)}…` : name, title: `${name}: ${this.formatCurrency(values[index])}`,
-            };
-        });
-        return { bars, ticks: this.axisTicks(scale, y), left, right, bottom };
-    }
-
     /** Active goals on track among those with an evaluated result; goals without a result are reported apart. */
     get goalSummary() {
         const counts = this.state.overviewExtras?.strategy?.objectives;
@@ -1611,35 +1497,6 @@ export class StrategicNavigationShell extends Component {
         const onTrack = counts.on_track || 0;
         const evaluated = onTrack + (counts.at_risk || 0);
         return { onTrack, evaluated, notEvaluated: counts.not_evaluated || 0, pct: evaluated ? Math.round((onTrack * 100) / evaluated) : null };
-    }
-
-    ringDash(pct, radius) {
-        const circumference = 2 * Math.PI * radius;
-        return `${((circumference * (pct || 0)) / 100).toFixed(1)} ${circumference.toFixed(1)}`;
-    }
-
-    /** The three most important alerts (already sorted by severity on the server), without duplicates. */
-    get topAttention() {
-        const seen = new Set();
-        return (this.state.overviewExtras?.attention || []).filter((alert) => {
-            const key = `${alert.title}|${alert.branch || ""}|${alert.evidence || ""}`;
-            if (seen.has(key)) {
-                return false;
-            }
-            seen.add(key);
-            return true;
-        }).slice(0, 3);
-    }
-
-    attentionActionLabel(alert) {
-        return { Inventory: "View Stock", Branches: "View Branch", People: "View Details" }[alert.source] || "View";
-    }
-
-    openAttention(alert) {
-        if (alert.res_model) {
-            return this.openIssueRecord(alert);
-        }
-        return this.selectSection({ Inventory: "inventory_waste", Branches: "branches", People: "people" }[alert.source] || "tasks_issues");
     }
 
     get activeItem() {
@@ -1788,10 +1645,6 @@ export class StrategicNavigationShell extends Component {
         const rows = (this.state.inventoryData && this.state.inventoryData.waste_by_product) || [];
         const max = rows.reduce((top, row) => Math.max(top, Number(row.cost) || 0), 0);
         return max > 0 ? Math.max(0, Number(waste.cost) || 0) / max * 100 : 0;
-    }
-
-    inventoryColor(index) {
-        return CHART_COLORS[index % CHART_COLORS.length];
     }
 
     inventoryStockWidth(item) {
@@ -2098,22 +1951,6 @@ export class StrategicNavigationShell extends Component {
         }
     }
 
-    /** "+12.5% vs previous period", or why no comparison can be made. */
-    comparisonText(current, previous) {
-        const missing = (value) => value === false || value === null || value === undefined;
-        if (missing(current) || missing(previous)) return "No comparison available";
-        const now = Number(current);
-        const before = Number(previous);
-        if (before === 0) return now === 0 ? "No change vs previous period" : "Previous period: 0";
-        const change = ((now - before) / Math.abs(before)) * 100;
-        return `${change >= 0 ? "+" : ""}${change.toLocaleString("en-US", { maximumFractionDigits: 1 })}% vs previous period`;
-    }
-
-    statusShare(counts, key) {
-        const total = Object.values(counts || {}).reduce((sum, value) => sum + (Number(value) || 0), 0);
-        return total ? ((Number(counts[key]) || 0) / total) * 100 : 0;
-    }
-
     async loadPeople({ silent = false } = {}) {
         // Ignore responses that arrive after a newer request (filter change or live refresh).
         const requestId = ++this.peopleRequestId;
@@ -2241,10 +2078,6 @@ export class StrategicNavigationShell extends Component {
         }
     }
 
-    branchSeverityClass(severity) {
-        return severity === "critical" ? "o_sm_br_issue_red" : "o_sm_br_issue_amber";
-    }
-
     formatPurchaseCurrency(value) {
         if (value === false || value === null || value === undefined || !Number.isFinite(Number(value))) {
             return "—";
@@ -2307,11 +2140,6 @@ export class StrategicNavigationShell extends Component {
 
     purchasingCategoryColor(index) {
         return PURCHASE_COLORS[index % PURCHASE_COLORS.length];
-    }
-
-    purchasingBarWidth(value, maximum) {
-        const max = Math.max(1, Number(maximum) || 0);
-        return Math.max(0, Math.min(100, (Number(value) || 0) / max * 100));
     }
 
     purchaseSupplierBarClass(rate) {
@@ -2456,27 +2284,6 @@ export class StrategicNavigationShell extends Component {
         return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString(undefined, { day: "numeric", month: "short" });
     }
 
-    chartX(index, count) {
-        if (count <= 1) return 40;
-        return 40 + (index * 440) / (count - 1);
-    }
-
-    chartY(value, key) {
-        const points = this.state.data?.sales_trend || [];
-        const numericValues = points.map((point) => Number(point[key]) || 0);
-        const max = Math.max(1, ...numericValues, ...(key === "sales" ? [] : points.map((point) => Number(point.sales) || 0)));
-        return 152 - ((Number(value) || 0) / max) * 122;
-    }
-
-    trendPoints(key) {
-        const points = this.state.data?.sales_trend || [];
-        return points
-            .map((point, index) => ({ point, index }))
-            .filter(({ point }) => point[key] !== false && point[key] !== null && point[key] !== undefined)
-            .map(({ point, index }) => `${this.chartX(index, points.length)},${this.chartY(point[key], key)}`)
-            .join(" ");
-    }
-
     branchMetricValue(branch) {
         if (this.state.branchMetric === "orders") {
             return Number(branch.orders) || 0;
@@ -2542,37 +2349,7 @@ export class StrategicNavigationShell extends Component {
     salesHourAxisLabel(fraction) {
         return this.formatNumber(this.salesHourMax() * fraction);
     }
-    expenseBarWidth(value) {
-        const rows = this.state.data?.expense_breakdown || [];
-        const max = Math.max(1, ...rows.map((row) => Number(row.value) || 0));
-        return Math.max(0, Math.min(100, ((Number(value) || 0) / max) * 100));
-    }
 
-    expenseDonutStyle() {
-        const rows = this.state.data?.expense_breakdown || [];
-        const total = rows.reduce((sum, row) => sum + Math.max(0, Number(row.value) || 0), 0);
-        if (!total) return "background: #e7e9ed";
-        let offset = 0;
-        const segments = rows.map((row, index) => {
-            const share = (Math.max(0, Number(row.value) || 0) / total) * 100;
-            const segment = `${CHART_COLORS[index % CHART_COLORS.length]} ${offset}% ${offset + share}%`;
-            offset += share;
-            return segment;
-        });
-        return `background: conic-gradient(${segments.join(", ")})`;
-    }
-
-    expenseColor(index) {
-        return CHART_COLORS[index % CHART_COLORS.length];
-    }
-
-    get expenseTotal() {
-        return (this.state.data?.expense_breakdown || []).reduce((sum, row) => sum + (Number(row.value) || 0), 0);
-    }
-
-    get needsAttentionCount() {
-        return (this.state.data?.alerts || []).length;
-    }
 }
 
 registry.category("actions").add("strategic_management.navigation_shell", StrategicNavigationShell);

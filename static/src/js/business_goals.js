@@ -553,7 +553,6 @@ export class BusinessGoalsAction extends Component {
         }]);
     }
 
-    checkReadiness() { return this.callGoal("check_readiness"); }
     prepareTarget() { return this.callGoal("prepare_target"); }
     approveTarget() { return this.callGoal("approve_target"); }
     submitGoal() { return this.callGoal("submit_goal"); }

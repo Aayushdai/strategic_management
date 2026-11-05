@@ -4,6 +4,17 @@ from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 
 
+# Scoring outcomes shared by objectives, OKR objectives and key results.
+SCORING_STATUSES = [
+    ("not_evaluated", "Not Evaluated"),
+    ("data_quality_issue", "Data Quality Issue"),
+    ("not_achieved", "Not Achieved"),
+    ("almost_met", "Almost Met"),
+    ("achieved", "Achieved"),
+    ("exceeded", "Exceeded"),
+]
+
+
 class StrategicPlan(models.Model):
     _name = "strategic.plan"
     _description = "Strategic Plan"
@@ -144,14 +155,7 @@ class StrategicObjective(models.Model):
     overdue = fields.Boolean(compute="_compute_overdue")
     score = fields.Float(compute="_compute_score")
     scoring_status = fields.Selection(
-        [
-            ("not_evaluated", "Not Evaluated"),
-            ("data_quality_issue", "Data Quality Issue"),
-            ("not_achieved", "Not Achieved"),
-            ("almost_met", "Almost Met"),
-            ("achieved", "Achieved"),
-            ("exceeded", "Exceeded"),
-        ],
+        SCORING_STATUSES,
         compute="_compute_score",
     )
 
@@ -1038,14 +1042,7 @@ class StrategicOkrObjective(models.Model):
     )
     score = fields.Float(compute="_compute_score")
     scoring_status = fields.Selection(
-        [
-            ("not_evaluated", "Not Evaluated"),
-            ("data_quality_issue", "Data Quality Issue"),
-            ("not_achieved", "Not Achieved"),
-            ("almost_met", "Almost Met"),
-            ("achieved", "Achieved"),
-            ("exceeded", "Exceeded"),
-        ],
+        SCORING_STATUSES,
         compute="_compute_score",
     )
 
@@ -1178,14 +1175,7 @@ class StrategicKeyResult(models.Model):
         compute="_compute_scoring",
     )
     attainment_status = fields.Selection(
-        [
-            ("not_evaluated", "Not Evaluated"),
-            ("data_quality_issue", "Data Quality Issue"),
-            ("not_achieved", "Not Achieved"),
-            ("almost_met", "Almost Met"),
-            ("achieved", "Achieved"),
-            ("exceeded", "Exceeded"),
-        ],
+        SCORING_STATUSES,
         compute="_compute_scoring",
     )
 

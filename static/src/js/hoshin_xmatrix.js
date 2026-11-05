@@ -201,11 +201,6 @@ export class StrategicHoshinXMatrix extends Component {
         return `${this.relationName(target.kpi_id)} · target ${amount}${target.unit ? ` ${target.unit}` : ""}`;
     }
 
-    targetPeriod(targetRelation) {
-        const target = this.targetById(targetRelation);
-        return target ? `${target.date_start} – ${target.date_end}` : "Approved target";
-    }
-
     linksFor(linkType) {
         return this.state.alignments.filter((alignment) => alignment.link_type === linkType);
     }
