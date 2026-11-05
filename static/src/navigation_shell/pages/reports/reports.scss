@@ -1,0 +1,59 @@
+// Reports and Settings.
+
+/* Panels */
+
+.o_sm_navigation_shell .o_sm_ov_panel { min-width:0; padding:.9rem 1rem; border:1px solid #e5e9f0; border-radius:.6rem; background:#fff; box-shadow:0 1px 2px #10182806; }
+.o_sm_navigation_shell .o_sm_ov_panel_heading { display:flex; align-items:center; justify-content:space-between; gap:.65rem; margin-bottom:.65rem; }
+.o_sm_navigation_shell .o_sm_ov_panel_heading h2 { margin:0; color:#101828; font-size:.92rem; font-weight:650; }
+.o_sm_navigation_shell .o_sm_ov_panel_heading p { margin:.18rem 0 0; color:#667085; font-size:.68rem; }
+
+/* Panel grid */
+.o_sm_navigation_shell .o_sm_ov_ops_grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.75rem; }
+@media (max-width:1250px) { .o_sm_navigation_shell .o_sm_ov_ops_grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+
+@media (max-width:620px) { .o_sm_navigation_shell .o_sm_ov_ops_grid { grid-template-columns:minmax(0,1fr); }
+}
+
+.o_sm_navigation_shell .o_sm_bm, .o_sm_navigation_shell .o_sm_ops {
+    .o_sm_task_table {
+        .is-action { text-align: right; white-space: nowrap; }
+    }
+
+    .o_sm_task_btn { padding: .35rem .8rem; border: 1px solid var(--sm-home-border); border-radius: .45rem; background: #fff; color: #39405a; font-size: .82rem; font-weight: 600; cursor: pointer;
+        &:hover { border-color: var(--sm-home-purple); color: var(--sm-home-purple); }
+        &.is-primary { border-color: var(--sm-home-purple); background: var(--sm-home-purple); color: #fff; &:hover { background: #5d4bc0; color: #fff; } }
+    }
+    .o_sm_req_description { margin: 0; color: #39405a; font-size: .9rem; white-space: pre-line; }
+    .o_sm_req_reason { display: flex; flex-direction: column; gap: .35rem; margin: 0; color: var(--sm-home-navy); font-size: .85rem; font-weight: 600;
+        small { color: var(--sm-home-muted); font-weight: 400; }
+        textarea { width: 100%; padding: .55rem .7rem; border: 1px solid #dfe2ea; border-radius: .5rem; font: inherit; font-weight: 400; &:focus { border-color: var(--sm-home-purple); outline: none; } } }
+    .o_sm_req_hint { color: var(--sm-home-muted); font-size: .78rem; }
+    .o_sm_req_dialog_foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .35rem; padding: .8rem 1.25rem 1rem; border-top: 1px solid #f1f2f6; }
+    .o_sm_req_btn { display: inline-flex; align-items: center; justify-content: center; min-height: 1.9rem; padding: 0 .8rem; border: 1px solid transparent; border-radius: .45rem; font-size: .82rem; font-weight: 600; cursor: pointer;
+        &:disabled { opacity: .55; cursor: default; }
+        &.is-ghost { border-color: #eceef3; background: #fff; color: #39405a; }
+        &.is-approve { background: #23995a; color: #fff; }
+        &.is-reject { border-color: #f3c3bc; background: #fff; color: #b4321f; } }
+}
+
+/* Branch reports: the report list, its dialog sections and Head Office feedback. */
+.o_sm_navigation_shell .o_sm_reports {
+    .o_sm_br_panel_heading { flex-wrap: wrap; }
+    .o_sm_reports_new { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+    .o_sm_task_table td small { display: block; color: var(--sm-home-muted); font-size: .76rem; }
+    .o_sm_report_dialog { width: 44rem; }
+    .o_sm_report_sections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+    .o_sm_report_section { padding: .7rem .85rem; border: 1px solid #eceef3; border-radius: .6rem;
+        h3 { margin: 0 0 .4rem; color: var(--sm-home-navy); font-size: .9rem; font-weight: 700; }
+        dl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .25rem .75rem; margin: 0; }
+        dt { color: var(--sm-home-muted); font-size: .8rem; font-weight: 500; }
+        dd { margin: 0; color: var(--sm-home-navy); font-size: .85rem; font-weight: 600; text-align: right; }
+    }
+    .o_sm_report_objectives { margin: 0; padding-left: 1.1rem; font-size: .85rem; }
+    .o_sm_report_feedback { padding: .65rem .85rem; border-radius: .6rem; background: #fffaeb; color: #b54708; font-size: .85rem;
+        p { margin: .25rem 0 0; color: #344054; white-space: pre-line; } }
+}
+@media (max-width: 900px) {
+    .o_sm_navigation_shell .o_sm_reports .o_sm_report_sections { grid-template-columns: minmax(0, 1fr); }
+}

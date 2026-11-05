@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Employee Management: employees, staffing requests, performance, department assignment. Called from strategic_management.NavigationShell. -->
+<templates xml:space="preserve">
+    <t t-name="strategic_management.EmployeePerformancePage">
+    <div class="o_sm_bm o_sm_tasks">
+        <t t-set="po" t-value="this.state.performanceOverview"/>
+        <header class="o_sm_bm_header">
+            <div class="o_sm_bm_title"><h1>Employee Performance</h1><p>From actual task records, by due date in the period. Sales and stock results are not attributed to individuals.</p></div>
+            <div class="o_sm_pur_filters">
+                <label class="o_sm_pur_filter"><span>From</span><input type="date" t-att-value="this.state.dateStart" t-att-max="this.state.todayDate" t-on-change="this.onStartDateChanged" aria-label="Performance start date"/></label>
+                <label class="o_sm_pur_filter"><span>To</span><input type="date" t-att-value="this.state.dateEnd" t-att-max="this.state.todayDate" t-on-change="this.onEndDateChanged" aria-label="Performance end date"/></label>
+            </div>
+        </header>
+        <p t-if="this.state.performanceOverviewError" class="o_sm_bm_notice is-error" role="alert" t-esc="this.state.performanceOverviewError"/>
+        <p t-elif="!po" class="o_sm_bm_empty">Loading…</p>
+        <t t-else="">
+            <t t-foreach="[['Branches', po.branches, 'branch'], ['Employees', po.people, 'name']]" t-as="group" t-key="group[0]">
+                <article class="o_sm_bm_card is-wide">
+                    <div class="o_sm_bm_card_head"><h2 t-esc="group[0]"/></div>
+                    <div t-if="group[1].length" class="o_sm_task_table_wrap"><table class="o_sm_task_table">
+                        <thead><tr><th t-esc="group[0] === 'Branches' ? 'Branch' : 'Employee'"/><th>Assigned</th><th>Completed</th><th>On-time rate</th><th>Overdue</th><th>Awaiting review</th><th>Returned</th></tr></thead>
+                        <tbody><tr t-foreach="group[1]" t-as="row" t-key="row.id">
+                            <td><strong t-esc="row[group[2]]"/><small t-if="row.people" class="o_sm_dept_note"><t t-esc="row.people"/> people</small><small t-elif="row.branch and group[0] === 'Employees'" class="o_sm_dept_note" t-esc="row.branch"/></td>
+                            <td t-esc="row.assigned"/><td t-esc="row.completed"/><td t-esc="this.formatRate(row.on_time_rate)"/><td t-esc="row.overdue"/><td t-esc="row.awaiting_review"/><td t-esc="row.returned"/>
+                        </tr></tbody>
+                    </table></div>
+                    <p t-else="" class="o_sm_bm_empty">No tasks due in this period.</p>
+                </article>
+            </t>
+        </t>
+    </div>
+    </t>
+    <t t-name="strategic_management.DepartmentAssignmentPage">
+    <div class="o_sm_bm o_sm_tasks o_sm_dept">
+        <header class="o_sm_bm_header"><div class="o_sm_bm_title"><h1>Department Assignment</h1><p>Which operational departments each employee belongs to. Their role and branch do not change.</p></div></header>
+        <t t-set="da" t-value="this.state.departmentAssignments"/>
+        <p t-if="this.state.departmentAssignmentsError" class="o_sm_bm_notice is-error" role="alert" t-esc="this.state.departmentAssignmentsError"/>
+        <p t-elif="!da" class="o_sm_bm_empty">Loading employees…</p>
+        <article t-else="" class="o_sm_bm_card is-wide">
+            <input type="search" class="o_sm_dept_search" placeholder="Find an employee or branch" aria-label="Find an employee or branch" t-att-value="this.state.departmentSearch" t-on-input="(ev) => { this.state.departmentSearch = ev.target.value; }"/>
+            <div t-if="this.departmentRows.length" class="o_sm_task_table_wrap"><table class="o_sm_task_table">
+                <thead><tr><th>Employee</th><th>Branch</th><th>Role</th><th>Departments</th><th class="is-action">Action</th></tr></thead>
+                <tbody><tr t-foreach="this.pageRows('department_assignment', this.departmentRows)" t-as="row" t-key="row.key">
+                    <td><strong t-esc="row.name"/><small t-if="row.note" class="o_sm_dept_note" t-esc="row.note"/></td>
+                    <td t-esc="row.branch or '—'"/>
+                    <td t-esc="row.role or '—'"/>
+                    <td t-esc="row.departments.length ? row.departments.join(', ') : 'None'"/>
+                    <td class="is-action"><button t-if="row.can_assign" type="button" class="o_sm_task_btn" t-on-click="() => this.openDepartmentForm(row)">Manage</button></td>
+                </tr></tbody>
+            </table></div>
+            <p t-else="" class="o_sm_bm_empty">No employees found.</p>
+            <t t-call="strategic_management.ListPager" pagerKey="'department_assignment'" pagerRows="this.departmentRows"/>
+        </article>
+        <t t-call="strategic_management.DepartmentForm"/>
+    </div>
+    </t>
+    <t t-name="strategic_management.EmployeeManagementPage">
+    <div class="o_sm_bm o_sm_tasks">
+        <t t-set="ed" t-value="this.state.employeeDetail"/>
+        <t t-if="ed">
+            <header class="o_sm_bm_header">
+                <div class="o_sm_bm_title">
+                    <button type="button" class="o_sm_bm_link o_sm_emp_back" t-on-click="() => this.closeEmployee()">← Employees</button>
+                    <h1 t-esc="ed.employee.name"/>
+                    <p t-if="ed.employee.note" class="o_sm_emp_note" t-esc="ed.employee.note"/>
+                </div>
+                <button t-if="ed.current and this.isBranchManager" type="button" class="o_sm_task_btn" t-on-click="() => this.viewEmployeeTasks(ed.employee)">View in Task Management</button>
+            </header>
+            <p t-if="this.state.employeeDetailLoading" class="o_sm_bm_empty">Loading tasks…</p>
+            <p t-elif="this.state.employeeDetailError" class="o_sm_bm_notice" t-esc="this.state.employeeDetailError"/>
+            <t t-elif="ed.current">
+                <article class="o_sm_bm_card is-wide">
+                    <div class="o_sm_task_counts">
+                        <span><strong t-esc="ed.employee.counts.open"/> open</span>
+                        <span t-att-class="ed.employee.counts.overdue ? 'is-warn' : ''"><strong t-esc="ed.employee.counts.overdue"/> overdue</span>
+                        <span t-att-class="ed.employee.counts.review ? 'is-review' : ''"><strong t-esc="ed.employee.counts.review"/> awaiting review</span>
+                    </div>
+                </article>
+                <t t-call="strategic_management.EmployeePerformancePanel"/>
+                <article class="o_sm_bm_card is-wide">
+                    <div class="o_sm_bm_card_head"><h2>Current tasks</h2></div>
+                    <div t-if="ed.current.length" class="o_sm_task_table_wrap"><table class="o_sm_task_table o_sm_emp_tasks">
+                        <thead><tr><th>Task</th><th>Due Date</th><th>Status</th><th class="is-action">Action</th></tr></thead>
+                        <tbody><tr t-foreach="ed.current" t-as="task" t-key="task.id">
+                            <td data-label="Task"><strong t-esc="task.name"/><small t-if="task.priority === '1'" class="o_sm_task_high">High priority</small></td>
+                            <td data-label="Due Date"><t t-esc="this.formatPurchaseDate(task.date_deadline)"/><span t-if="task.is_overdue" class="o_sm_task_overdue">Overdue</span><span t-if="task.open_blocker" class="o_sm_task_overdue">Blocked</span></td>
+                            <td data-label="Status"><span t-att-class="'o_sm_task_status is-' + task.state" t-esc="task.status"/></td>
+                            <td class="is-action"><button t-if="this.isBranchManager" type="button" t-att-class="'o_sm_task_btn' + (task.can_review ? ' is-primary' : '')" t-on-click="() => this.openManagedTask(task.id, ed.employee)"><t t-esc="task.can_review ? 'Review' : 'Open'"/></button></td>
+                        </tr></tbody>
+                    </table></div>
+                    <p t-else="" class="o_sm_bm_empty">No open tasks.</p>
+                </article>
+                <article class="o_sm_bm_card is-wide">
+                    <div class="o_sm_bm_card_head"><h2>Recent history</h2><span t-if="ed.history_total > ed.history.length" class="o_sm_emp_hint">Latest <t t-esc="ed.history.length"/> of <t t-esc="ed.history_total"/></span></div>
+                    <div t-if="ed.history.length" class="o_sm_task_table_wrap"><table class="o_sm_task_table o_sm_emp_history">
+                        <thead><tr><th>Task</th><th>Due Date</th><th>Status</th><th class="is-action">Action</th></tr></thead>
+                        <tbody><tr t-foreach="ed.history" t-as="task" t-key="task.id">
+                            <td data-label="Task"><strong t-esc="task.name"/></td>
+                            <td data-label="Due Date" t-esc="this.formatPurchaseDate(task.date_deadline)"/>
+                            <td data-label="Status"><span t-att-class="'o_sm_task_status is-' + task.state" t-esc="task.status"/></td>
+                            <td class="is-action"><button type="button" class="o_sm_task_btn" t-on-click="() => this.openManagedTask(task.id, ed.employee)">Open</button></td>
+                        </tr></tbody>
+                    </table></div>
+                    <p t-else="" class="o_sm_bm_empty">No completed or cancelled tasks yet.</p>
+                </article>
+            </t>
+        </t>
+        <t t-else="">
+            <header class="o_sm_bm_header"><div class="o_sm_bm_title"><h1>Employee Management</h1><p t-esc="this.isHeadOffice ? 'Employees of every branch and the work assigned to them.' : 'Your branch\'s employees and the work assigned to them.'"/></div></header>
+            <t t-set="em" t-value="this.state.employees"/>
+            <div t-if="em" class="o_sm_emp_toolbar">
+                <div class="o_sm_emp_toolbar_actions">
+                    <button t-if="this.isHeadOffice" type="button" class="o_sm_task_btn is-primary" t-on-click="() => this.openRegister()">Add New Employee</button>
+                    <t t-if="this.isBranchManager"><button type="button" class="o_sm_task_btn is-primary" t-on-click="() => this.openStaffingForm()">Request Employee</button>
+                        <button type="button" class="o_sm_task_btn" t-on-click="() => this.selectSection('staffing_requests')">Staffing Requests</button></t>
+                </div>
+                <label class="o_sm_pur_filter"><span>Department</span><select aria-label="Department filter" t-on-change="(ev) => this.onEmployeeDepartment(ev)"><option value="">All Departments</option><option t-foreach="em.departments" t-as="department" t-key="department.id" t-att-value="department.id" t-att-selected="('' + department.id) === this.state.employeeDepartment" t-esc="department.name"/></select></label>
+            </div>
+            <article t-if="this.filteredWithoutLogin.length" class="o_sm_bm_card is-wide">
+                <div class="o_sm_bm_card_head"><h2>Registered, no login yet</h2><span class="o_sm_emp_hint">They cannot receive tasks until Head Office creates a login.</span></div>
+                <ul class="o_sm_dept_warnings"><li t-foreach="this.filteredWithoutLogin" t-as="person" t-key="person.id"><strong t-esc="person.name"/> <span><t t-esc="person.job"/> · <t t-esc="person.branch"/></span>
+                    <button t-if="this.isHeadOffice" type="button" class="o_sm_task_btn" t-on-click="() => this.createLogin(person)">Create login and invite</button></li></ul>
+            </article>
+            <t t-call="strategic_management.StaffingRequestForm"/>
+            <t t-call="strategic_management.EmployeeRegisterForm"/>
+            <t t-call="strategic_management.DepartmentForm"/>
+            <p t-if="!this.isBranchManager and !this.isHeadOffice" class="o_sm_bm_notice">Employee Management is available to Branch Managers.</p>
+            <p t-elif="this.state.employeesLoading and !em" class="o_sm_bm_empty">Loading employees…</p>
+            <p t-elif="this.state.employeesError and !em" class="o_sm_bm_notice" t-esc="this.state.employeesError"/>
+            <article t-elif="em" class="o_sm_bm_card is-wide">
+                <div t-if="this.filteredEmployees.length" class="o_sm_task_table_wrap"><table class="o_sm_task_table o_sm_emp_table">
+                    <thead><tr><th>Employee</th><th>Departments</th><th class="is-num">Open Tasks</th><th class="is-num">Overdue Tasks</th><th class="is-num">Awaiting Review</th><th class="is-action">Action</th></tr></thead>
+                    <tbody><tr t-foreach="this.pageRows('employee_management', this.filteredEmployees)" t-as="employee" t-key="employee.id">
+                        <td data-label="Employee"><strong t-esc="employee.name"/><small t-if="this.isHeadOffice and employee.branch" t-esc="employee.branch"/><small t-if="employee.note" t-esc="employee.note"/></td>
+                        <td data-label="Departments"><t t-esc="employee.departments.length ? employee.departments.join(', ') : 'None'"/> <button t-if="employee.can_assign_departments" type="button" class="o_sm_task_btn" t-on-click="() => this.openDepartmentForm(employee)">Change</button></td>
+                        <td data-label="Open Tasks" class="is-num" t-esc="employee.counts.open"/>
+                        <td data-label="Overdue Tasks" t-att-class="'is-num' + (employee.counts.overdue ? ' is-warn' : '')" t-esc="employee.counts.overdue"/>
+                        <td data-label="Awaiting Review" t-att-class="'is-num' + (employee.counts.review ? ' is-review' : '')" t-esc="employee.counts.review"/>
+                        <td class="is-action"><button type="button" class="o_sm_task_btn" t-on-click="() => this.openEmployee(employee)">View</button></td>
+                    </tr></tbody>
+                </table></div>
+                <t t-if="this.filteredEmployees.length"><t t-call="strategic_management.ListPager" pagerKey="'employee_management'" pagerRows="this.filteredEmployees"/></t>
+                <p t-else="" class="o_sm_bm_empty" t-esc="this.state.employeeDepartment ? 'No employees in this department.' : 'No employees yet.'"/>
+            </article>
+        </t>
+    </div>
+    </t>
+    <t t-name="strategic_management.EmployeePerformancePanel">
+        <t t-set="ep" t-value="this.state.employeePerformance"/>
+        <p t-if="this.state.employeePerformanceError" class="o_sm_bm_notice" t-esc="this.state.employeePerformanceError"/>
+        <article t-elif="ep and ep.figures" class="o_sm_bm_card is-wide o_sm_perf">
+            <t t-set="f" t-value="ep.figures"/>
+            <div class="o_sm_bm_card_head"><h2>Operational performance</h2>
+                <span class="o_sm_pur_filters">
+                    <label class="o_sm_pur_filter"><span>From</span><input type="date" t-att-value="this.state.dateStart" t-att-max="this.state.todayDate" t-on-change="this.onStartDateChanged" aria-label="Performance start date"/></label>
+                    <label class="o_sm_pur_filter"><span>To</span><input type="date" t-att-value="this.state.dateEnd" t-att-max="this.state.todayDate" t-on-change="this.onEndDateChanged" aria-label="Performance end date"/></label>
+                </span></div>
+            <div class="o_sm_ops_cards o_sm_perf_cards">
+                <article><small>Assigned</small><strong t-esc="f.assigned"/><span>Due in the period; cancelled left out</span></article>
+                <article><small>Completed</small><strong t-esc="f.completed"/><span>Accepted by a reviewer · <t t-esc="f.high_priority_completed"/> of <t t-esc="f.high_priority"/> high priority</span></article>
+                <article><small>On-time rate</small><strong t-esc="this.formatRate(f.on_time_rate)"/><span><t t-esc="f.on_time"/> on time · <t t-esc="f.late"/> late · <t t-esc="f.extended"/> with an approved extension</span></article>
+                <article t-att-class="f.overdue ? 'is-warn' : ''"><small>Overdue</small><strong t-esc="f.overdue"/><span>Still with the employee</span></article>
+                <article><small>Awaiting review</small><strong t-esc="f.awaiting_review"/><span>Not yet approved work</span></article>
+                <article><small>Returned for correction</small><strong t-esc="f.returned"/><span>Times changes were requested</span></article>
+            </div>
+            <p class="o_sm_bm_empty">Blockers reported: <t t-esc="f.blockers"/></p>
+            <t t-if="f.objectives.length"><h3 class="o_sm_perf_h">Contribution to objectives</h3>
+                <ul class="o_sm_dept_warnings"><li t-foreach="f.objectives" t-as="objective" t-key="objective.id"><strong t-esc="objective.name"/> <span><t t-esc="objective.completed"/> of <t t-esc="objective.tasks"/> tasks completed</span></li></ul></t>
+            <div class="o_sm_bm_card_head"><h3 class="o_sm_perf_h">Manager assessments</h3><button t-if="ep.can_assess" type="button" class="o_sm_task_btn" t-on-click="() => this.openAssessment()">Assess this period</button></div>
+            <div t-if="ep.assessments.length" class="o_sm_task_table_wrap"><table class="o_sm_task_table">
+                <thead><tr><th>Period</th><th t-foreach="this.assessmentCriteria" t-as="criterion" t-key="criterion[0]" t-esc="criterion[1]"/><th>Comments</th></tr></thead>
+                <tbody><tr t-foreach="ep.assessments" t-as="row" t-key="row.id"><td><t t-esc="this.formatPurchaseDate(row.start)"/> – <t t-esc="this.formatPurchaseDate(row.end)"/><small class="o_sm_dept_note">Reviewed by <t t-esc="row.assessor"/></small></td>
+                    <td t-foreach="this.assessmentCriteria" t-as="criterion" t-key="criterion[0]" t-esc="row[criterion[0]]"/><td t-esc="row.notes"/></tr></tbody>
+            </table></div>
+            <p t-else="" class="o_sm_bm_empty">No assessments yet.</p>
+            <t t-set="af" t-value="this.state.assessmentForm"/>
+            <div t-if="af" class="o_sm_req_overlay" t-on-click="() => { this.state.assessmentForm = null; }">
+                <form class="o_sm_req_dialog o_sm_task_form" role="dialog" aria-modal="true" aria-label="Assessment" t-on-click.stop="() => {}" t-on-submit.prevent="() => this.saveAssessment()">
+                    <header class="o_sm_req_dialog_head"><div><span class="o_sm_req_kicker">Assessment · <t t-esc="this.formatPurchaseDate(ep.period.start)"/> – <t t-esc="this.formatPurchaseDate(ep.period.end)"/> · not shown to the employee</span><h2 t-esc="ep.employee.name"/></div>
+                        <button type="button" class="o_sm_req_close" aria-label="Close" t-on-click="() => { this.state.assessmentForm = null; }">×</button></header>
+                    <div class="o_sm_req_dialog_body">
+                        <ul class="o_sm_dept_warnings o_sm_rating_scale"><li t-foreach="ep.scale" t-as="level" t-key="level[0]"><strong><t t-esc="level[0]"/> – <t t-esc="level[1]"/></strong> <span t-esc="level[2]"/></li></ul>
+                        <label t-foreach="this.assessmentCriteria" t-as="criterion" t-key="criterion[0]"><t t-esc="criterion[1]"/> <small t-esc="criterion[2]"/>
+                            <select required="required" t-on-change="(ev) => { af[criterion[0]] = ev.target.value; }"><option value="">Choose 1 to 5</option><option t-foreach="ep.scale" t-as="level" t-key="level[0]" t-att-value="level[0]"><t t-esc="level[0]"/> – <t t-esc="level[1]"/></option></select></label>
+                        <label>Supporting comments (required)<textarea rows="3" required="required" placeholder="Examples from this period that support the ratings" t-on-input="(ev) => { af.notes = ev.target.value; }"/></label>
+                    </div>
+                    <footer class="o_sm_req_dialog_foot"><button type="submit" class="o_sm_req_btn is-solid">Save assessment</button></footer>
+                </form>
+            </div>
+        </article>
+    </t>
+    <t t-name="strategic_management.DepartmentForm">
+        <t t-set="df" t-value="this.state.departmentForm"/>
+        <div t-if="df" class="o_sm_req_overlay" t-on-click="() => this.closeDepartmentForm()">
+            <form class="o_sm_req_dialog o_sm_task_form" role="dialog" aria-modal="true" aria-labelledby="o_sm_dept_form_title" t-on-click.stop="() => {}" t-on-submit.prevent="() => this.saveDepartments()">
+                <header class="o_sm_req_dialog_head"><div><span class="o_sm_req_kicker">Department assignment</span><h2 id="o_sm_dept_form_title" t-esc="df.row.name"/></div>
+                    <button type="button" class="o_sm_req_close" aria-label="Close" t-on-click="() => this.closeDepartmentForm()">×</button></header>
+                <div class="o_sm_req_dialog_body">
+                    <p class="o_sm_bm_empty">Branch: <t t-esc="df.row.branch or 'None'"/> · Role: <t t-esc="df.row.role"/></p>
+                    <fieldset class="o_sm_dept_choices"><legend>Departments</legend>
+                        <label t-foreach="this.departmentChoices" t-as="department" t-key="department.id"><input type="checkbox" t-att-checked="df.departmentIds.includes(department.id)" t-att-disabled="!df.row.branch and !df.departmentIds.includes(department.id)" t-on-change="(ev) => this.toggleDepartment(department.id, ev)"/> <t t-esc="department.name"/></label>
+                    </fieldset>
+                </div>
+                <footer class="o_sm_req_dialog_foot">
+                    <button type="button" class="o_sm_req_btn is-ghost" t-att-disabled="this.state.departmentSaving" t-on-click="() => this.closeDepartmentForm()">Cancel</button>
+                    <button type="submit" class="o_sm_req_btn is-solid" t-att-disabled="this.state.departmentSaving">Save</button>
+                </footer>
+            </form>
+        </div>
+    </t>
+    <t t-name="strategic_management.StaffingRejectForm">
+            <t t-set="sd" t-value="this.state.staffingDecision"/>
+            <div t-if="sd" class="o_sm_req_overlay" t-on-click="() => { this.state.staffingDecision = null; }">
+                <form class="o_sm_req_dialog o_sm_task_form" role="dialog" aria-modal="true" aria-label="Reject request" t-on-click.stop="() => {}" t-on-submit.prevent="() => this.confirmReject()">
+                    <header class="o_sm_req_dialog_head"><div><span class="o_sm_req_kicker">Reject request</span><h2><t t-esc="sd.row.quantity"/> × <t t-esc="sd.row.position"/></h2></div></header>
+                    <div class="o_sm_req_dialog_body"><label>Reason<textarea rows="3" required="required" t-on-input="(ev) => { sd.reason = ev.target.value; }"/></label></div>
+                    <footer class="o_sm_req_dialog_foot"><button type="submit" class="o_sm_req_btn is-reject is-solid">Reject request</button></footer>
+                </form>
+            </div>
+    </t>
+    <t t-name="strategic_management.StaffingRequestForm">
+            <t t-set="sf" t-value="this.state.staffingForm"/>
+            <div t-if="sf" class="o_sm_req_overlay" t-on-click="() => { this.state.staffingForm = null; }">
+                <form class="o_sm_req_dialog o_sm_task_form" role="dialog" aria-modal="true" aria-label="Request new employee" t-on-click.stop="() => {}" t-on-submit.prevent="() => this.saveStaffingForm(true)">
+                    <header class="o_sm_req_dialog_head"><div><span class="o_sm_req_kicker">Staffing request</span><h2>Request new employee</h2></div><button type="button" class="o_sm_req_close" aria-label="Close" t-on-click="() => { this.state.staffingForm = null; }">×</button></header>
+                    <div class="o_sm_req_dialog_body">
+                        <label>Department<select required="required" t-on-change="(ev) => { sf.department_id = ev.target.value; }"><option value="">Choose a department</option><option t-foreach="this.state.staffing ? this.state.staffing.departments : []" t-as="department" t-key="department.id" t-att-value="department.id" t-esc="department.name"/></select></label>
+                        <div class="o_sm_task_form_row"><label>Job position<input type="text" required="required" list="o_sm_staff_positions" placeholder="e.g. Barista" t-on-input="(ev) => { sf.position = ev.target.value; }"/></label>
+                            <label>How many<input type="number" min="1" required="required" t-att-value="sf.quantity" t-on-input="(ev) => { sf.quantity = ev.target.value; }"/></label></div>
+                        <datalist id="o_sm_staff_positions"><option t-foreach="this.state.staffing ? this.state.staffing.positions : []" t-as="position" t-key="position_index" t-att-value="position"/></datalist>
+                        <label>Reason<textarea rows="3" required="required" t-on-input="(ev) => { sf.reason = ev.target.value; }"/></label>
+                        <label>Expected joining date<input type="date" required="required" t-on-change="(ev) => { sf.expected_date = ev.target.value; }"/></label>
+                        <label>Additional comments<textarea rows="2" t-on-input="(ev) => { sf.comments = ev.target.value; }"/></label>
+                    </div>
+                    <footer class="o_sm_req_dialog_foot"><button type="button" class="o_sm_req_btn is-ghost" t-on-click="() => this.saveStaffingForm(false)">Save draft</button><button type="submit" class="o_sm_req_btn is-solid">Send to Head Office</button></footer>
+                </form>
+            </div>
+    </t>
+    <t t-name="strategic_management.EmployeeRegisterForm">
+            <t t-set="sg" t-value="this.state.staffingRegister"/>
+            <div t-if="sg" class="o_sm_req_overlay" t-on-click="() => { this.state.staffingRegister = null; }">
+                <form class="o_sm_req_dialog o_sm_task_form" role="dialog" aria-modal="true" aria-label="Register employee" t-on-click.stop="() => {}" t-on-submit.prevent="() => this.saveRegister()">
+                    <header class="o_sm_req_dialog_head"><div><span class="o_sm_req_kicker">Against an approved request</span><h2>Add employee</h2></div><button type="button" class="o_sm_req_close" aria-label="Close" t-on-click="() => { this.state.staffingRegister = null; }">×</button></header>
+                    <div class="o_sm_req_dialog_body">
+                        <div class="o_sm_task_form_row"><label>Branch<select required="required" t-on-change="(ev) => this.selectRegisterBranch(ev.target.value)"><option value="">Choose a branch</option><option t-foreach="sg.options.branches" t-as="branch" t-key="branch.id" t-att-value="branch.id" t-att-selected="('' + branch.id) === sg.warehouse_id" t-esc="branch.name"/></select></label>
+                            <label>Approved request<select required="required" t-on-change="(ev) => this.selectRegisterRequest(ev.target.value)"><option value="">Choose a request</option><option t-foreach="this.registerRequests" t-as="request" t-key="request.id" t-att-value="request.id" t-att-selected="('' + request.id) === sg.request_id"><t t-esc="request.position"/> · <t t-esc="request.branch"/> · <t t-esc="request.remaining"/> of <t t-esc="request.quantity"/> left</option></select></label></div>
+                        <p t-if="!this.registerRequests.length" class="o_sm_bm_empty">No approved request has places left. A Branch Manager's request must be approved first.</p>
+                        <label>Employee name<input type="text" required="required" t-on-input="(ev) => { sg.name = ev.target.value; }"/></label>
+                        <div class="o_sm_task_form_row"><label>Work email<input type="email" required="required" t-on-input="(ev) => { sg.work_email = ev.target.value; }"/></label>
+                            <label>Phone<input type="tel" t-on-input="(ev) => { sg.work_phone = ev.target.value; }"/></label></div>
+                        <div class="o_sm_task_form_row"><label>Job position<input type="text" required="required" t-att-value="sg.job" t-on-input="(ev) => { sg.job = ev.target.value; }"/></label>
+                            <label>Department<select required="required" t-on-change="(ev) => { sg.department_id = ev.target.value; }"><option value="">Choose a department</option><option t-foreach="sg.options.departments" t-as="department" t-key="department.id" t-att-value="department.id" t-att-selected="('' + department.id) === sg.department_id" t-esc="department.name"/></select></label></div>
+                        <label>Reporting manager<select t-on-change="(ev) => { sg.parent_id = ev.target.value; }"><option value="">The branch's manager</option><option t-foreach="sg.options.managers" t-as="manager" t-key="manager.id" t-att-value="manager.id" t-esc="manager.name"/></select></label>
+                        <p class="o_sm_bm_empty">A login is a separate step, and the employee sets their own password from the invitation.</p>
+                    </div>
+                    <footer class="o_sm_req_dialog_foot"><button type="submit" class="o_sm_req_btn is-solid" t-att-disabled="this.state.staffingBusy">Register employee</button></footer>
+                </form>
+            </div>
+    </t>
+    <t t-name="strategic_management.StaffingRequests">
+        <div class="o_sm_bm o_sm_tasks o_sm_staff">
+            <t t-set="sr" t-value="this.state.staffing"/>
+            <t t-set="head" t-value="sr and sr.role === 'head_office'"/>
+            <header class="o_sm_bm_header">
+                <div class="o_sm_bm_title">
+                    <button t-if="this.isBranchManager" type="button" class="o_sm_bm_link o_sm_emp_back" t-on-click="() => this.selectSection('employee_management')">← Employees</button>
+                    <h1>Staffing Requests</h1><p t-esc="head ? 'Review requests from the branches and register the employees you approve.' : 'Ask Head Office for more staff for your branch.'"/></div>
+                <button t-if="this.isBranchManager" type="button" class="o_sm_task_btn is-primary" t-on-click="() => this.openStaffingForm()">Request new employee</button>
+            </header>
+            <p t-if="this.state.staffingError" class="o_sm_bm_notice is-error" role="alert" t-esc="this.state.staffingError"/>
+            <p t-elif="!sr" class="o_sm_bm_empty">Loading…</p>
+            <t t-else="">
+                <div class="o_sm_pur_filters o_sm_staff_filters">
+                    <label t-if="head" class="o_sm_pur_filter"><span>Branch</span><select aria-label="Branch filter" t-on-change="(ev) => this.onStaffingFilter('warehouse_id', ev)"><option value="">All</option><option t-foreach="sr.branches" t-as="branch" t-key="branch.id" t-att-value="branch.id" t-att-selected="('' + branch.id) === this.state.staffingFilters.warehouse_id" t-esc="branch.name"/></select></label>
+                    <label class="o_sm_pur_filter"><span>Position</span><input type="search" aria-label="Position filter" t-att-value="this.state.staffingFilters.position" t-on-change="(ev) => this.onStaffingFilter('position', ev)"/></label>
+                    <label class="o_sm_pur_filter"><span>Status</span><select aria-label="Status filter" t-on-change="(ev) => this.onStaffingFilter('state', ev)"><option value="">All</option><option t-foreach="[['draft','Draft'],['submitted','Submitted'],['approved','Approved'],['rejected','Rejected']]" t-as="status" t-key="status[0]" t-att-value="status[0]" t-att-selected="status[0] === this.state.staffingFilters.state" t-esc="status[1]"/></select></label>
+                </div>
+                <p t-if="!sr.requests.length" class="o_sm_bm_empty">No staffing requests.</p>
+                <article t-foreach="sr.requests" t-as="row" t-key="row.id" class="o_sm_bm_card is-wide o_sm_staff_request">
+                    <div class="o_sm_bm_card_head"><h2><t t-esc="row.quantity"/> × <t t-esc="row.position"/></h2><span t-att-class="'o_sm_task_status o_sm_staff_' + row.state" t-esc="row.status"/></div>
+                    <p class="o_sm_bm_empty"><t t-esc="row.branch"/> · requested by <t t-esc="row.requested_by"/> · joining <t t-esc="this.formatPurchaseDate(row.expected_date)"/></p>
+                    <p class="o_sm_staff_reason" t-esc="row.reason"/>
+                    <p t-if="row.comments" class="o_sm_bm_empty" t-esc="row.comments"/>
+                    <p t-if="row.decided_by" class="o_sm_bm_empty"><t t-esc="row.status"/> by <t t-esc="row.decided_by"/> on <t t-esc="this.formatPurchaseDate(row.decided_at)"/><t t-if="row.rejection_reason">: <t t-esc="row.rejection_reason"/></t></p>
+                    <div t-if="row.state === 'approved'" class="o_sm_staff_people">
+                        <small class="o_sm_emp_hint"><t t-esc="row.fulfilment"/> · <t t-esc="row.registered"/> of <t t-esc="row.quantity"/> employees registered</small>
+                        <ul t-if="row.employees.length" class="o_sm_dept_warnings"><li t-foreach="row.employees" t-as="person" t-key="person.id"><strong t-esc="person.name"/> <span><t t-esc="person.job"/> · <t t-esc="person.email"/></span>
+                            <t t-if="head">
+                                <button t-if="!person.has_login" type="button" class="o_sm_task_btn" t-on-click="() => this.createLogin(person)">Create login and invite</button>
+                                <t t-elif="person.invitation === 'failed'"><small class="o_sm_task_overdue">Invitation not sent: <t t-esc="person.invitation_error"/></small> <button type="button" class="o_sm_task_btn" t-on-click="() => this.createLogin(person, true)">Send again</button></t>
+                                <small t-else="" class="o_sm_emp_hint">Login ready · invitation handed to the mail server</small>
+                            </t>
+                            <small t-elif="person.has_login" class="o_sm_emp_hint">Has a login</small></li></ul>
+                    </div>
+                    <div class="o_sm_staff_buttons">
+                        <button t-if="!head and row.state === 'draft'" type="button" class="o_sm_task_btn is-primary" t-on-click="() => this.submitStaffing(row)">Send to Head Office</button>
+                        <t t-if="head and row.state === 'submitted'"><button type="button" class="o_sm_task_btn is-primary" t-on-click="() => this.approveStaffing(row)">Approve</button>
+                            <button type="button" class="o_sm_task_btn" t-on-click="() => { this.state.staffingDecision = { row: row, reason: '' }; }">Reject</button></t>
+                        <button t-if="head and row.state === 'approved' and row.remaining" type="button" class="o_sm_task_btn is-primary" t-on-click="() => this.openRegister(row)">Register employee</button>
+                    </div>
+                </article>
+            </t>
+            <t t-call="strategic_management.StaffingRequestForm"/>
+            <t t-call="strategic_management.StaffingRejectForm"/>
+            <t t-call="strategic_management.EmployeeRegisterForm"/>
+        </div>
+    </t>
+</templates>

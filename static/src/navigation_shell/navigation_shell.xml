@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="strategic_management.NavigationShell" owl="1">
+        <div class="o_sm_navigation_shell">
+            <aside class="o_sm_sidebar" aria-label="Strategic Management navigation">
+                <div class="o_sm_sidebar_brand">
+                    <span class="o_sm_brand_icon" aria-hidden="true"><svg class="o_sm_brand_svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 17.5 9 11.5l4 4 7.5-8"/><path d="M15 7.5h5.5V13"/></svg></span>
+                    <span class="o_sm_brand_title"><span>Strategic</span> <span>Management</span></span>
+                </div>
+                <nav class="o_sm_navigation_items">
+                    <t t-foreach="this.sidebarPrimary" t-as="item" t-key="item.id">
+                        <t t-call="strategic_management.NavigationButton"/>
+                    </t>
+                    <div t-if="this.sidebarMore.length" class="o_sm_navigation_more_label" t-esc="this.sidebarMoreLabel"/>
+                    <t t-foreach="this.sidebarMore" t-as="item" t-key="item.id">
+                        <t t-call="strategic_management.NavigationButton"/>
+                    </t>
+                </nav>
+            </aside>
+
+            <main class="o_sm_workspace">
+                <div t-if="this.state.drillChoice" class="o_sm_req_overlay" t-on-click="() => { this.state.drillChoice = null; }">
+                    <section class="o_sm_req_dialog o_sm_drill_choice" role="dialog" aria-modal="true" aria-labelledby="o_sm_drill_choice_title" t-on-click.stop="() => {}">
+                        <header class="o_sm_req_dialog_head"><div><span class="o_sm_req_kicker">This figure comes from</span><h2 id="o_sm_drill_choice_title">Which records do you want to see?</h2></div>
+                            <button type="button" class="o_sm_req_close" aria-label="Close" t-on-click="() => { this.state.drillChoice = null; }">×</button></header>
+                        <div class="o_sm_req_dialog_body">
+                            <button t-foreach="this.state.drillChoice" t-as="option" t-key="option_index" type="button" class="o_sm_drill_option" t-on-click="() => this.openDrill(option)">
+                                <strong t-esc="option.name"/><span><t t-esc="option.count"/> <t t-esc="option.count === 1 ? 'record' : 'records'"/> →</span></button>
+                        </div>
+                    </section>
+                </div>
+                <nav t-if="this.peopleTabs.length" class="o_sm_people_tabs" aria-label="Employee Management">
+                    <button t-foreach="this.peopleTabs" t-as="tab" t-key="tab.id" type="button" t-att-class="'o_sm_people_tab' + (tab.id === this.state.activeSection ? ' is-active' : '')"
+                            t-att-aria-current="tab.id === this.state.activeSection ? 'page' : false" t-on-click="() => this.selectSection(tab.id)" t-esc="tab.label"/>
+                </nav>
+                <t t-if="this.branchError">
+    <div class="o_sm_bm">
+        <header class="o_sm_bm_header">
+            <div class="o_sm_bm_title">
+                <span class="o_sm_bm_kicker">Strategic Management</span>
+                <h1>Branch Manager Dashboard</h1>
+            </div>
+            <div class="o_sm_bm_header_actions">
+                <span class="o_sm_bm_user"><img t-att-src="this.avatarUrl" alt=""/><span><strong t-esc="this.userName"/><small>Branch Manager</small></span></span>
+            </div>
+        </header>
+        <div class="o_sm_bm_notice is-error" role="alert">
+            <strong>No branch assigned</strong>
+            <span t-esc="this.branchError"/>
+            <small>Branch data stays hidden until an administrator assigns your branch on your user.</small>
+        </div>
+    </div>
+</t>
+                <t t-elif="this.state.activeSection === 'overview'"><t t-call="strategic_management.InboxPage"/></t>
+                <t t-elif="this.state.activeSection === 'bm_dashboard'"><t t-call="strategic_management.BranchManagerDashboardPage"/></t>
+                <t t-elif="this.state.activeSection === 'employee_dashboard'"><t t-call="strategic_management.EmployeeDashboardPage"/></t>
+                <t t-elif="this.state.activeSection === 'my_performance'"><t t-call="strategic_management.MyPerformancePage"/></t>
+                <t t-elif="this.departmentCode"><t t-call="strategic_management.DepartmentPage"/></t>
+                <t t-elif="this.state.activeSection === 'staffing_requests'"><t t-call="strategic_management.StaffingRequests"/></t>
+                <t t-elif="this.state.activeSection === 'employee_performance'"><t t-call="strategic_management.EmployeePerformancePage"/></t>
+                <t t-elif="this.state.activeSection === 'department_assignment'"><t t-call="strategic_management.DepartmentAssignmentPage"/></t>
+                <t t-elif="this.state.activeSection === 'my_tasks'"><t t-call="strategic_management.MyTasksPage"/></t>
+                <t t-elif="this.state.activeSection === 'employee_management'"><t t-call="strategic_management.EmployeeManagementPage"/></t>
+                <t t-elif="this.state.activeSection === 'task_management'"><t t-call="strategic_management.TaskManagementPage"/></t>
+                <t t-elif="this.state.activeSection === 'sales_finance'"><t t-call="strategic_management.SalesPage"/></t>
+<t t-elif="this.state.activeSection === 'inventory_waste'"><t t-call="strategic_management.InventoryPage"/></t>
+                <t t-elif="this.state.activeSection === 'purchasing'"><t t-call="strategic_management.PurchasingPage"/></t>
+<t t-elif="this.state.activeSection === 'branches'"><t t-call="strategic_management.BranchesPage"/></t>
+                <t t-elif="this.state.activeSection === 'admin_home'">
+    <div class="o_sm_bm o_sm_tasks">
+        <header class="o_sm_bm_header"><div class="o_sm_bm_title"><span class="o_sm_bm_kicker">Admin</span><h1 t-esc="this.userName"/><p>Your Admin workspace will appear here.</p></div></header>
+        <p class="o_sm_bm_empty">This role has no branch or department data.</p>
+    </div>
+</t>
+                <t t-elif="this.state.activeSection === 'people'"><t t-call="strategic_management.PeoplePage"/></t>
+                <!-- Tasks & Issues UI-only preview -->
+<t t-elif="this.state.activeSection === 'tasks_issues'"><t t-call="strategic_management.TasksIssuesPage"/></t>
+<t t-elif="this.state.activeSection === 'app_dependencies'"><t t-call="strategic_management.AppDependenciesPage"/></t>
+<t t-elif="this.state.activeSection === 'reports' or this.state.activeSection === 'configuration'"><t t-call="strategic_management.ReportsSettingsPage"/></t>
+<t t-else="">
+                    <header class="o_sm_section_header"><h1><t t-esc="this.activeItem.label"/></h1><div class="o_sm_subtitle">Strategic Management / <t t-esc="this.activeItem.label"/></div></header>
+                    <section class="o_sm_section_placeholder">
+                        <div class="o_sm_placeholder_icon"><i class="oi" t-att-data-icon="this.activeItem.icon" aria-hidden="true"/></div>
+                        <h2><t t-esc="this.activeItem.label"/></h2>
+                        <p>This section will be connected to its business records in the next implementation step. The overview already reads available figures from your Odoo database.</p>
+                    </section>
+                </t>
+            </main>
+        </div>
+    </t>
+    <t t-name="strategic_management.NavigationButton">
+        <button type="button"
+                t-att-class="(this.isNavActive(item) ? 'o_sm_nav_item active' : 'o_sm_nav_item') + (item.planned ? ' is-planned' : '')"
+                t-att-aria-current="this.isNavActive(item) ? 'page' : false"
+                t-att-disabled="item.planned"
+                t-att-title="item.planned ? 'Planned for a later phase' : false"
+                t-on-click="() => this.openNavItem(item)">
+            <svg class="o_sm_nav_svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+    <g t-if="item.id === 'overview'"><path d="M4 13.5 6.5 5h11l2.5 8.5"/><path d="M4 13.5v6h16v-6"/><path d="M4 13.5h4.5l1 2h5l1-2H20"/></g>
+    <g t-elif="item.id === 'sales_finance' or item.id === 'department_sales'"><path d="M5 20v-7M10 20V8M15 20v-9M20 20V4"/></g>
+    <g t-elif="item.id === 'inventory_waste' or item.id === 'department_inventory'"><path d="m12 3 8 4.2v9.6L12 21l-8-4.2V7.2Z"/><path d="m4.3 7.3 7.7 4.1 7.7-4.1M12 11.5V21"/></g>
+    <g t-elif="item.id === 'purchasing' or item.id === 'department_purchasing'"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 4h2l2.1 11.2a2 2 0 0 0 2 1.6h9.5a2 2 0 0 0 1.9-1.5L22 8H6"/></g>
+    <g t-elif="item.id === 'business_goals'"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></g>
+    <g t-elif="item.id === 'branches'"><path d="M4 21V4.5h11V21M15 10h5v11M2 21h20"/><path d="M7.5 8h4M7.5 12h4M7.5 16h4M17 14h1.5M17 17h1.5"/></g>
+    <g t-elif="item.id === 'people'"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1.4a6 6 0 0 1 12 0V20Z"/><path d="M16 5.5a3 3 0 0 1 0 5.8M18 14a5 5 0 0 1 3 4.6V20h-4"/></g>
+    <g t-elif="item.id === 'tasks_issues'"><rect x="5" y="4.5" width="14" height="17" rx="2"/><path d="M9 4.5v-2h6v2M8 11l2 2 4-4M8 17h8"/></g>
+    <g t-elif="item.id === 'reports'"><path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></g>
+    <g t-elif="item.id === 'app_dependencies'"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><path d="M16.5 13.5v6M13.5 16.5h6"/></g>
+    <g t-elif="item.id === 'bm_dashboard' or item.id === 'employee_dashboard' or item.id === 'admin_home' or item.id === 'my_performance'"><rect x="3.5" y="3.5" width="7" height="8" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="5" rx="1.5"/><rect x="13.5" y="11.5" width="7" height="9" rx="1.5"/><rect x="3.5" y="14.5" width="7" height="6" rx="1.5"/></g>
+    <g t-elif="item.id === 'my_tasks' or item.id === 'task_management'"><rect x="5" y="4.5" width="14" height="17" rx="2"/><path d="M9 4.5v-2h6v2M8 11l2 2 4-4M8 17h8"/></g>
+    <g t-elif="item.id === 'employee_management' or item.id === 'department_assignment' or item.id === 'staffing_requests' or item.id === 'employee_performance'"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1.4a6 6 0 0 1 12 0V20Z"/><path d="M16 5.5a3 3 0 0 1 0 5.8M18 14a5 5 0 0 1 3 4.6V20h-4"/></g>
+    <g t-elif="item.id === 'propose_objective'"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></g>
+    <g t-elif="item.id === 'notifications'"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2H4.5Z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></g>
+    <g t-elif="item.id === 'configuration'"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></g>
+</svg>
+            <span class="o_sm_nav_label"><t t-esc="item.label"/></span>
+            <small t-if="item.planned" class="o_sm_nav_planned">Later</small>
+        </button>
+    </t>
+    <t t-name="strategic_management.ListPager">
+        <t t-set="pagerCount" t-value="this.pageCount(pagerRows)"/>
+        <div t-if="pagerCount > 1" class="o_sm_pager">
+            <span><t t-esc="(pagerRows || []).length"/> items · Page <t t-esc="this.pageOf(pagerKey, pagerRows)"/> of <t t-esc="pagerCount"/></span>
+            <button type="button" t-att-disabled="this.pageOf(pagerKey, pagerRows) &lt;= 1" t-on-click="() => this.setPage(pagerKey, this.pageOf(pagerKey, pagerRows) - 1)" aria-label="Previous page">‹ Prev</button>
+            <button type="button" t-att-disabled="this.pageOf(pagerKey, pagerRows) >= pagerCount" t-on-click="() => this.setPage(pagerKey, this.pageOf(pagerKey, pagerRows) + 1)" aria-label="Next page">Next ›</button>
+        </div>
+    </t>
+    <t t-name="strategic_management.AreaGoals">
+        <section class="o_sm_area_goals" aria-label="Goals in this area">
+            <div class="o_sm_area_goals_head"><h2>Goals in this area</h2><span>Same goals as Business Goals</span></div>
+            <t t-set="areaGoalRows" t-value="this.state.areaGoals[areaKey]"/>
+            <p t-if="!areaGoalRows" class="o_sm_area_goals_empty">Loading goals…</p>
+            <p t-elif="!areaGoalRows.length" class="o_sm_area_goals_empty">No goals for this area yet. Create one in Business Goals.</p>
+            <t t-else="">
+                <div class="o_sm_pur_table_wrap"><table class="o_sm_pur_table">
+                    <thead><tr><th>Goal</th><th>Current result</th><th>Target</th><th>Period / deadline</th><th>Responsible</th><th>Status</th><th/></tr></thead>
+                    <tbody><tr t-foreach="this.pageRows('area_goals_' + areaKey, areaGoalRows)" t-as="goal" t-key="goal.objective_id">
+                        <td style="white-space:normal"><strong t-esc="goal.title"/><div t-if="goal.measure_label" class="o_sm_area_goals_sub" t-esc="goal.measure_label"/></td>
+                        <td t-att-title="goal.current_note" t-esc="goal.current"/>
+                        <td t-esc="goal.target or '—'"/>
+                        <td><t t-if="goal.period_start"><t t-esc="this.formatPurchaseDate(goal.period_start)"/> – <t t-esc="this.formatPurchaseDate(goal.period_end)"/></t><t t-else="">Due <t t-esc="this.formatPurchaseDate(goal.deadline)"/></t></td>
+                        <td t-esc="goal.owner"/>
+                        <td><span t-att-class="'o_sm_area_goal_status is-' + goal.tone" t-esc="goal.status"/></td>
+                        <td><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.openObjective(goal.objective_id)">Open</button></td>
+                    </tr></tbody>
+                </table></div>
+                <t t-call="strategic_management.ListPager" pagerKey="'area_goals_' + areaKey" pagerRows="areaGoalRows"/>
+            </t>
+        </section>
+    </t>
+</templates>

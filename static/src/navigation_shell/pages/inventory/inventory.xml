@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Inventory & Waste. Called from strategic_management.NavigationShell. -->
+<templates xml:space="preserve">
+    <t t-name="strategic_management.InventoryPage">
+    <t t-set="iv" t-value="this.state.inventoryData"/>
+    <t t-set="ix" t-value="this.state.invExpanded"/>
+    <t t-set="isHead" t-value="this.state.data and this.state.data.role === 'head_office'"/>
+    <div class="o_sm_inventory_waste">
+        <header class="o_sm_iw_header">
+            <div class="o_sm_iw_title_block">
+                <h1>Inventory &amp; Waste</h1>
+                <p>Stock levels, waste and expiry risks across your branches.</p>
+                <div class="o_sm_iw_header_meta">
+                    <span t-if="iv and iv.available" class="o_sm_iw_preview_badge"><i class="o_sm_iw_live_dot"/> Live Odoo Inventory data</span>
+                    <button type="button" class="o_sm_iw_link" t-on-click="() => this.toggleInventory('goals')"><t t-esc="ix.goals ? 'Hide goals' : 'View goals →'"/></button>
+                </div>
+            </div>
+            <div class="o_sm_iw_filters">
+                <label class="o_sm_iw_filter"><span>From</span><input type="date" t-att-value="this.state.dateStart" t-on-change="this.onStartDateChanged" aria-label="Inventory start date"/></label>
+                <label class="o_sm_iw_filter"><span>To</span><input type="date" t-att-value="this.state.dateEnd" t-on-change="this.onEndDateChanged" aria-label="Inventory end date"/></label>
+                <label class="o_sm_iw_filter"><span>Branch</span><select t-att-value="this.branchSelectValue" t-on-change="this.onWarehouseChanged" aria-label="Inventory branch filter"><option t-if="!this.isBranchManager" value="all">All Branches</option><t t-foreach="(iv &amp;&amp; iv.branch_options) || []" t-as="branch" t-key="branch.id"><option t-att-value="branch.id"><t t-esc="branch.name"/></option></t></select></label>
+            </div>
+        </header>
+        <t t-if="ix.goals"><t t-call="strategic_management.AreaGoals" areaKey="'inventory_waste'"/></t>
+
+        <div t-if="this.state.inventoryLoading" class="o_sm_iw_panel_note">Loading live stock, expiry and waste data…</div>
+        <div t-if="!this.state.inventoryLoading &amp;&amp; !(iv &amp;&amp; iv.available)" class="o_sm_iw_panel_note"><t t-esc="(iv &amp;&amp; iv.messages &amp;&amp; iv.messages[0]) || 'Inventory data is unavailable for this user or warehouse scope.'"/></div>
+
+        <t t-set="summary" t-value="iv and iv.summary"/>
+        <t t-set="expiredLots" t-value="this.inventoryExpiredLotCount"/>
+        <section class="o_sm_iw_summary" aria-label="Inventory summary">
+            <article t-att-class="'o_sm_iw_metric' + ((iv and iv.drill and iv.drill.low_stock) ? ' is-drill' : '')" t-att-role="(iv and iv.drill and iv.drill.low_stock) ? 'button' : false" t-att-tabindex="(iv and iv.drill and iv.drill.low_stock) ? 0 : false" t-on-click="() => this.openDrill(iv and iv.drill and iv.drill.low_stock)" t-on-keydown="(ev) => this.onDrillKey(ev, iv and iv.drill and iv.drill.low_stock)"><span class="o_sm_iw_metric_icon is-orange"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 4.2v9.6L12 21l-8-4.2V7.2Z"/><path d="m4.3 7.3 7.7 4.1 7.7-4.1M12 11.5V21"/></svg></span><div class="o_sm_iw_metric_copy"><span>Low-stock items</span><strong><t t-esc="this.inventoryMetricValue(summary ? summary.low_stock_count : false)"/></strong><small title="Products below their configured reorder minimum"><t t-esc="summary and summary.low_stock_count === false ? 'Needs readable reorder rules' : 'Below reorder level'"/></small></div></article>
+            <article t-att-class="'o_sm_iw_metric' + ((iv and iv.drill and iv.drill.expiring) ? ' is-drill' : '')" t-att-role="(iv and iv.drill and iv.drill.expiring) ? 'button' : false" t-att-tabindex="(iv and iv.drill and iv.drill.expiring) ? 0 : false" t-on-click="() => this.openDrill(iv and iv.drill and iv.drill.expiring)" t-on-keydown="(ev) => this.onDrillKey(ev, iv and iv.drill and iv.drill.expiring)"><span class="o_sm_iw_metric_icon is-red"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div class="o_sm_iw_metric_copy"><span>Expiring soon</span><strong><t t-esc="this.inventoryMetricValue(summary ? summary.expiring_soon_count : false)"/></strong><small title="Tracked lots with stock expiring in the next 7 days or already expired" t-att-class="expiredLots ? 'is-bad' : ''"><t t-esc="expiredLots ? expiredLots + (expiredLots === 1 ? ' expired lot' : ' expired lots') : (iv and iv.expiry_tracking_available === false ? 'Expiry tracking not set up' : 'Next 7 days')"/></small></div></article>
+            <article t-att-class="'o_sm_iw_metric' + ((iv and iv.drill and iv.drill.waste) ? ' is-drill' : '')" t-att-role="(iv and iv.drill and iv.drill.waste) ? 'button' : false" t-att-tabindex="(iv and iv.drill and iv.drill.waste) ? 0 : false" t-on-click="() => this.openDrill(iv and iv.drill and iv.drill.waste)" t-on-keydown="(ev) => this.onDrillKey(ev, iv and iv.drill and iv.drill.waste)"><span class="o_sm_iw_metric_icon is-purple"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14l-1 14H6L5 7ZM9 7V4h6v3M3 7h18M10 11v6M14 11v6"/></svg></span><div class="o_sm_iw_metric_copy"><span>Recorded waste</span><strong><t t-esc="this.formatInventoryCurrency(summary ? summary.waste_cost : false)"/></strong><small title="Validated scrap at Odoo's stock cost. Products without a cost count as free, so check product costs before relying on this figure.">Recorded scrap value</small></div></article>
+            <article t-att-class="'o_sm_iw_metric' + ((iv and iv.drill and iv.drill.issues) ? ' is-drill' : '')" t-att-role="(iv and iv.drill and iv.drill.issues) ? 'button' : false" t-att-tabindex="(iv and iv.drill and iv.drill.issues) ? 0 : false" t-on-click="() => this.openDrill(iv and iv.drill and iv.drill.issues)" t-on-keydown="(ev) => this.onDrillKey(ev, iv and iv.drill and iv.drill.issues)"><span class="o_sm_iw_metric_icon is-green"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 21.5 20h-19Z"/><path d="M12 10v4.5M12 17.2h.01"/></svg></span><div class="o_sm_iw_metric_copy"><span>Stock issues</span><strong><t t-esc="this.inventoryMetricValue(summary ? summary.discrepancy_count : false)"/></strong><small title="Unapplied physical-count differences">Requires review</small></div></article>
+        </section>
+
+        <section class="o_sm_iw_grid">
+            <article t-att-class="'o_sm_iw_panel' + (ix.stock ? ' is-expanded' : '')">
+                <div class="o_sm_iw_panel_heading"><div><h2>Stock Health</h2><p>Products below reorder level</p></div>
+                    <button t-if="(iv &amp;&amp; iv.stock_health &amp;&amp; iv.stock_health.length) > 4" type="button" class="o_sm_iw_link" t-on-click="() => this.toggleInventory('stock')"><t t-esc="ix.stock ? 'Show top 4' : 'See all →'"/></button>
+                    <button t-if="isHead" type="button" class="o_sm_iw_link" t-on-click="() => this.openAction('stock.action_orderpoint')">View inventory →</button></div>
+                <div class="o_sm_iw_stock_list">
+                    <t t-foreach="ix.stock ? this.pageRows('iw_stock', (iv &amp;&amp; iv.stock_health) || []) : ((iv &amp;&amp; iv.stock_health) || []).slice(0, 4)" t-as="item" t-key="item.product_id + '-' + item.warehouse_id">
+                        <div class="o_sm_iw_stock_row">
+                            <div class="o_sm_iw_stock_name"><strong t-att-title="item.name"><t t-esc="item.name"/></strong><small><t t-esc="item.branch_name"/> · Available <t t-esc="this.formatInventoryQuantity(item.available_quantity, item.unit)"/> · Forecast <t t-esc="this.formatInventoryQuantity(item.forecast_quantity, item.unit)"/> · Min <t t-esc="this.formatInventoryQuantity(item.minimum_quantity, item.unit)"/></small><div class="o_sm_iw_stock_track"><span t-att-class="item.status === 'critical' ? 'o_sm_iw_fill_critical' : 'o_sm_iw_fill_low'" t-att-style="'width:' + this.inventoryStockWidth(item) + '%'"/></div></div>
+                            <span t-att-class="'o_sm_iw_status ' + (item.status === 'critical' ? 'o_sm_iw_status_critical' : 'o_sm_iw_status_low')"><t t-esc="item.status_label"/></span>
+                        </div>
+                    </t>
+                    <div t-if="!(iv &amp;&amp; iv.stock_health &amp;&amp; iv.stock_health.length)" class="o_sm_iw_empty"><t t-esc="summary and summary.low_stock_count === false ? 'Low stock cannot be judged without readable reorder rules for this scope.' : 'No products are below their reorder level.'"/></div>
+                    <t t-if="ix.stock"><t t-call="strategic_management.ListPager" pagerKey="'iw_stock'" pagerRows="(iv &amp;&amp; iv.stock_health) || []"/></t>
+                </div>
+            </article>
+            <article t-att-class="'o_sm_iw_panel' + (ix.waste ? ' is-expanded' : '')">
+                <div class="o_sm_iw_panel_heading"><div><h2>Recorded Waste</h2><p>Recorded scrap value by product</p></div>
+                    <button t-if="(iv &amp;&amp; iv.waste_by_product &amp;&amp; iv.waste_by_product.length) > 5" type="button" class="o_sm_iw_link" t-on-click="() => this.toggleInventory('waste')"><t t-esc="ix.waste ? 'Show top 5' : 'View waste details →'"/></button></div>
+                <div class="o_sm_iw_waste_bars" role="list" aria-label="Recorded waste cost by product">
+                    <t t-foreach="ix.waste ? ((iv &amp;&amp; iv.waste_by_product) || []) : ((iv &amp;&amp; iv.waste_by_product) || []).slice(0, 5)" t-as="waste" t-key="waste.product_id"><div class="o_sm_iw_waste_bar" role="listitem"><span class="o_sm_iw_waste_name" t-att-title="waste.product"><t t-esc="waste.product"/></span><div class="o_sm_iw_stock_track"><span t-att-style="'width:' + this.inventoryWasteWidth(waste) + '%'"/></div><strong><t t-esc="this.formatInventoryCurrency(waste.cost)"/></strong></div></t>
+                    <div t-if="!(iv &amp;&amp; iv.waste_by_product &amp;&amp; iv.waste_by_product.length)" class="o_sm_iw_empty"><t t-esc="iv &amp;&amp; iv.waste_breakdown_available ? 'No validated waste cost was recorded for this period.' : 'Breakdown needs supported scrap reasons and inventory valuation.'"/></div>
+                    <small t-if="iv &amp;&amp; iv.waste_by_product &amp;&amp; iv.waste_by_product.length" class="o_sm_iw_hint">At Odoo's stock cost; products without a cost count as free.</small>
+                </div>
+            </article>
+        </section>
+
+        <section class="o_sm_iw_grid">
+            <article t-att-class="'o_sm_iw_panel' + (ix.attention ? ' is-expanded' : '')">
+                <div class="o_sm_iw_panel_heading"><div><h2 class="is-warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 21.5 20h-19Z"/><path d="M12 10v4.5M12 17.2h.01"/></svg>Needs Attention</h2><p>Current stock and expiry issues</p></div>
+                    <button t-if="(iv &amp;&amp; iv.attention &amp;&amp; iv.attention.length) > 3" type="button" class="o_sm_iw_link" t-on-click="() => this.toggleInventory('attention')"><t t-esc="ix.attention ? 'Show top 3' : 'See all alerts →'"/></button></div>
+                <div class="o_sm_iw_attention_list">
+                    <t t-foreach="ix.attention ? this.pageRows('iw_attention', (iv &amp;&amp; iv.attention) || []) : ((iv &amp;&amp; iv.attention) || []).slice(0, 3)" t-as="item" t-key="item.kind + '-' + item.title + '-' + item_index">
+                        <div class="o_sm_iw_attention_row">
+                            <span t-att-class="'o_sm_iw_attention_icon ' + (item.severity === 'high' ? 'is-critical' : item.severity === 'medium' ? 'is-warn' : 'is-review')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 21.5 20h-19Z"/><path d="M12 10v4.5M12 17.2h.01"/></svg></span>
+                            <div class="o_sm_iw_attention_text"><strong t-att-title="item.title"><t t-esc="item.title"/></strong><small t-att-title="item.detail"><t t-esc="item.detail"/><t t-if="item.date"> · <t t-esc="this.formatDate(item.date)"/></t></small></div>
+                            <span t-att-class="'o_sm_iw_status ' + (item.severity === 'high' ? 'o_sm_iw_status_critical' : item.severity === 'medium' ? 'o_sm_iw_status_low' : 'o_sm_iw_status_ok')"><t t-esc="item.severity === 'high' ? 'High' : item.severity === 'medium' ? 'Medium' : 'Review'"/></span>
+                            <button t-if="isHead and item.res_model and item.res_id" type="button" class="o_sm_iw_item_action" t-on-click="() => this.openIssueRecord(item)">View</button>
+                        </div>
+                    </t>
+                    <div t-if="!(iv &amp;&amp; iv.attention &amp;&amp; iv.attention.length)" class="o_sm_iw_empty">No stock or expiry issues for this scope.</div>
+                    <t t-if="ix.attention"><t t-call="strategic_management.ListPager" pagerKey="'iw_attention'" pagerRows="(iv &amp;&amp; iv.attention) || []"/></t>
+                </div>
+            </article>
+            <article class="o_sm_iw_panel">
+                <div class="o_sm_iw_panel_heading"><div><h2>Inventory by Branch</h2><p>Low-stock items by branch</p></div><button type="button" class="o_sm_iw_link" t-on-click="() => this.selectSection('branches')">View branch details →</button></div>
+                <t t-set="branchRows" t-value="(iv &amp;&amp; iv.branch_comparison) || []"/>
+                <div class="o_sm_iw_branch_bars">
+                    <div t-foreach="branchRows.slice(0, 6)" t-as="branch" t-key="branch.warehouse_id" class="o_sm_iw_waste_bar">
+                        <span class="o_sm_iw_waste_name" t-att-title="branch.branch"><t t-esc="branch.branch"/></span>
+                        <div class="o_sm_iw_stock_track"><span t-att-style="'width:' + this.inventoryBranchWidth(branch) + '%'"/></div>
+                        <strong><t t-esc="branch.low_stock_count === false ? 'N/A' : this.inventoryMetricValue(branch.low_stock_count)"/></strong>
+                    </div>
+                    <div t-if="!branchRows.length" class="o_sm_iw_empty">No authorized branch data is available.</div>
+                    <small t-if="branchRows.length > 6" class="o_sm_iw_hint">Showing 6 of <t t-esc="branchRows.length"/> branches; open Detailed reports below for all.</small>
+                </div>
+            </article>
+        </section>
+
+        <section t-if="iv &amp;&amp; iv.available &amp;&amp; iv.messages &amp;&amp; iv.messages.length" class="o_sm_iw_validation" role="note">
+            <span class="o_sm_iw_validation_icon">i</span>
+            <div><strong>Some inventory measures need validation</strong><small><t t-esc="iv.messages[0]"/><t t-if="iv.messages.length > 1"> (+<t t-esc="iv.messages.length - 1"/> more)</t></small>
+                <details t-if="iv.messages.length > 1" class="o_sm_iw_validation_more"><summary>Show all</summary><div t-foreach="iv.messages" t-as="message" t-key="message_index"><t t-esc="message"/></div></details></div>
+        </section>
+
+        <section class="o_sm_iw_details_bar" aria-label="Detailed reports">
+            <span>Detailed reports</span>
+            <button type="button" t-att-class="ix.movement ? 'is-active' : ''" t-on-click="() => this.toggleInventory('movement')">Inventory movement</button>
+            <button type="button" t-att-class="ix.expiring ? 'is-active' : ''" t-on-click="() => this.toggleInventory('expiring')">Expiring stock</button>
+            <button type="button" t-att-class="ix.branches ? 'is-active' : ''" t-on-click="() => this.toggleInventory('branches')">Branch comparison</button>
+        </section>
+        <section t-if="ix.movement or ix.expiring or ix.branches" class="o_sm_iw_details">
+            <article t-if="ix.movement" class="o_sm_iw_panel is-expanded">
+                <div class="o_sm_iw_panel_heading"><div><h2>Inventory Movement</h2><p>Stock movement for a selected product and reporting period</p></div><select class="o_sm_iw_select_preview" t-att-value="this.state.inventoryProductId || (this.state.inventoryData &amp;&amp; this.state.inventoryData.selected_product_id) || 'all'" t-on-change="this.onInventoryProductChanged" aria-label="Product for inventory movement"><option value="all">Select product</option><t t-foreach="(this.state.inventoryData &amp;&amp; this.state.inventoryData.inventory_products) || []" t-as="product" t-key="product.id"><option t-att-value="product.id"><t t-esc="product.name"/></option></t></select></div>
+                <t t-set="movement" t-value="this.state.inventoryData &amp;&amp; this.state.inventoryData.movement ? this.state.inventoryData.movement : false"/>
+                <div class="o_sm_iw_movement_grid">
+                    <div class="o_sm_iw_move_step"><small>Opening stock</small><strong><t t-esc="this.formatInventoryQuantity(movement ? movement.opening_stock : false, movement ? movement.unit : '')"/></strong><span>Calculated from recorded movements</span></div><div class="o_sm_iw_move_sign">+</div>
+                    <div t-if="movement and movement.ordered_quantity !== undefined" class="o_sm_iw_move_step"><small>Ordered</small><strong><t t-esc="this.formatInventoryQuantity(movement.ordered_quantity, movement.unit)"/></strong><span>Confirmed purchase orders</span></div>
+                    <div class="o_sm_iw_move_step"><small>Received</small><strong><t t-esc="this.formatInventoryQuantity(movement ? movement.received_quantity : false, movement ? movement.unit : '')"/></strong><span>Supplier receipts</span></div><div class="o_sm_iw_move_sign">−</div>
+                    <div class="o_sm_iw_move_step"><small>Consumption</small><strong><t t-esc="this.formatInventoryQuantity(movement ? movement.consumption_quantity : false, movement ? movement.unit : '')"/></strong><span>Completed sales and production issues</span></div><div class="o_sm_iw_move_sign">−</div>
+                    <div class="o_sm_iw_move_step"><small>Recorded waste</small><strong><t t-esc="this.formatInventoryQuantity(movement ? movement.waste_quantity : false, movement ? movement.unit : '')"/></strong><span>Supported scrap records</span></div><div class="o_sm_iw_move_sign">±</div>
+                    <div class="o_sm_iw_move_step"><small>Adjustments &amp; other</small><strong><t t-esc="this.formatInventoryQuantity(movement ? movement.adjustment_quantity + movement.other_net_quantity : false, movement ? movement.unit : '')"/></strong><span><t t-if="movement and movement.adjustment_quantity !== undefined">Adjustments <t t-esc="this.formatInventoryQuantity(movement.adjustment_quantity, '')"/> · other <t t-esc="this.formatInventoryQuantity(movement.other_net_quantity, '')"/></t><t t-else="">Other stock changes</t></span></div>
+                </div>
+                <div class="o_sm_iw_closing_row"><div><span>Expected closing stock</span><strong><t t-esc="this.formatInventoryQuantity(movement ? movement.expected_closing_stock : false, movement ? movement.unit : '')"/></strong></div><div><span>Physical count</span><strong><t t-esc="this.formatInventoryQuantity(movement ? movement.physical_count : false, movement ? movement.unit : '')"/></strong></div><div class="o_sm_iw_variance"><span>Unexplained variance</span><strong><t t-esc="this.formatInventoryQuantity(movement ? movement.variance : false, movement ? movement.unit : '')"/></strong></div></div>
+                <div class="o_sm_iw_panel_note"><t t-esc="movement ? movement.message : 'Select a product with accessible stock movements.'"/></div>
+                <div t-if="movement and movement.recipe_consumption_note" class="o_sm_iw_recipe_callout">
+                    <div class="o_sm_iw_recipe_summary">
+                        <span class="o_sm_iw_recipe_icon" aria-hidden="true">i</span>
+                        <div class="o_sm_iw_recipe_copy">
+                            <strong><t t-if="movement.recipe_consumption_quantity === false">Recipe estimate unavailable</t><t t-else="">Estimated recipe consumption</t></strong>
+                            <small><t t-if="movement.recipe_consumption_quantity === false">Historical recipe data needs review. Actual stock movements above are shown separately.</t><t t-else=""><t t-esc="this.formatInventoryQuantity(movement.recipe_consumption_quantity, movement.unit)"/> · estimate only; not added to recorded stock movements.</t></small>
+                        </div>
+                    </div>
+                    <details class="o_sm_iw_recipe_details">
+                        <summary>View explanation details</summary>
+                        <p><t t-esc="movement.recipe_consumption_note"/></p>
+                    </details>
+                </div>
+            </article>
+            <article t-if="ix.expiring" class="o_sm_iw_panel is-expanded">
+                <div class="o_sm_iw_panel_heading"><div><h2>Expiring Stock</h2><p>Tracked lots with stock on hand expiring within seven days or already expired</p></div><span class="o_sm_iw_panel_tag">Live lot data</span></div>
+                <div class="o_sm_iw_table_wrap"><table class="o_sm_iw_table"><thead><tr><th>Product / Lot</th><th>Branch</th><th>Expiry</th><th>Quantity</th><th>Value at cost</th><th>Status</th></tr></thead><tbody>
+                    <t t-foreach="this.pageRows('iw_expiring', (this.state.inventoryData &amp;&amp; this.state.inventoryData.expiring_stock) || [])" t-as="item" t-key="item.lot_id + '-' + item.warehouse_id"><tr><td><strong><t t-esc="item.product"/></strong><small> - <t t-esc="item.lot_name"/></small></td><td><t t-esc="item.branch"/></td><td><t t-esc="this.formatDate(item.expiry_date)"/></td><td><t t-esc="this.formatInventoryQuantity(item.quantity, item.unit)"/></td><td><t t-esc="this.formatInventoryCurrency(item.value_at_cost)"/></td><td><span t-att-class="'o_sm_iw_status ' + (item.days_left &lt; 0 ? 'o_sm_iw_status_critical' : item.days_left &lt;= 2 ? 'o_sm_iw_status_low' : 'o_sm_iw_status_ok')"><t t-esc="item.status"/></span></td></tr></t>
+                    <tr t-if="!(this.state.inventoryData &amp;&amp; this.state.inventoryData.expiring_stock &amp;&amp; this.state.inventoryData.expiring_stock.length)"><td colspan="6"><t t-esc="this.state.inventoryData &amp;&amp; this.state.inventoryData.expiry_tracking_available === false ? 'Expiry tracking is not configured or available.' : 'No tracked stock is expiring within the current window.'"/></td></tr>
+                </tbody></table></div><t t-call="strategic_management.ListPager" pagerKey="'iw_expiring'" pagerRows="(this.state.inventoryData &amp;&amp; this.state.inventoryData.expiring_stock) || []"/>
+            </article>
+            <article t-if="ix.branches" class="o_sm_iw_panel is-expanded">
+                <div class="o_sm_iw_panel_heading"><div><h2>Branch Inventory Comparison</h2><p>Compare low stock, recorded waste cost, and count variances</p></div><span class="o_sm_iw_panel_tag">Authorized warehouses</span></div>
+                <div class="o_sm_iw_table_wrap"><table class="o_sm_iw_table"><thead><tr><th>Branch</th><th>Low stock</th><th>Waste cost</th><th>Variance items</th></tr></thead><tbody>
+                    <t t-foreach="this.pageRows('iw_branches', (this.state.inventoryData &amp;&amp; this.state.inventoryData.branch_comparison) || [])" t-as="branch" t-key="branch.warehouse_id"><tr><td><t t-esc="branch.branch"/></td><td><t t-esc="this.inventoryMetricValue(branch.low_stock_count)"/></td><td><t t-esc="this.formatInventoryCurrency(branch.waste_cost)"/></td><td><t t-esc="this.inventoryMetricValue(branch.variance_count)"/></td></tr></t>
+                    <tr t-if="!(this.state.inventoryData &amp;&amp; this.state.inventoryData.branch_comparison &amp;&amp; this.state.inventoryData.branch_comparison.length)"><td colspan="4">No authorized warehouse comparison data is available.</td></tr>
+                </tbody></table></div><t t-call="strategic_management.ListPager" pagerKey="'iw_branches'" pagerRows="(this.state.inventoryData &amp;&amp; this.state.inventoryData.branch_comparison) || []"/>
+            </article>
+        </section>
+    </div>
+    </t>
+</templates>

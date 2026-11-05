@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Inbox: Head Office's branch requests (staffing and objectives). Called from strategic_management.NavigationShell. -->
+<templates xml:space="preserve">
+    <t t-name="strategic_management.InboxPage">
+    <t t-set="rq" t-value="this.state.requestsData"/>
+    <t t-set="rx" t-value="this.state.reqExpanded"/>
+    <div class="o_sm_requests">
+        <header class="o_sm_req_header">
+            <div>
+                <h1>Welcome back!</h1>
+                <p>Here's what needs your attention today.</p>
+            </div>
+            <label t-if="rq and rq.role === 'head_office'" class="o_sm_req_filter"><span>Branch</span>
+                <select t-att-value="this.branchSelectValue" t-on-change="this.onWarehouseChanged" aria-label="Branch filter"><option value="all">All Branches</option><t t-foreach="rq.branch_options" t-as="branch" t-key="branch.id"><option t-att-value="branch.id"><t t-esc="branch.name"/></option></t></select>
+            </label>
+        </header>
+
+        <section t-if="this.isHeadOffice and this.state.staffingWork.length" class="o_sm_req_card is-from-branch o_sm_staff_work" aria-labelledby="o_sm_staff_work_title">
+            <div class="o_sm_req_card_head">
+                <div><h2 id="o_sm_staff_work_title">Staffing Requests</h2><span class="o_sm_req_source is-branch">From Branch Manager</span><p>Branches asking for staff. Decide, then register the people you approved.</p></div>
+                <div class="o_sm_req_head_actions"><span class="o_sm_req_count"><t t-esc="this.state.staffingWork.length"/> to act on</span>
+                    <button type="button" class="o_sm_req_link" t-on-click="() => this.selectSection('staffing_requests')">View all →</button></div>
+            </div>
+            <div class="o_sm_req_table_wrap"><table class="o_sm_req_table">
+                <thead><tr><th>Request</th><th>Branch</th><th>Requested By</th><th>Joining</th><th>Status</th><th class="o_sm_req_actions_col">Actions</th></tr></thead>
+                <tbody><tr t-foreach="this.state.staffingWork" t-as="row" t-key="row.id">
+                    <td data-label="Request" class="o_sm_req_objective"><strong><t t-esc="row.quantity"/> × <t t-esc="row.position"/></strong><small t-att-title="row.reason" t-esc="row.reason"/></td>
+                    <td data-label="Branch" t-esc="row.branch"/>
+                    <td data-label="Requested By" t-esc="row.requested_by"/>
+                    <td data-label="Joining" class="o_sm_req_date" t-esc="this.formatPurchaseDate(row.expected_date)"/>
+                    <td data-label="Status"><span t-if="row.state === 'submitted'" class="o_sm_req_badge is-pending">Waiting for your decision</span>
+                        <span t-else="" class="o_sm_req_badge is-staff-approved">Approved · <t t-esc="row.registered"/> of <t t-esc="row.quantity"/> registered</span></td>
+                    <td data-label="Actions" class="o_sm_req_actions">
+                        <t t-if="row.state === 'submitted'">
+                            <button type="button" class="o_sm_req_btn is-approve" t-att-disabled="this.state.staffingBusy" t-on-click="() => this.approveStaffing(row)">Approve</button>
+                            <button type="button" class="o_sm_req_btn is-reject" t-att-disabled="this.state.staffingBusy" t-on-click="() => { this.state.staffingDecision = { row: row, reason: '' }; }">Reject</button>
+                        </t>
+                        <button t-else="" type="button" class="o_sm_req_btn is-approve" t-on-click="() => this.openRegister(row)">Register employee</button>
+                    </td>
+                </tr></tbody>
+            </table></div>
+        </section>
+        <t t-if="this.isHeadOffice"><t t-call="strategic_management.StaffingRejectForm"/><t t-call="strategic_management.EmployeeRegisterForm"/></t>
+        <div t-if="this.state.requestsLoading and !rq" class="o_sm_req_notice">Loading objective requests…</div>
+        <div t-foreach="(rq and !rq.available and rq.messages) || []" t-as="message" t-key="message_index" class="o_sm_req_notice"><t t-esc="message"/></div>
+
+        <t t-if="rq and rq.available">
+            <section class="o_sm_req_card" aria-labelledby="o_sm_req_pending_title">
+                <div class="o_sm_req_card_head">
+                    <div><h2 id="o_sm_req_pending_title">Objective Requests</h2><p><t t-esc="rq.can_decide ? 'Review objectives proposed by branch managers.' : 'Objectives your branch has proposed, waiting for Head Office review.'"/></p></div>
+                    <div class="o_sm_req_head_actions">
+                        <span class="o_sm_req_count"><t t-esc="rq.pending.length"/> pending</span>
+                        <button t-if="rq.pending.length > 5" type="button" class="o_sm_req_link" t-on-click="() => this.toggleRequests('pending')"><t t-esc="rx.pending ? 'Show latest 5' : 'View All →'"/></button>
+                    </div>
+                </div>
+                <div t-if="rq.pending.length" class="o_sm_req_table_wrap"><table class="o_sm_req_table">
+                    <thead><tr><th>Objective</th><th>Branch</th><th>Proposed Target</th><th>Proposed By</th><th>Date</th><th>Status</th><th class="o_sm_req_actions_col">Actions</th></tr></thead>
+                    <tbody>
+                        <tr t-foreach="rx.pending ? this.pageRows('req_pending', rq.pending) : rq.pending.slice(0, 5)" t-as="row" t-key="row.objective_id">
+                            <td data-label="Objective" class="o_sm_req_objective"><strong t-att-title="row.name"><t t-esc="row.name"/></strong><small t-att-title="row.description or row.parent_objective"><t t-esc="row.description or ('Supports: ' + (row.parent_objective or '—'))"/></small></td>
+                            <td data-label="Branch"><t t-esc="row.branch"/></td>
+                            <td data-label="Proposed Target" class="o_sm_req_target" t-att-title="row.proposed_target"><t t-esc="row.proposed_target or 'No measured target yet'"/></td>
+                            <td data-label="Proposed By"><t t-esc="row.proposer"/></td>
+                            <td data-label="Date" class="o_sm_req_date"><t t-esc="this.formatRequestDate(row.submitted_at)"/></td>
+                            <td data-label="Status"><span class="o_sm_req_badge is-pending">Pending Review</span></td>
+                            <td data-label="Actions" class="o_sm_req_actions">
+                                <button type="button" class="o_sm_req_btn is-ghost" t-on-click="() => this.openRequestReview(row)">Review</button>
+                                <t t-if="rq.can_decide">
+                                    <button type="button" class="o_sm_req_btn is-approve" t-att-disabled="this.state.deciding" t-on-click="() => this.decideRequest(row, 'approve')">Approve</button>
+                                    <button type="button" class="o_sm_req_btn is-reject" t-att-disabled="this.state.deciding" t-on-click="() => this.openRejectRequest(row)">Reject</button>
+                                </t>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table></div>
+                <t t-if="rx.pending and rq.pending.length"><t t-call="strategic_management.ListPager" pagerKey="'req_pending'" pagerRows="rq.pending"/></t>
+                <div t-if="!rq.pending.length" class="o_sm_req_empty">
+                    <span class="o_sm_req_empty_icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13.5 7 5h10l3 8.5V19H4Z"/><path d="M4 13.5h5l1 2h4l1-2h5"/></svg></span>
+                    <strong>No pending objective requests</strong>
+                    <span>New proposals from branch managers will appear here.</span>
+                </div>
+            </section>
+
+            <!-- Draft proposals waiting for Head Office's target set-up: not submitted yet, so no approve or reject here. -->
+            <section t-if="rq.needs_setup and rq.needs_setup.length" class="o_sm_req_card" aria-labelledby="o_sm_req_setup_title">
+                <div class="o_sm_req_card_head">
+                    <div><h2 id="o_sm_req_setup_title">Proposals needing target setup</h2><p><t t-esc="rq.can_decide ? 'Branch proposals waiting for Head Office to prepare or approve their target before they can be submitted.' : 'Your branch proposals waiting for Head Office to set up their target.'"/></p></div>
+                    <div class="o_sm_req_head_actions"><span class="o_sm_req_count"><t t-esc="rq.needs_setup.length"/> to set up</span></div>
+                </div>
+                <div class="o_sm_req_table_wrap"><table class="o_sm_req_table o_sm_req_setup_table">
+                    <thead><tr><th>Objective</th><th>Branch</th><th>Supports</th><th>Proposed By</th><th>Setup Status</th><th class="o_sm_req_actions_col">Actions</th></tr></thead>
+                    <tbody>
+                        <tr t-foreach="rq.needs_setup" t-as="row" t-key="row.objective_id">
+                            <td data-label="Objective" class="o_sm_req_objective"><strong t-att-title="row.name"><t t-esc="row.name"/></strong></td>
+                            <td data-label="Branch"><t t-esc="row.branch"/></td>
+                            <td data-label="Supports"><t t-esc="row.parent_objective or '—'"/></td>
+                            <td data-label="Proposed By"><t t-esc="row.proposer"/></td>
+                            <td data-label="Setup Status"><span class="o_sm_req_badge is-setup"><t t-esc="row.status"/></span><small class="o_sm_req_next"><t t-esc="row.next_step"/></small></td>
+                            <td data-label="Actions" class="o_sm_req_actions">
+                                <button type="button" t-att-class="'o_sm_req_btn ' + (rq.can_decide ? 'is-approve' : 'is-ghost')" t-on-click="() => this.openBranchObjective(row.objective_id)"><t t-esc="rq.can_decide ? 'Set up target' : 'Open'"/></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table></div>
+            </section>
+
+            <section class="o_sm_req_card" aria-labelledby="o_sm_req_history_title">
+                <div class="o_sm_req_card_head">
+                    <div><h2 id="o_sm_req_history_title">Objective Request History</h2><p>Recently reviewed objective proposals.</p></div>
+                    <div class="o_sm_req_head_actions">
+                        <select class="o_sm_req_status_filter" t-att-value="this.state.historyStatus" t-on-change="this.onHistoryStatusChanged" aria-label="Filter history by status">
+                            <option value="all">All Statuses</option><option value="approved">Approved</option><option value="rejected">Rejected</option>
+                        </select>
+                        <button t-if="this.filteredRequestHistory.length > 5" type="button" class="o_sm_req_link" t-on-click="() => this.toggleRequests('history')"><t t-esc="rx.history ? 'Show latest 5' : 'View All →'"/></button>
+                    </div>
+                </div>
+                <t t-set="historyRows" t-value="this.filteredRequestHistory"/>
+                <div t-if="historyRows.length" class="o_sm_req_table_wrap"><table class="o_sm_req_table">
+                    <thead><tr><th>Objective</th><th>Branch</th><th>Proposed Target</th><th>Proposed By</th><th>Date</th><th>Status</th><th>Reviewed By</th><th class="o_sm_req_actions_col">Action</th></tr></thead>
+                    <tbody>
+                        <tr t-foreach="rx.history ? this.pageRows('req_history', historyRows) : historyRows.slice(0, 5)" t-as="row" t-key="row.review_id">
+                            <td data-label="Objective" class="o_sm_req_objective"><strong t-att-title="row.name"><t t-esc="row.name"/></strong><small t-if="row.decision === 'rejected' and row.reason" t-att-title="row.reason">Reason: <t t-esc="row.reason"/></small></td>
+                            <td data-label="Branch"><t t-esc="row.branch"/></td>
+                            <td data-label="Proposed Target" class="o_sm_req_target" t-att-title="row.proposed_target"><t t-esc="row.proposed_target or '—'"/></td>
+                            <td data-label="Proposed By"><t t-esc="row.proposer"/></td>
+                            <td data-label="Date" class="o_sm_req_date"><t t-esc="this.formatRequestDate(row.submitted_at)"/></td>
+                            <td data-label="Status"><span t-att-class="'o_sm_req_badge ' + (row.decision === 'approved' ? 'is-approved' : 'is-rejected')"><t t-esc="row.status"/></span></td>
+                            <td data-label="Reviewed By"><t t-esc="row.reviewer"/><small class="o_sm_req_sub"><t t-esc="this.formatRequestDate(row.decided_at)"/></small></td>
+                            <td data-label="Action" class="o_sm_req_actions"><button type="button" class="o_sm_req_btn is-ghost" t-on-click="() => this.openRequestReview(row)">View</button></td>
+                        </tr>
+                    </tbody>
+                </table></div>
+                <t t-if="rx.history and historyRows.length"><t t-call="strategic_management.ListPager" pagerKey="'req_history'" pagerRows="historyRows"/></t>
+                <div t-if="!historyRows.length" class="o_sm_req_empty">
+                    <span class="o_sm_req_empty_icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></span>
+                    <t t-if="(rq.history || []).length"><strong>No requests with this status</strong><span>Choose All Statuses to see every reviewed proposal.</span></t>
+                    <t t-else=""><strong>No request history yet</strong><span>Reviewed proposals will appear here.</span></t>
+                </div>
+            </section>
+        </t>
+
+        <div t-if="this.reviewRequest" class="o_sm_req_overlay" t-on-click="() => this.closeRequestReview()">
+            <t t-set="item" t-value="this.reviewRequest"/>
+            <section class="o_sm_req_dialog" role="dialog" aria-modal="true" aria-labelledby="o_sm_req_review_title" t-on-click.stop="() => {}">
+                <header class="o_sm_req_dialog_head">
+                    <div><span class="o_sm_req_kicker">Objective request</span><h2 id="o_sm_req_review_title"><t t-esc="item.name"/></h2></div>
+                    <button type="button" class="o_sm_req_close" aria-label="Close" t-on-click="() => this.closeRequestReview()">×</button>
+                </header>
+                <div class="o_sm_req_dialog_body">
+                    <div class="o_sm_req_dialog_status">
+                        <span t-if="!item.review_id" class="o_sm_req_badge is-pending">Pending Review</span>
+                        <span t-else="" t-att-class="'o_sm_req_badge ' + (item.decision === 'approved' ? 'is-approved' : 'is-rejected')"><t t-esc="item.status"/></span>
+                        <span>Submitted <t t-esc="this.formatRequestDate(item.submitted_at)"/></span>
+                    </div>
+                    <p t-if="item.description" class="o_sm_req_description"><t t-esc="item.description"/></p>
+                    <dl class="o_sm_req_details">
+                        <div><dt>Branch</dt><dd><t t-esc="item.branch or '—'"/></dd></div>
+                        <div><dt>Proposed by</dt><dd><t t-esc="item.proposer or '—'"/></dd></div>
+                        <div class="is-wide"><dt>Proposed target</dt><dd><t t-esc="item.proposed_target or 'No measured target yet'"/></dd></div>
+                        <t t-if="!item.review_id">
+                            <div><dt>Supports</dt><dd><t t-esc="item.parent_objective or '—'"/></dd></div>
+                            <div><dt>Strategic plan</dt><dd><t t-esc="item.plan or '—'"/></dd></div>
+                            <div><dt>Measure</dt><dd><t t-esc="item.measure or 'Not chosen'"/></dd></div>
+                            <div><dt>Target</dt><dd><t t-esc="item.target or 'Not set'"/></dd></div>
+                            <div t-if="item.baseline"><dt>Baseline</dt><dd><t t-esc="item.baseline"/></dd></div>
+                            <div><dt>Measurement period</dt><dd><t t-if="item.period_start"><t t-esc="this.formatRequestDate(item.period_start)"/> – <t t-esc="this.formatRequestDate(item.period_end)"/></t><t t-else="">Not set</t></dd></div>
+                            <div><dt>Deadline</dt><dd><t t-esc="this.formatRequestDate(item.deadline)"/></dd></div>
+                            <div t-if="item.goal_type"><dt>Goal type</dt><dd><t t-esc="item.goal_type"/></dd></div>
+                            <div t-if="item.area"><dt>Business area</dt><dd><t t-esc="item.area"/></dd></div>
+                        </t>
+                        <t t-else="">
+                            <div><dt>Reviewed by</dt><dd><t t-esc="item.reviewer"/></dd></div>
+                            <div><dt>Decided on</dt><dd><t t-esc="this.formatRequestDate(item.decided_at)"/></dd></div>
+                            <div t-if="item.reason" class="is-wide"><dt>Rejection reason</dt><dd><t t-esc="item.reason"/></dd></div>
+                        </t>
+                    </dl>
+                    <div t-if="!item.review_id and item.readiness and item.readiness.length" class="o_sm_req_readiness">
+                        <h3>Measurement set-up</h3>
+                        <div t-foreach="item.readiness" t-as="step" t-key="step_index" t-att-class="'o_sm_req_check' + (step.ok ? ' is-ok' : '')"><span><t t-esc="step.ok ? '✓' : '•'"/></span><div><strong><t t-esc="step.label"/></strong><small t-if="step.message"><t t-esc="step.message"/></small></div></div>
+                    </div>
+                </div>
+                <footer class="o_sm_req_dialog_foot">
+                    <t t-if="!item.review_id and rq and rq.can_decide">
+                        <button type="button" class="o_sm_req_btn is-reject" t-att-disabled="this.state.deciding" t-on-click="() => this.openRejectRequest(item)">Reject</button>
+                        <button type="button" class="o_sm_req_btn is-approve" t-att-disabled="this.state.deciding" t-on-click="() => this.decideRequest(item, 'approve')">Approve</button>
+                    </t>
+                    <button t-if="item.review_id and item.objective_id and item.decision === 'approved'" type="button" class="o_sm_req_btn is-ghost" t-on-click="() => this.openRequestObjective(item.objective_id)">Open objective</button>
+                    <button type="button" class="o_sm_req_btn is-ghost" t-on-click="() => this.closeRequestReview()">Close</button>
+                </footer>
+            </section>
+        </div>
+
+        <div t-if="this.rejectRequest" class="o_sm_req_overlay is-top" t-on-click="() => this.closeRejectRequest()">
+            <t t-set="item" t-value="this.rejectRequest"/>
+            <section class="o_sm_req_dialog is-small" role="dialog" aria-modal="true" aria-labelledby="o_sm_req_reject_title" t-on-click.stop="() => {}">
+                <header class="o_sm_req_dialog_head">
+                    <div><span class="o_sm_req_kicker">Reject request</span><h2 id="o_sm_req_reject_title"><t t-esc="item.name"/></h2></div>
+                    <button type="button" class="o_sm_req_close" aria-label="Close" t-on-click="() => this.closeRejectRequest()">×</button>
+                </header>
+                <div class="o_sm_req_dialog_body">
+                    <label class="o_sm_req_reason"><span>Reason <small>(shared with <t t-esc="item.proposer"/>)</small></span>
+                        <textarea rows="3" maxlength="500" t-att-value="this.state.rejectReason" t-on-input="this.onRejectReasonInput" placeholder="Why is this proposal rejected?"/></label>
+                    <small class="o_sm_req_hint">The objective goes back to draft so the branch can revise and resubmit it.</small>
+                </div>
+                <footer class="o_sm_req_dialog_foot">
+                    <button type="button" class="o_sm_req_btn is-ghost" t-att-disabled="this.state.deciding" t-on-click="() => this.closeRejectRequest()">Cancel</button>
+                    <button type="button" class="o_sm_req_btn is-reject is-solid" t-att-disabled="this.state.deciding or !this.state.rejectReason.trim()" t-on-click="() => this.decideRequest(item, 'reject')">Reject request</button>
+                </footer>
+            </section>
+        </div>
+    </div>
+    </t>
+</templates>

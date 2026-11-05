@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Employee home: dashboard, My Performance and department pages. Called from strategic_management.NavigationShell. -->
+<templates xml:space="preserve">
+    <t t-name="strategic_management.EmployeeDashboardPage">
+    <div class="o_sm_bm o_sm_tasks o_sm_employee_home">
+        <t t-set="ec" t-value="this.state.employeeContext"/>
+        <t t-set="ew" t-value="this.state.employeeWorkspace"/>
+        <header class="o_sm_bm_header"><div class="o_sm_bm_title">
+            <span class="o_sm_bm_kicker" t-esc="ec and ec.branch ? ec.branch.name : 'No branch'"/>
+            <h1 t-esc="ec ? ec.name : ''"/>
+            <p>Your work for today.</p>
+        </div></header>
+        <p t-if="ec and ec.access_error" class="o_sm_bm_notice is-error" role="alert" t-esc="ec.access_error"/>
+        <p t-if="this.state.employeeWorkspaceError" class="o_sm_bm_notice is-error" role="alert" t-esc="this.state.employeeWorkspaceError"/>
+        <p t-elif="!ew" class="o_sm_bm_empty">Loading your work…</p>
+        <t t-else="">
+            <section class="o_sm_ops_cards o_sm_emp_cards" aria-label="Today's summary">
+                <article><small>My Open Tasks</small><strong t-esc="ew.counts.open"/></article>
+                <article><small>Due Today</small><strong t-esc="ew.counts.due_today"/></article>
+                <article t-att-class="ew.counts.overdue ? 'is-warn' : ''"><small>Overdue</small><strong t-esc="ew.counts.overdue"/></article>
+                <article><small>Awaiting Review</small><strong t-esc="ew.counts.review"/></article>
+            </section>
+            <p t-if="ew.counts.correction" class="o_sm_bm_notice"><strong t-esc="ew.counts.correction"/> <t t-esc="ew.counts.correction === 1 ? 'task needs' : 'tasks need'"/> correction after your manager's review.</p>
+            <div class="o_sm_emp_work">
+                <article class="o_sm_bm_card">
+                    <div class="o_sm_bm_card_head"><h2>My Tasks</h2><button type="button" class="o_sm_bm_link" t-on-click="() => this.selectSection('my_tasks')">All tasks →</button></div>
+                    <div t-if="ew.tasks.length" class="o_sm_task_table_wrap"><table class="o_sm_task_table">
+                        <thead><tr><th>Task</th><th>Due</th><th>Status</th><th class="is-action">Action</th></tr></thead>
+                        <tbody><tr t-foreach="ew.tasks" t-as="task" t-key="task.id">
+                            <td data-label="Task"><strong t-esc="task.name"/><small t-if="task.priority === '1'" class="o_sm_task_overdue">High priority</small></td>
+                            <td data-label="Due"><t t-esc="this.formatPurchaseDate(task.date_deadline)"/><span t-if="task.is_overdue" class="o_sm_task_overdue">Overdue</span><span t-if="task.open_blocker" class="o_sm_task_overdue">Blocked</span></td>
+                            <td data-label="Status"><span t-att-class="'o_sm_task_status is-' + task.state" t-esc="task.status"/></td>
+                            <td class="is-action"><button type="button" class="o_sm_task_btn" t-on-click="() => this.openTask(task)">Open</button></td>
+                        </tr></tbody>
+                    </table></div>
+                    <p t-else="" class="o_sm_bm_empty">Nothing waiting on you right now.</p>
+                    <p t-if="ew.tasks_total > ew.tasks.length" class="o_sm_bm_empty">Showing the <t t-esc="ew.tasks.length"/> most urgent of <t t-esc="ew.tasks_total"/>.</p>
+                </article>
+                <div class="o_sm_emp_side">
+                    <article class="o_sm_bm_card"><div class="o_sm_bm_card_head"><h2>Upcoming Deadlines</h2></div>
+                        <ul t-if="ew.upcoming.length" class="o_sm_emp_list"><li t-foreach="ew.upcoming" t-as="task" t-key="task.id"><strong t-esc="task.name"/><small t-esc="this.formatPurchaseDate(task.date_deadline)"/></li></ul>
+                        <p t-else="" class="o_sm_bm_empty">Nothing due in the next 7 days.</p></article>
+                    <article class="o_sm_bm_card"><div class="o_sm_bm_card_head"><h2>Manager Instructions</h2></div>
+                        <ul t-if="ew.instructions.length" class="o_sm_emp_list"><li t-foreach="ew.instructions" t-as="row" t-key="row.id"><strong t-esc="row.task"/><span t-esc="row.note"/><small t-esc="row.by"/></li></ul>
+                        <p t-else="" class="o_sm_bm_empty">No instructions waiting for you.</p></article>
+                    <article class="o_sm_bm_card"><div class="o_sm_bm_card_head"><h2>Blockers and Updates</h2></div>
+                        <ul t-if="ew.blockers.length" class="o_sm_emp_list"><li t-foreach="ew.blockers" t-as="row" t-key="row.id"><strong t-esc="row.task"/><span t-esc="row.problem"/><small><t t-esc="row.status"/><t t-if="row.resolution">: <t t-esc="row.resolution"/></t></small></li></ul>
+                        <p t-else="" class="o_sm_bm_empty">You have not reported any blockers. Open a task to report one.</p></article>
+                </div>
+            </div>
+            <article class="o_sm_bm_card is-wide"><div class="o_sm_bm_card_head"><h2>Recent Activity</h2></div>
+                <ul t-if="ew.activity.length" class="o_sm_emp_list"><li t-foreach="ew.activity" t-as="row" t-key="row.id"><strong t-esc="row.task"/><span t-esc="row.text"/><small><t t-esc="row.author"/> · <t t-esc="this.formatPurchaseDate(row.date)"/></small></li></ul>
+                <p t-else="" class="o_sm_bm_empty">No recent activity on your tasks.</p></article>
+            <p t-if="ec and !ec.access_error and !ec.departments.length" class="o_sm_bm_empty">No departments have been assigned to you yet.</p>
+        </t>
+        <t t-call="strategic_management.TaskDialog"/>
+    </div>
+    </t>
+    <t t-name="strategic_management.MyPerformancePage">
+    <div class="o_sm_bm o_sm_tasks o_sm_my_performance">
+        <t t-set="mp" t-value="this.state.myPerformance"/>
+        <header class="o_sm_bm_header">
+            <div class="o_sm_bm_title"><h1>My Performance</h1><p>From your own tasks, by due date in the period you choose. Branch and company results are not personal results.</p></div>
+            <div class="o_sm_pur_filters">
+                <label class="o_sm_pur_filter"><span>From</span><input type="date" t-att-value="this.state.myPerformanceStart" t-on-change="(ev) => this.onMyPerformancePeriod('myPerformanceStart', ev)" aria-label="Performance start date"/></label>
+                <label class="o_sm_pur_filter"><span>To</span><input type="date" t-att-value="this.state.myPerformanceEnd" t-on-change="(ev) => this.onMyPerformancePeriod('myPerformanceEnd', ev)" aria-label="Performance end date"/></label>
+            </div>
+        </header>
+        <p t-if="this.state.myPerformanceError" class="o_sm_bm_notice is-error" role="alert" t-esc="this.state.myPerformanceError"/>
+        <p t-elif="!mp" class="o_sm_bm_empty">Loading…</p>
+        <t t-else="">
+            <t t-set="f" t-value="mp.figures"/>
+            <section class="o_sm_ops_cards o_sm_emp_cards" aria-label="Task results">
+                <article><small>Tasks Assigned</small><strong t-esc="f.assigned"/><span>Due in this period; cancelled tasks left out.</span></article>
+                <article><small>Completed</small><strong t-esc="f.completed"/><span>Accepted by your reviewer.</span></article>
+                <article><small>On-Time Rate</small><strong t-esc="this.formatRate(f.on_time_rate)"/><span><t t-esc="f.on_time"/> on time, <t t-esc="f.late"/> late. Your last submission against the deadline then in force, including approved extensions (<t t-esc="f.extended"/>).</span></article>
+                <article t-att-class="f.overdue ? 'is-warn' : ''"><small>Overdue</small><strong t-esc="f.overdue"/><span>Past due and still with you.</span></article>
+                <article><small>Returned for Correction</small><strong t-esc="f.returned"/><span>Times changes were requested.</span></article>
+                <article><small>Awaiting Review</small><strong t-esc="f.awaiting_review"/><span>Submitted, not yet accepted.</span></article>
+            </section>
+            <article class="o_sm_bm_card is-wide"><div class="o_sm_bm_card_head"><h2>Monthly Task History</h2></div>
+                <div t-if="mp.history.length" class="o_sm_task_table_wrap"><table class="o_sm_task_table">
+                    <thead><tr><th>Month</th><th class="is-num">Assigned</th><th class="is-num">Completed</th><th class="is-num">On time</th></tr></thead>
+                    <tbody><tr t-foreach="mp.history" t-as="row" t-key="row.month"><td data-label="Month" t-esc="row.month"/><td data-label="Assigned" class="is-num" t-esc="row.assigned"/><td data-label="Completed" class="is-num" t-esc="row.completed"/><td data-label="On time" class="is-num" t-esc="row.on_time"/></tr></tbody>
+                </table></div>
+                <p t-else="" class="o_sm_bm_empty">No tasks were due in this period.</p></article>
+            <article class="o_sm_bm_card is-wide"><div class="o_sm_bm_card_head"><h2>Manager Feedback</h2></div>
+                <ul t-if="mp.feedback.length" class="o_sm_emp_list"><li t-foreach="mp.feedback" t-as="row" t-key="row.id"><strong t-esc="row.task"/><span t-esc="row.note"/><small><t t-esc="row.by"/><t t-if="row.at"> · <t t-esc="this.formatPurchaseDate(row.at)"/></t></small></li></ul>
+                <p t-else="" class="o_sm_bm_empty">No review notes in this period.</p></article>
+            <article t-if="f.objectives.length" class="o_sm_bm_card is-wide"><div class="o_sm_bm_card_head"><h2>Contribution to Objectives</h2><span class="o_sm_emp_hint">Your tasks only, not the objective's overall result.</span></div>
+                <ul class="o_sm_emp_list"><li t-foreach="f.objectives" t-as="objective" t-key="objective.id"><strong t-esc="objective.name"/><small><t t-esc="objective.completed"/> of <t t-esc="objective.tasks"/> of your tasks completed</small></li></ul></article>
+            <article t-if="mp.individual_kpis.length" class="o_sm_bm_card is-wide"><div class="o_sm_bm_card_head"><h2>My Individual Goals</h2><span class="o_sm_emp_hint">Assigned to you personally.</span></div>
+                <div class="o_sm_task_table_wrap"><table class="o_sm_task_table">
+                    <thead><tr><th>Goal</th><th class="is-num">Actual</th><th class="is-num">Target</th><th>Result</th></tr></thead>
+                    <tbody><tr t-foreach="mp.individual_kpis" t-as="row" t-key="row.id"><td data-label="Goal" t-esc="row.name"/><td data-label="Actual" class="is-num"><t t-esc="row.has_actual_value ? row.actual_value : '—'"/> <t t-esc="row.unit"/></td><td data-label="Target" class="is-num"><t t-esc="row.target_value"/> <t t-esc="row.unit"/></td><td data-label="Result" t-esc="row.attainment_status_label"/></tr></tbody>
+                </table></div></article>
+            <p class="o_sm_bm_empty">Blockers you reported in this period: <t t-esc="f.blockers"/>. Reporting a blocker never counts against you.</p>
+        </t>
+    </div>
+    </t>
+    <t t-name="strategic_management.DepartmentPage">
+    <div class="o_sm_bm">
+        <t t-set="ec" t-value="this.state.employeeContext"/>
+        <header class="o_sm_bm_header">
+            <div class="o_sm_bm_title">
+                <span class="o_sm_bm_kicker">Read-only<t t-if="ec and ec.branch"> · <t t-esc="ec.branch.name"/></t></span>
+                <h1 t-esc="this.departmentName or 'Department'"/>
+                <p>Your branch's figures. Changes are made by your managers.</p>
+            </div>
+            <div class="o_sm_pur_filters">
+                <label class="o_sm_pur_filter"><span>Period</span><select aria-label="Reporting period" t-on-change="this.onPeriodPresetChanged"><option t-foreach="this.periodPresets" t-as="preset" t-key="preset.key" t-att-value="preset.key" t-att-selected="preset.key === this.state.periodPreset" t-esc="preset.label"/></select></label>
+                <t t-if="this.state.periodPreset === 'custom'">
+                    <label class="o_sm_pur_filter"><span>From</span><input type="date" t-att-value="this.state.dateStart" t-att-max="this.state.todayDate" t-on-change="this.onStartDateChanged" aria-label="Department start date"/></label>
+                    <label class="o_sm_pur_filter"><span>To</span><input type="date" t-att-value="this.state.dateEnd" t-att-max="this.state.todayDate" t-on-change="this.onEndDateChanged" aria-label="Department end date"/></label>
+                </t>
+            </div>
+        </header>
+        <t t-call="strategic_management.BranchOperations"/>
+    </div>
+    </t>
+</templates>

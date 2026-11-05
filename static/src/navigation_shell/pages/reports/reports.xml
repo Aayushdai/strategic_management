@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Reports and Settings. Called from strategic_management.NavigationShell. -->
+<templates xml:space="preserve">
+    <t t-name="strategic_management.ReportsSettingsPage">
+    <div class="o_sm_branches_ui">
+        <t t-set="links" t-value="this.sectionLinks(this.state.activeSection)"/>
+        <header class="o_sm_br_header"><div class="o_sm_br_title_block">
+            <h1><t t-esc="this.activeItem.label"/></h1>
+            <p t-if="this.state.activeSection === 'reports'">Open Odoo's live analysis views (pivot, graph, list) with filters, grouping and export.</p>
+            <p t-else="">Set up the strategy, targets and operational data the dashboards measure.</p>
+        </div></header>
+        <t t-if="this.state.activeSection === 'reports' and this.canUseReports"><t t-call="strategic_management.BranchReports"/></t>
+        <p t-if="!links.length" class="o_sm_br_notice">No items are available for your role.</p>
+        <section class="o_sm_ov_ops_grid">
+            <article t-foreach="links" t-as="link" t-key="link.xmlid" class="o_sm_ov_panel">
+                <div class="o_sm_ov_panel_heading"><div><h2><t t-esc="link.label"/></h2><p><t t-esc="link.description"/></p></div></div>
+                <button type="button" class="o_sm_ov_text_action" t-on-click="() => this.openAction(link.xmlid)">Open <span>→</span></button>
+            </article>
+        </section>
+    </div>
+    </t>
+    <t t-name="strategic_management.BranchReports">
+        <t t-set="rp" t-value="this.state.reports"/>
+        <section class="o_sm_ops o_sm_reports" aria-label="Branch reports">
+            <article class="o_sm_br_panel">
+                <div class="o_sm_br_panel_heading">
+                    <div><h2>Branch reports</h2><p t-if="rp and rp.role === 'branch_manager'">Prepare a report for a period, add a short comment and send it to Head Office.</p><p t-else="">Reports submitted by the branches, with their saved figures.</p></div>
+                    <div t-if="rp and rp.role === 'branch_manager'" class="o_sm_reports_new">
+                        <label class="o_sm_pur_filter"><span>From</span><input type="date" t-att-value="this.state.dateStart" t-att-max="this.state.todayDate" t-on-change="this.onStartDateChanged" aria-label="Report start date"/></label>
+                        <label class="o_sm_pur_filter"><span>To</span><input type="date" t-att-value="this.state.dateEnd" t-att-max="this.state.todayDate" t-on-change="this.onEndDateChanged" aria-label="Report end date"/></label>
+                        <button type="button" class="o_sm_task_btn is-primary" t-att-disabled="this.state.reportBusy" t-on-click="() => this.newReport()">+ New report</button>
+                    </div>
+                </div>
+                <p t-if="this.state.reportsError and !rp" class="o_sm_br_notice" t-esc="this.state.reportsError"/>
+                <p t-elif="!rp or !rp.reports" class="o_sm_br_empty">Loading reports…</p>
+                <table t-elif="rp.reports.length" class="o_sm_task_table o_sm_reports_table"><thead><tr><th>Branch</th><th>Period</th><th>Submitted</th><th>Status</th><th class="is-action">Action</th></tr></thead><tbody>
+                    <tr t-foreach="this.pageRows('reports', rp.reports)" t-as="row" t-key="row.id">
+                        <td data-label="Branch"><strong t-esc="row.branch"/></td>
+                        <td data-label="Period"><t t-esc="this.formatPurchaseDate(row.date_start)"/> – <t t-esc="this.formatPurchaseDate(row.date_end)"/></td>
+                        <td data-label="Submitted"><t t-if="row.submitted_at"><t t-esc="row.submitted_by"/><small><t t-esc="this.formatPurchaseDate(row.submitted_at.slice(0, 10))"/><t t-if="row.submission_count > 1"> · submission <t t-esc="row.submission_count"/></t></small></t><t t-else="">—</t></td>
+                        <td data-label="Status"><span t-att-class="'o_sm_task_status is-' + ({submitted: 'submitted', changes_requested: 'changes_requested', reviewed: 'done'}[row.state] || 'assigned')" t-esc="row.status"/></td>
+                        <td class="is-action"><button type="button" t-att-class="'o_sm_task_btn' + (row.state === 'submitted' and rp.role === 'head_office' ? ' is-primary' : '')" t-on-click="() => this.openReport(row)"><t t-esc="row.state === 'submitted' and rp.role === 'head_office' ? 'Review' : 'Open'"/></button></td>
+                    </tr>
+                </tbody></table>
+                <t t-if="rp and rp.reports and rp.reports.length"><t t-call="strategic_management.ListPager" pagerKey="'reports'" pagerRows="rp.reports"/></t>
+                <p t-if="rp and rp.reports and !rp.reports.length" class="o_sm_br_empty"><t t-esc="rp.role === 'branch_manager' ? 'No reports yet. Choose the period and use New report.' : 'No branch has submitted a report yet.'"/></p>
+            </article>
+
+            <article t-if="rp and rp.role === 'head_office'" class="o_sm_br_panel">
+                <div class="o_sm_br_panel_heading"><div><h2>Open blockers</h2><p>Blockers reported on objectives that still wait for Head Office's follow-up (its To-Dos)</p></div></div>
+                <t t-set="ob" t-value="this.state.openBlockers"/>
+                <table t-if="ob and ob.length" class="o_sm_task_table"><thead><tr><th>Problem</th><th>Branch</th><th>Objective</th><th>Reported</th><th>Follow up by</th></tr></thead><tbody>
+                    <tr t-foreach="ob" t-as="row" t-key="row.objective_id + row.problem"><td><strong t-esc="row.problem"/></td><td t-esc="row.branch or '—'"/>
+                        <td><button type="button" class="o_sm_bm_link" t-on-click="() => this.openRequestObjective(row.objective_id)" t-esc="row.objective"/></td>
+                        <td><t t-esc="row.reported_by"/><small t-esc="this.formatPurchaseDate(row.reported_on)"/></td>
+                        <td><t t-esc="this.formatPurchaseDate(row.due)"/><span t-if="row.overdue" class="o_sm_task_overdue">Overdue</span></td></tr>
+                </tbody></table>
+                <p t-elif="ob" class="o_sm_br_empty">No open blockers.</p>
+                <p t-else="" class="o_sm_br_empty">Open blockers could not be loaded.</p>
+            </article>
+
+            <t t-set="rd" t-value="this.state.reportDetail"/>
+            <div t-if="rd" class="o_sm_req_overlay" t-on-click="() => this.closeReport()">
+                <section class="o_sm_req_dialog o_sm_report_dialog" role="dialog" aria-modal="true" aria-labelledby="o_sm_report_title" t-on-click.stop="() => {}">
+                    <header class="o_sm_req_dialog_head"><div><span class="o_sm_req_kicker">Branch report · <t t-esc="rd.status"/></span>
+                        <h2 id="o_sm_report_title"><t t-esc="rd.branch"/> · <t t-esc="this.formatPurchaseDate(rd.date_start)"/> – <t t-esc="this.formatPurchaseDate(rd.date_end)"/></h2></div>
+                        <button type="button" class="o_sm_req_close" aria-label="Close" t-on-click="() => this.closeReport()">×</button></header>
+                    <div class="o_sm_req_dialog_body">
+                        <p class="o_sm_req_hint"><t t-if="rd.preview">Preview of today's figures: they are saved when you submit.</t><t t-else="">Figures as submitted<t t-if="rd.submitted_by"> by <t t-esc="rd.submitted_by"/></t><t t-if="rd.snapshot_at">, taken <t t-esc="rd.snapshot_at"/></t><t t-if="rd.submission_count > 1"> (submission <t t-esc="rd.submission_count"/>)</t>.</t> "(period)" figures cover the report period; "(when taken)" figures describe that moment.</p>
+                        <div t-if="rd.review_note" class="o_sm_report_feedback"><strong>Head Office feedback<t t-if="rd.reviewed_by"> from <t t-esc="rd.reviewed_by"/></t></strong><p t-esc="rd.review_note"/></div>
+                        <div class="o_sm_report_sections">
+                            <div t-foreach="this.reportSections(rd.snapshot)" t-as="section" t-key="section.key" class="o_sm_report_section">
+                                <h3 t-esc="section.title"/>
+                                <dl t-if="section.available"><t t-foreach="section.rows" t-as="row" t-key="row[0]"><dt t-esc="row[0]"/><dd t-esc="row[1]"/></t></dl>
+                                <p t-else="" class="o_sm_req_hint">Not available. <t t-esc="section.messages.join(' ')"/></p>
+                            </div>
+                        </div>
+                        <t t-set="obj" t-value="rd.snapshot and rd.snapshot.objectives"/>
+                        <div class="o_sm_report_section">
+                            <h3>Objectives (when taken)</h3>
+                            <ul t-if="obj and obj.available and obj.items.length" class="o_sm_report_objectives">
+                                <li t-foreach="obj.items" t-as="item" t-key="item_index"><strong t-esc="item.title"/> · <t t-esc="item.status"/> · due <t t-esc="this.formatPurchaseDate(item.deadline)"/><t t-if="obj.attention.some((a) => a.title === item.title)"> · <span class="o_sm_task_overdue">Needs attention</span></t></li>
+                            </ul>
+                            <p t-elif="obj and obj.available" class="o_sm_req_hint">No active objectives apply to this branch.</p>
+                            <p t-else="" class="o_sm_req_hint">Not available.</p>
+                        </div>
+                        <label t-if="rd.can_edit" class="o_sm_req_reason"><span>Your comment for Head Office <small>(optional)</small></span>
+                            <textarea rows="3" maxlength="2000" t-att-value="this.state.reportComment" t-on-input="this.onReportComment" placeholder="What explains these results?"/></label>
+                        <div t-elif="rd.comment" class="o_sm_report_section"><h3>Manager's comment</h3><p class="o_sm_req_description" t-esc="rd.comment"/></div>
+                        <label t-if="rd.can_review" class="o_sm_req_reason"><span>Feedback <small>(required to request changes)</small></span>
+                            <textarea rows="3" maxlength="2000" t-att-value="this.state.reportNote" t-on-input="this.onReportNote" placeholder="Shared with the branch manager"/></label>
+                    </div>
+                    <footer class="o_sm_req_dialog_foot">
+                        <button t-if="rd.can_edit" type="button" class="o_sm_req_btn is-approve" t-att-disabled="this.state.reportBusy" t-on-click="() => this.submitReport()">Submit to Head Office</button>
+                        <t t-if="rd.can_review">
+                            <button type="button" class="o_sm_req_btn is-reject" t-att-disabled="this.state.reportBusy" t-on-click="() => this.reviewReport('changes')">Request changes</button>
+                            <button type="button" class="o_sm_req_btn is-approve" t-att-disabled="this.state.reportBusy" t-on-click="() => this.reviewReport('reviewed')">Mark reviewed</button>
+                        </t>
+                        <button type="button" class="o_sm_req_btn is-ghost" t-on-click="() => this.closeReport()">Close</button>
+                    </footer>
+                </section>
+            </div>
+        </section>
+    </t>
+</templates>

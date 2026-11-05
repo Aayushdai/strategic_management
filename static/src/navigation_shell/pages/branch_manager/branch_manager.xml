@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Branch Manager dashboard. Called from strategic_management.NavigationShell. -->
+<templates xml:space="preserve">
+    <t t-name="strategic_management.BranchManagerDashboardPage">
+    <div class="o_sm_bm">
+        <t t-if="this.isBranchManager">
+            <t t-set="ops" t-value="this.state.branchOps"/>
+            <t t-set="bo" t-value="this.state.branchObjectives"/>
+            <t t-set="ts" t-value="this.state.taskSummary"/>
+            <header class="o_sm_bm_header">
+                <div class="o_sm_bm_title">
+                    <span class="o_sm_bm_kicker">Branch Manager Dashboard</span>
+                    <h1 t-esc="this.managerBranch ? this.managerBranch.name : ''"/>
+                    <p>Reporting period <strong t-esc="this.reportingPeriodLabel"/></p>
+                </div>
+                <div class="o_sm_bm_header_actions">
+                    <div class="o_sm_pur_filters">
+                        <label class="o_sm_pur_filter"><span>From</span><input type="date" t-att-value="this.state.dateStart" t-att-max="this.state.todayDate" t-on-change="this.onStartDateChanged" aria-label="Dashboard start date"/></label>
+                        <label class="o_sm_pur_filter"><span>To</span><input type="date" t-att-value="this.state.dateEnd" t-att-max="this.state.todayDate" t-on-change="this.onEndDateChanged" aria-label="Dashboard end date"/></label>
+                    </div>
+                    <button type="button" class="o_sm_bm_icon_button" aria-label="Notifications" title="Notifications (Odoo inbox)" t-on-click="this.openNotifications">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2H4.5Z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>
+                    </button>
+                    <span class="o_sm_bm_user"><img t-att-src="this.avatarUrl" alt=""/><span><strong t-esc="this.userName"/><small>Branch Manager</small></span></span>
+                </div>
+            </header>
+
+            <section class="o_sm_dash_kpis" aria-label="Performance summary">
+                <p t-if="this.state.branchOpsError and !ops" class="o_sm_bm_notice is-error" role="alert" t-esc="this.state.branchOpsError"/>
+                <p t-elif="!ops or !ops.sales" class="o_sm_bm_empty">Loading branch figures…</p>
+                <t t-else="">
+                    <article class="o_sm_dash_kpi" t-att-class="(ops.sales.drill and ops.sales.drill.sales) ? 'is-drill' : ''" t-att-role="(ops.sales.drill and ops.sales.drill.sales) ? 'button' : false" t-att-tabindex="(ops.sales.drill and ops.sales.drill.sales) ? 0 : false" t-on-click="() => this.openDrill(ops.sales.drill and ops.sales.drill.sales)" t-on-keydown="(ev) => this.onDrillKey(ev, ops.sales.drill and ops.sales.drill.sales)">
+                        <span class="o_sm_dash_icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18l5.5-6 4 3.5L20 7"/><path d="M15 7h5v5"/></svg></span>
+                        <small>Net sales</small>
+                        <strong t-att-class="ops.sales.available ? '' : 'is-missing'" t-esc="ops.sales.available ? this.formatOpsMoney(ops.sales.net_sales, ops.sales) : 'Not available'"/>
+                        <span>Paid POS sales excl. tax</span>
+                    </article>
+                    <article class="o_sm_dash_kpi" t-att-class="(ops.sales.drill and ops.sales.drill.orders) ? 'is-drill' : ''" t-att-role="(ops.sales.drill and ops.sales.drill.orders) ? 'button' : false" t-att-tabindex="(ops.sales.drill and ops.sales.drill.orders) ? 0 : false" t-on-click="() => this.openDrill(ops.sales.drill and ops.sales.drill.orders)" t-on-keydown="(ev) => this.onDrillKey(ev, ops.sales.drill and ops.sales.drill.orders)">
+                        <span class="o_sm_dash_icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z"/><path d="M9 8h6M9 12h6"/></svg></span>
+                        <small>Completed orders</small>
+                        <strong t-att-class="ops.sales.available ? '' : 'is-missing'" t-esc="ops.sales.available ? this.formatOpsCount(ops.sales.orders) : 'Not available'"/>
+                        <span>Refunds not counted</span>
+                    </article>
+                    <article class="o_sm_dash_kpi" t-att-class="(ops.sales.drill and ops.sales.drill.sales) ? 'is-drill' : ''" t-att-role="(ops.sales.drill and ops.sales.drill.sales) ? 'button' : false" t-att-tabindex="(ops.sales.drill and ops.sales.drill.sales) ? 0 : false" t-on-click="() => this.openDrill(ops.sales.drill and ops.sales.drill.sales)" t-on-keydown="(ev) => this.onDrillKey(ev, ops.sales.drill and ops.sales.drill.sales)">
+                        <span class="o_sm_dash_icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M15 9.2c-.6-1-1.700-1.500-3-1.500-1.700 0-3 .9-3 2.200 0 3 6 1.400 6 4.300 0 1.300-1.300 2.200-3 2.200-1.300 0-2.400-.5-3-1.500M12 6v12"/></svg></span>
+                        <small>Average order value</small>
+                        <strong t-att-class="ops.sales.available and ops.sales.average_order_value !== false ? '' : 'is-missing'" t-esc="!ops.sales.available ? 'Not available' : ops.sales.average_order_value === false ? 'No orders' : this.formatOpsMoney(ops.sales.average_order_value, ops.sales)"/>
+                        <span>Net sales ÷ completed orders</span>
+                    </article>
+                    <article class="o_sm_dash_kpi">
+                        <span class="o_sm_dash_icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3.500 7.500v9L12 21l8.500-4.500v-9Z"/><path d="M3.500 7.500 12 12l8.500-4.500M12 12v9"/></svg></span>
+                        <small>Inventory alerts</small>
+                        <t t-if="ops.inventory.available">
+                            <strong t-esc="this.formatOpsCount(ops.inventory.low_stock_count)"/>
+                            <span>low stock · <t t-if="ops.inventory.expiry_tracking_available"><t t-esc="this.formatOpsCount(ops.inventory.expiring_count)"/> expiring</t><t t-else="">expiry not tracked</t></span>
+                        </t>
+                        <strong t-else="" class="is-missing">Not available</strong>
+                    </article>
+                    <article class="o_sm_dash_kpi">
+                        <span class="o_sm_dash_icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.500 6h11v11h-11ZM13.500 10h4.500l3.500 3.500V17h-8Z"/><circle cx="7" cy="18" r="1.800"/><circle cx="17" cy="18" r="1.800"/></svg></span>
+                        <small>Outstanding deliveries</small>
+                        <t t-if="ops.purchasing.available">
+                            <strong t-esc="this.formatOpsCount(ops.purchasing.awaiting_count)"/>
+                            <span t-att-class="ops.purchasing.overdue_count ? 'is-warn' : ''"><t t-esc="this.formatOpsCount(ops.purchasing.overdue_count)"/> overdue</span>
+                        </t>
+                        <strong t-else="" class="is-missing">Not available</strong>
+                    </article>
+                </t>
+            </section>
+
+            <section class="o_sm_bm_grid o_sm_dash_grid" aria-label="Branch Manager dashboard">
+                <article class="o_sm_bm_card o_sm_dash_sales">
+                    <div class="o_sm_bm_card_head"><h2>Sales performance</h2><button type="button" class="o_sm_bm_link" t-on-click="() => this.selectSection('branches')">Branch Performance →</button></div>
+                    <p t-if="this.state.branchOpsError and !ops" class="o_sm_bm_empty" t-esc="this.state.branchOpsError"/>
+                    <p t-elif="!ops or !ops.sales" class="o_sm_bm_empty">Loading sales…</p>
+                    <p t-elif="!ops.sales.available" class="o_sm_bm_empty"><t t-foreach="ops.sales.messages" t-as="message" t-key="message_index"><t t-esc="message"/> </t></p>
+                    <p t-elif="!this.opsTrendChart" class="o_sm_bm_empty">No paid POS sales for your branch in this period.</p>
+                    <t t-else="">
+                        <small class="o_sm_dash_caption">Net sales per <t t-esc="ops.granularity"/></small>
+                        <div class="o_sm_dash_chart" role="img" t-att-aria-label="'Net sales per ' + ops.granularity">
+                            <div t-foreach="this.opsTrendChart.ticks" t-as="tick" t-key="tick.key" class="o_sm_dash_tick" t-att-style="'bottom:' + tick.y + '%'"><small t-esc="tick.label"/></div>
+                            <div class="o_sm_dash_bars">
+                                <div t-foreach="this.opsTrendChart.bars" t-as="bar" t-key="bar.key" class="o_sm_dash_bar" t-att-title="bar.title">
+                                    <i t-att-style="'bottom:' + bar.bottom + '%;height:' + bar.height + '%'"/><small t-esc="bar.showLabel ? bar.label : ''"/>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </article>
+                <article class="o_sm_bm_card o_sm_dash_health">
+                    <div class="o_sm_bm_card_head"><h2>Branch health</h2></div>
+                    <p t-if="this.state.branchOpsError and !ops" class="o_sm_bm_empty" t-esc="this.state.branchOpsError"/>
+                    <p t-elif="!ops or !ops.sales" class="o_sm_bm_empty">Loading branch health…</p>
+                    <t t-else="">
+                        <div class="o_sm_dash_health_rows">
+                            <button t-foreach="this.opsHealth" t-as="row" t-key="row.key" type="button" t-att-class="'o_sm_dash_health_row is-' + row.tone" t-on-click="() => this.selectSection(row.section)">
+                                <span class="o_sm_dash_health_label"><i aria-hidden="true"/><span><strong t-esc="row.label"/><small t-esc="row.status"/></span></span>
+                                <b t-esc="row.value"/>
+                            </button>
+                        </div>
+                        <div t-if="this.opsAlerts.length" class="o_sm_bm_list o_sm_ops_alerts">
+                            <div t-foreach="this.opsAlerts.slice(0, 3)" t-as="alert" t-key="alert.key" t-att-class="'o_sm_bm_list_item is-' + alert.kind">
+                                <span class="o_sm_bm_list_title"><strong t-esc="alert.title"/><small t-esc="alert.detail"/></span>
+                            </div>
+                        </div>
+                    </t>
+                </article>
+                <article class="o_sm_bm_card o_sm_dash_half">
+                    <div class="o_sm_bm_card_head"><h2>Head Office instructions</h2><button type="button" class="o_sm_bm_link" t-on-click="() => this.action.doAction('strategic_management.action_business_goals')">Objectives →</button></div>
+                    <p t-if="this.state.branchObjectivesLoading and !bo" class="o_sm_bm_empty">Loading instructions…</p>
+                    <p t-elif="this.state.branchObjectivesError" class="o_sm_bm_empty" t-esc="this.state.branchObjectivesError"/>
+                    <div t-elif="bo and bo.instructions.length" class="o_sm_bm_list">
+                        <button t-foreach="bo.instructions" t-as="note" t-key="note.id" type="button" class="o_sm_bm_list_item" t-on-click="() => this.openBranchObjective(note.objective_id)">
+                            <span class="o_sm_bm_list_meta"><t t-esc="note.objective"/> · <t t-esc="note.author"/> · <t t-esc="this.formatPurchaseDate(note.date)"/></span>
+                            <span class="o_sm_bm_list_text" t-esc="note.text"/>
+                            <span t-if="this.state.objectiveDeadlines[note.objective_id]" class="o_sm_bm_list_meta o_sm_dash_deadline">Objective deadline <t t-esc="this.formatPurchaseDate(this.state.objectiveDeadlines[note.objective_id])"/></span>
+                        </button>
+                    </div>
+                    <p t-elif="bo" class="o_sm_bm_empty">No instructions from Head Office on your objectives yet.</p>
+                </article>
+                <article class="o_sm_bm_card o_sm_dash_half">
+                    <div class="o_sm_bm_card_head"><h2>Employee task overview</h2><button type="button" class="o_sm_bm_link" t-on-click="() => this.selectSection('task_management')">Task Management →</button></div>
+                    <t t-if="ts">
+                        <div class="o_sm_task_counts">
+                            <span><strong t-esc="ts.counts.open"/> open</span>
+                            <span t-att-class="ts.counts.overdue ? 'is-warn' : ''"><strong t-esc="ts.counts.overdue"/> overdue</span>
+                            <span t-att-class="ts.counts.review ? 'is-review' : ''"><strong t-esc="ts.counts.review"/> awaiting review</span>
+                        </div>
+                        <div t-if="ts.attention.length" class="o_sm_bm_list">
+                            <button t-foreach="ts.attention" t-as="task" t-key="task.id" type="button" class="o_sm_bm_list_item is-objective" t-on-click="() => this.openManagedTask(task.id)">
+                                <span class="o_sm_bm_list_title"><strong t-esc="task.name"/><small><t t-esc="task.assigned_to"/> · due <t t-esc="this.formatPurchaseDate(task.date_deadline)"/></small></span>
+                                <span class="o_sm_bm_reasons"><span t-att-class="'o_sm_bm_reason ' + (task.state === 'submitted' and !task.open_blocker ? 'is-no_data' : 'is-overdue')" t-esc="task.open_blocker ? 'Blocked' : task.state === 'submitted' ? 'Awaiting review' : 'Overdue'"/></span>
+                            </button>
+                        </div>
+                        <p t-elif="ts.counts.open" class="o_sm_bm_empty">Nothing overdue or waiting for your review.</p>
+                        <p t-else="" class="o_sm_bm_empty">No open tasks. Assign work from Task Management.</p>
+                    </t>
+                    <p t-else="" class="o_sm_bm_empty">Loading tasks…</p>
+                </article>
+                <article class="o_sm_bm_card is-wide">
+                    <div class="o_sm_bm_card_head"><div><h2>Objectives requiring attention</h2><small t-if="bo" class="o_sm_dash_caption"><t t-esc="bo.counts.own_branch"/> for your branch · <t t-esc="bo.counts.company_wide"/> company-wide<t t-if="bo.counts.proposals"> · <t t-esc="bo.counts.proposals"/> proposals</t></small></div><button type="button" class="o_sm_bm_link" t-on-click="() => this.action.doAction('strategic_management.action_business_goals')">View all →</button></div>
+                    <p t-if="this.state.branchObjectivesLoading and !bo" class="o_sm_bm_empty">Loading objectives…</p>
+                    <p t-elif="this.state.branchObjectivesError" class="o_sm_bm_empty" t-esc="this.state.branchObjectivesError"/>
+                    <div t-elif="bo and bo.attention.length" class="o_sm_bm_list">
+                        <button t-foreach="bo.attention.slice(0, 5)" t-as="item" t-key="item.objective_id" type="button" class="o_sm_bm_list_item is-objective" t-on-click="() => this.openBranchObjective(item.objective_id)">
+                            <span class="o_sm_bm_list_title"><strong t-esc="item.title"/><small><t t-esc="item.own_branch ? 'Your branch' : 'Company-wide'"/><t t-if="item.deadline"> · deadline <t t-esc="this.formatPurchaseDate(item.deadline)"/></t><t t-if="item.status and !item.reasons.includes(item.status)"> · <t t-esc="item.status"/></t></small></span>
+                            <span class="o_sm_bm_reasons"><span t-foreach="item.keys" t-as="key" t-key="key" t-att-class="'o_sm_bm_reason is-' + key" t-esc="item.reasons[key_index]"/></span>
+                        </button>
+                        <small t-if="bo.attention.length > 5" class="o_sm_bm_empty">and <t t-esc="bo.attention.length - 5"/> more on Objectives.</small>
+                    </div>
+                    <p t-elif="bo" class="o_sm_bm_empty">No active objective needs your attention right now.</p>
+                </article>
+            </section>
+        </t>
+        <div t-else="" class="o_sm_bm_notice">The Branch Manager dashboard is available to branch managers.</div>
+    </div>
+    </t>
+</templates>

@@ -1,0 +1,18 @@
+// Tasks: My Tasks, Task Management, Tasks & Issues and the task dialog.
+
+.o_sm_navigation_shell .o_sm_br_preview_note { display:inline-flex; align-items:center; gap:.32rem; color:#667085; font-size:.65rem; }
+.o_sm_navigation_shell .o_sm_br_metric_svg { width:1.85rem; height:1.85rem; }
+.o_sm_navigation_shell .o_sm_br_blue { background:#e0f2fe; color:#245b9a; }
+
+.o_sm_navigation_shell .o_sm_br_amber { background:#fff0d3; color:#c87900; }
+.o_sm_navigation_shell .o_sm_br_red { background:#fee4e2; color:#d92d20; }
+.o_sm_navigation_shell .o_sm_br_panel_hint { color:#98a2b3; font-size:.63rem; white-space:nowrap; }
+
+.o_sm_navigation_shell .o_sm_br_count { display:inline-flex; align-items:center; justify-content:center; min-width:1.65rem; height:1.65rem; padding:0 .35rem; border-radius:1rem; background:#f2f4f7; color:#475467; font-size:.65rem; }
+@media (max-width: 900px) {
+    .o_sm_navigation_shell .o_sm_bm {
+        .o_sm_task_form_row, .o_sm_req_details { grid-template-columns: minmax(0, 1fr); }
+    }
+}
+
+.o_sm_task_panel { margin-top: 12px; display: grid; gap: 10px; }

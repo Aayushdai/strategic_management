@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Branches, and the branch operations panel other pages reuse. Called from strategic_management.NavigationShell. -->
+<templates xml:space="preserve">
+    <t t-name="strategic_management.BranchesPage">
+    <div class="o_sm_branches_ui">
+        <t t-set="br" t-value="this.state.branchesData"/>
+        <t t-set="bx" t-value="this.state.brExpanded"/>
+        <header class="o_sm_br_header">
+            <div class="o_sm_br_title_block">
+                <h1>Branches</h1>
+                <p t-if="br and br.role === 'branch_manager'">Your branch's results, targets and items needing attention.</p>
+                <p t-else="">Compare branch performance and see where attention is needed.</p>
+                <span t-if="br and br.available" class="o_sm_br_live_badge"><i class="o_sm_br_live_dot"/> Live Odoo data · updates automatically</span>
+            </div>
+            <div class="o_sm_pur_filters">
+                <label class="o_sm_pur_filter"><span>From</span><input type="date" t-att-value="this.state.dateStart" t-att-max="this.state.todayDate" t-on-change="this.onStartDateChanged" aria-label="Branches start date"/></label>
+                <label class="o_sm_pur_filter"><span>To</span><input type="date" t-att-value="this.state.dateEnd" t-att-max="this.state.todayDate" t-on-change="this.onEndDateChanged" aria-label="Branches end date"/></label>
+                <label t-if="br and br.role === 'head_office'" class="o_sm_pur_filter"><span>Branch</span><select t-att-value="this.branchSelectValue" t-on-change="this.onWarehouseChanged" aria-label="Branch filter"><option value="all">All Branches</option><t t-foreach="br.branch_options" t-as="branch" t-key="branch.id"><option t-att-value="branch.id"><t t-esc="branch.name"/></option></t></select></label>
+            </div>
+        </header>
+
+        <div t-if="this.state.branchesLoading" class="o_sm_br_notice">Loading live branch data…</div>
+        <t t-if="!this.state.branchesLoading and br and !br.available">
+            <div t-foreach="br.messages or []" t-as="message" t-key="message_index" class="o_sm_br_notice"><t t-esc="message"/></div>
+        </t>
+        <details t-if="!this.state.branchesLoading and br and br.available and br.messages and br.messages.length" class="o_sm_br_data_note">
+            <summary><span class="o_sm_br_note_icon" aria-hidden="true">i</span><span class="o_sm_br_note_text"><t t-foreach="br.messages" t-as="message" t-key="message_index"><t t-if="message_index"> · </t><t t-esc="this.branchNoteHeadline(message)"/></t></span><span class="o_sm_br_note_more">Details</span></summary>
+            <p t-foreach="br.messages" t-as="message" t-key="message_index"><t t-esc="message"/></p>
+        </details>
+
+        <t t-if="br and br.role === 'branch_manager'"><t t-call="strategic_management.BranchOperations"/></t>
+        <t t-if="br and br.available and br.role !== 'branch_manager'">
+            <section class="o_sm_br_summary" aria-label="Branch summary">
+                <article class="o_sm_br_metric">
+                    <span class="o_sm_br_metric_icon is-purple"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="11" height="18" rx="1.5"/><path d="M14 9h7v12h-7M6.5 7h4M6.5 11h4M6.5 15h4"/></svg></span>
+                    <div class="o_sm_br_metric_copy"><span>Active Branches</span><strong><t t-esc="br.summary.active_branches"/></strong><small>Branches in your scope</small></div>
+                </article>
+                <article class="o_sm_br_metric">
+                    <span class="o_sm_br_metric_icon is-green"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m7.5 12.5 3 3 6-7"/></svg></span>
+                    <div class="o_sm_br_metric_copy"><span>Meeting Targets</span><strong><t t-esc="br.summary.meeting_target"/></strong><small title="Branches whose evaluated KPI targets are all met">Evaluated targets met</small></div>
+                </article>
+                <article class="o_sm_br_metric">
+                    <span class="o_sm_br_metric_icon is-orange"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 21.5 20h-19Z"/><path d="M12 10v4.5M12 17.2h.01"/></svg></span>
+                    <div class="o_sm_br_metric_copy"><span>Below Target</span><strong><t t-esc="br.summary.below_target"/></strong><small t-att-title="'Branches with an evaluated KPI target below target. Not counted here: ' + br.summary.not_evaluated + ' branch(es) not evaluated.'">Evaluated targets not met</small></div>
+                </article>
+                <article class="o_sm_br_metric">
+                    <span class="o_sm_br_metric_icon is-red"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/></svg></span>
+                    <div class="o_sm_br_metric_copy"><span>Critical Issues</span><strong><t t-esc="br.summary.critical_issues"/></strong><small title="Unresolved critical branch issues">Needs attention</small></div>
+                </article>
+            </section>
+
+            <section class="o_sm_br_grid">
+                <article class="o_sm_br_panel">
+                    <div class="o_sm_br_panel_heading"><div><h2>Sales by Branch</h2><p>Paid POS sales excl. tax, net of refunds</p></div></div>
+                    <div class="o_sm_br_hbars" role="list" aria-label="Sales by branch">
+                        <div t-foreach="this.branchSalesRows" t-as="row" t-key="row.id" class="o_sm_br_hbar" role="listitem">
+                            <span class="o_sm_br_hbar_name" t-att-title="row.name"><t t-esc="row.name"/></span>
+                            <div class="o_sm_br_track"><i class="is-purple" t-att-style="'width:' + row.width + '%'"/></div>
+                            <strong t-att-class="row.value === false ? 'is-muted' : ''"><t t-esc="this.formatBranchValue(row.value, 'currency')"/></strong>
+                        </div>
+                        <div t-if="!br.branches.length" class="o_sm_br_empty">No branches in your scope.</div>
+                    </div>
+                </article>
+                <article class="o_sm_br_panel">
+                    <div class="o_sm_br_panel_heading"><div><h2>KPI Target Attainment</h2><p>Mean of evaluated branch KPI targets</p></div></div>
+                    <div class="o_sm_br_hbars" role="list" aria-label="KPI target attainment by branch">
+                        <div t-foreach="br.branches" t-as="row" t-key="row.warehouse_id" class="o_sm_br_hbar" role="listitem">
+                            <span class="o_sm_br_hbar_name" t-att-title="row.name"><t t-esc="row.name"/></span>
+                            <div class="o_sm_br_track"><i t-att-class="row.status === 'below_target' ? 'is-orange' : 'is-green'" t-att-style="'width:' + this.branchAttainmentWidth(row) + '%'"/></div>
+                            <strong t-att-class="row.attainment === false ? 'is-muted' : ''"><t t-esc="this.formatBranchValue(row.attainment, 'percent')"/></strong>
+                        </div>
+                        <div t-if="!br.branches.length" class="o_sm_br_empty">No branches in your scope.</div>
+                    </div>
+                </article>
+            </section>
+
+            <section class="o_sm_br_grid">
+                <article class="o_sm_br_panel">
+                    <div class="o_sm_br_panel_heading"><div><h2>Branch Health</h2><p>Status from evaluated KPI targets</p></div><button type="button" class="o_sm_br_link" t-on-click="() => this.scrollToBranchTable()">View details →</button></div>
+                    <div class="o_sm_br_health_list">
+                        <div t-foreach="br.branches.slice(0, 5)" t-as="row" t-key="row.warehouse_id" class="o_sm_br_health_row">
+                            <i t-att-class="'o_sm_br_dot is-' + row.status"/>
+                            <div class="o_sm_br_health_text"><strong t-att-title="row.name"><t t-esc="row.name"/></strong><small><t t-if="row.kpi_total"><t t-esc="row.kpi_met"/> of <t t-esc="row.kpi_evaluated"/> evaluated targets met</t><t t-else="">No approved targets</t></small></div>
+                            <span t-att-class="'o_sm_br_status ' + row.status_class"><t t-esc="row.status_label"/></span>
+                        </div>
+                        <small t-if="br.branches.length > 5" class="o_sm_br_hint">Showing 5 of <t t-esc="br.branches.length"/> branches; all are in Branch Performance below.</small>
+                    </div>
+                </article>
+                <article t-att-class="'o_sm_br_panel' + (bx.attention ? ' is-expanded' : '')">
+                    <div class="o_sm_br_panel_heading"><div><h2 class="is-warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 21.5 20h-19Z"/><path d="M12 10v4.5M12 17.2h.01"/></svg>Needs Attention</h2><p>Most important open branch issues</p></div>
+                        <button t-if="br.attention.length" type="button" class="o_sm_br_link" t-on-click="() => this.toggleBranches('attention')"><t t-esc="bx.attention ? 'Show top 3' : 'See all issues →'"/></button></div>
+                    <p t-if="!br.attention.length" class="o_sm_br_empty">No measurable issues: no KPI targets or objectives below target and no overdue supplier receipts.</p>
+                    <div t-elif="!bx.attention" class="o_sm_br_issue_items">
+                        <div t-foreach="br.attention.slice(0, 3)" t-as="item" t-key="item_index" class="o_sm_br_issue_item">
+                            <span t-att-class="'o_sm_br_status ' + (item.severity === 'critical' ? 'o_sm_br_status_critical' : 'o_sm_br_status_warn')"><t t-esc="item.severity === 'critical' ? 'Critical' : 'Warning'"/></span>
+                            <div class="o_sm_br_issue_copy"><strong t-att-title="item.title"><t t-esc="item.title"/></strong><small t-att-title="item.evidence"><t t-esc="item.branch"/> · <t t-esc="item.evidence"/></small></div>
+                            <button t-if="item.res_model" type="button" class="o_sm_br_item_action" t-on-click="() => this.openIssueRecord(item)">View</button>
+                        </div>
+                    </div>
+                    <t t-else="">
+                        <div class="o_sm_pur_table_wrap"><table class="o_sm_pur_table">
+                            <thead><tr><th>Severity</th><th>Issue</th><th>Branch</th><th>Evidence</th><th>Responsible</th><th>Deadline</th><th>Action status</th><th>Actions</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="this.pageRows('br_attention', br.attention)" t-as="item" t-key="item_index">
+                                    <td><span t-att-class="'o_sm_br_status ' + (item.severity === 'critical' ? 'o_sm_br_status_critical' : 'o_sm_br_status_warn')"><t t-esc="item.severity === 'critical' ? 'Critical' : 'Warning'"/></span></td>
+                                    <td><t t-esc="item.title"/></td>
+                                    <td><t t-esc="item.branch"/></td>
+                                    <td style="white-space:normal"><t t-esc="item.evidence"/></td>
+                                    <td><t t-esc="item.responsible"/></td>
+                                    <td><t t-esc="this.formatPurchaseDate(item.deadline)"/></td>
+                                    <td><t t-esc="item.action_status"/></td>
+                                    <td><span t-if="item.res_model" class="o_sm_issue_actions"><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.openIssueRecord(item)">Open</button><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.createIssueFollowup(item)">Assign follow-up</button></span></td>
+                                </tr>
+                            </tbody>
+                        </table></div><t t-call="strategic_management.ListPager" pagerKey="'br_attention'" pagerRows="br.attention"/>
+                    </t>
+                </article>
+            </section>
+
+            <article class="o_sm_br_panel o_sm_br_table_panel">
+                <div class="o_sm_br_panel_heading"><div><h2>Branch Performance</h2><p><t t-esc="this.formatPurchaseDate(br.period.start)"/> – <t t-esc="this.formatPurchaseDate(br.period.end)"/></p></div>
+                    <button type="button" class="o_sm_br_link" t-on-click="() => this.toggleBranches('charts')"><t t-esc="bx.charts ? 'Hide comparisons' : 'More comparisons →'"/></button></div>
+                <div class="o_sm_pur_table_wrap"><table class="o_sm_pur_table o_sm_br_table">
+                    <thead><tr><th>Branch</th><th>Sales</th><th>Orders</th><th>Food cost %</th><th>Waste</th><th>Waste % of sales</th><th>Contribution</th><th>KPI targets met</th><th>Attainment</th><th>Status</th><th>Responsible manager</th></tr></thead>
+                    <tbody>
+                        <tr t-foreach="this.pageRows('br_branches', br.branches)" t-as="row" t-key="row.warehouse_id">
+                            <td><strong><t t-esc="row.name"/></strong></td>
+                            <td><t t-esc="this.formatBranchValue(row.sales, 'currency')"/></td>
+                            <td><t t-esc="this.formatBranchValue(row.orders, 'number')"/></td>
+                            <td t-att-class="row.food_cost_pct === false ? 'is-muted' : ''"><t t-esc="this.formatBranchValue(row.food_cost_pct, 'percent')"/></td>
+                            <td t-att-class="row.waste_cost === false ? 'is-muted' : ''"><t t-esc="this.formatBranchValue(row.waste_cost, 'currency')"/></td>
+                            <td t-att-class="row.waste_pct_of_sales === false ? 'is-muted' : ''"><t t-esc="this.formatBranchValue(row.waste_pct_of_sales, 'percent')"/></td>
+                            <td t-att-class="row.contribution === false ? 'is-muted' : ''"><t t-esc="this.formatBranchValue(row.contribution, 'currency')"/><t t-if="row.contribution_pct !== false"> <small>(<t t-esc="this.formatBranchValue(row.contribution_pct, 'percent')"/>)</small></t></td>
+                            <td><t t-if="row.kpi_total"><span t-att-title="row.kpi_met + ' met of ' + row.kpi_evaluated + ' evaluated (' + row.kpi_total + ' targets)'"><t t-esc="row.kpi_met"/> / <t t-esc="row.kpi_evaluated"/> <small>of <t t-esc="row.kpi_total"/></small></span></t><span t-else="" class="is-muted">No approved targets</span></td>
+                            <td t-att-class="row.attainment === false ? 'is-muted' : ''"><t t-esc="this.formatBranchValue(row.attainment, 'percent')"/></td>
+                            <td><span t-att-class="'o_sm_br_status ' + row.status_class"><t t-esc="row.status_label"/></span></td>
+                            <td class="o_sm_br_manager" t-att-title="row.manager"><t t-esc="row.manager"/></td>
+                        </tr>
+                    </tbody>
+                </table></div><t t-call="strategic_management.ListPager" pagerKey="'br_branches'" pagerRows="br.branches"/>
+                <small class="o_sm_br_hint">KPI targets met: met / evaluated, of all approved targets. Not Evaluated means the value could not be measured; it is not zero.</small>
+            </article>
+
+            <section t-if="bx.charts" class="o_sm_br_grid o_sm_br_more">
+                <t t-foreach="[
+                    ['Food Cost %', 'food_cost_pct', 'percent', 'is-orange', 'Recorded cost of goods sold ÷ POS sales; lower is better'],
+                    ['Waste % of Sales', 'waste_pct_of_sales', 'percent', 'is-purple', 'Valued scrap (Spoilage/Expiry, Damaged Goods) ÷ sales'],
+                    ['Branch Contribution', 'contribution', 'currency', 'is-green', 'Sales − cost of goods − waste; excludes rent, wages, overheads'],
+                    ['Open Stock Variances', 'stock_variance_count', 'number', 'is-purple', 'Counted quants differing from system quantity'],
+                ]" t-as="chart" t-key="chart[1]">
+                    <article class="o_sm_br_panel">
+                        <div class="o_sm_br_panel_heading"><div><h2><t t-esc="chart[0]"/></h2><p><t t-esc="chart[4]"/></p></div></div>
+                        <div class="o_sm_br_hbars" role="list" t-att-aria-label="chart[0] + ' by branch'">
+                            <div t-foreach="this.branchChartRows(chart[1])" t-as="row" t-key="row.id" class="o_sm_br_hbar" role="listitem">
+                                <span class="o_sm_br_hbar_name" t-att-title="row.name"><t t-esc="row.name"/></span>
+                                <div class="o_sm_br_track"><i t-att-class="chart[3]" t-att-style="'width:' + row.width + '%'"/></div>
+                                <strong t-att-class="row.value === false ? 'is-muted' : ''"><t t-esc="this.formatBranchValue(row.value, chart[2])"/></strong>
+                            </div>
+                        </div>
+                    </article>
+                </t>
+            </section>
+        </t>
+    </div>
+    </t>
+    <t t-name="strategic_management.BranchOperations">
+        <t t-set="ops" t-value="this.state.branchOps"/>
+        <div t-if="this.state.branchOpsLoading and !ops" class="o_sm_br_notice">Loading your branch figures…</div>
+        <div t-elif="this.state.branchOpsError and !ops" class="o_sm_br_notice" t-esc="this.state.branchOpsError"/>
+        <section t-elif="ops and ops[this.state.opsTab]" class="o_sm_ops" aria-label="Branch operations">
+            <nav t-if="!this.departmentCode" class="o_sm_task_filters o_sm_ops_tabs" aria-label="Branch area">
+                <button t-foreach="[['sales', 'Sales'], ['inventory', 'Inventory'], ['purchasing', 'Purchasing']]" t-as="tab" t-key="tab[0]" type="button"
+                        t-att-class="this.state.opsTab === tab[0] ? 'is-active' : ''" t-att-aria-pressed="this.state.opsTab === tab[0] ? 'true' : 'false'"
+                        t-on-click="() => this.setOpsTab(tab[0])"><t t-esc="tab[1]"/></button>
+            </nav>
+            <t t-set="sec" t-value="ops[this.state.opsTab]"/>
+            <div t-if="!sec.available" class="o_sm_br_notice"><t t-foreach="sec.messages" t-as="message" t-key="message_index"><t t-esc="message"/> </t></div>
+
+            <t t-elif="this.state.opsTab === 'sales'">
+                <section class="o_sm_ops_cards">
+                    <article t-att-class="(sec.drill and sec.drill.sales) ? 'is-drill' : ''" t-att-role="(sec.drill and sec.drill.sales) ? 'button' : false" t-att-tabindex="(sec.drill and sec.drill.sales) ? 0 : false" t-on-click="() => this.openDrill(sec.drill and sec.drill.sales)" t-on-keydown="(ev) => this.onDrillKey(ev, sec.drill and sec.drill.sales)"><small>Net sales</small><strong t-esc="this.formatOpsMoney(sec.net_sales, sec)"/><span>Paid POS sales excl. tax, net of refunds</span></article>
+                    <article t-att-class="(sec.drill and sec.drill.orders) ? 'is-drill' : ''" t-att-role="(sec.drill and sec.drill.orders) ? 'button' : false" t-att-tabindex="(sec.drill and sec.drill.orders) ? 0 : false" t-on-click="() => this.openDrill(sec.drill and sec.drill.orders)" t-on-keydown="(ev) => this.onDrillKey(ev, sec.drill and sec.drill.orders)"><small>Completed orders</small><strong t-esc="this.formatOpsCount(sec.orders)"/><span>Paid orders; refunds not counted</span></article>
+                    <article t-att-class="(sec.drill and sec.drill.sales) ? 'is-drill' : ''" t-att-role="(sec.drill and sec.drill.sales) ? 'button' : false" t-att-tabindex="(sec.drill and sec.drill.sales) ? 0 : false" t-on-click="() => this.openDrill(sec.drill and sec.drill.sales)" t-on-keydown="(ev) => this.onDrillKey(ev, sec.drill and sec.drill.sales)"><small>Average order value</small><strong t-esc="sec.average_order_value === false ? 'No orders' : this.formatOpsMoney(sec.average_order_value, sec)"/><span>Net sales ÷ completed orders</span></article>
+                </section>
+                <article class="o_sm_br_panel">
+                    <div class="o_sm_br_panel_heading"><div><h2>Sales trend</h2><p>Net sales per <t t-esc="ops.granularity"/>, <t t-esc="this.formatPurchaseDate(ops.period.start)"/> – <t t-esc="this.formatPurchaseDate(ops.period.end)"/></p></div></div>
+                    <div t-if="sec.net_sales or sec.orders" class="o_sm_ops_trend" role="img" t-att-aria-label="'Net sales per ' + ops.granularity">
+                        <div t-foreach="this.opsTrendBars" t-as="bar" t-key="bar.key" class="o_sm_ops_bar" t-att-title="bar.label + ': ' + this.formatOpsMoney(bar.sales, sec)">
+                            <i t-att-style="'height:' + bar.height + '%'"/><small t-esc="bar.showLabel ? bar.label : ''"/>
+                        </div>
+                    </div>
+                    <p t-else="" class="o_sm_br_empty">No paid POS sales for your branch in this period.</p>
+                    <small t-foreach="sec.messages" t-as="message" t-key="message_index" class="o_sm_br_hint" t-esc="message"/>
+                </article>
+            </t>
+
+            <t t-elif="this.state.opsTab === 'inventory'">
+                <section class="o_sm_ops_cards">
+                    <article t-att-class="(sec.drill and sec.drill.low_stock) ? 'is-drill' : ''" t-att-role="(sec.drill and sec.drill.low_stock) ? 'button' : false" t-att-tabindex="(sec.drill and sec.drill.low_stock) ? 0 : false" t-on-click="() => this.openDrill(sec.drill and sec.drill.low_stock)" t-on-keydown="(ev) => this.onDrillKey(ev, sec.drill and sec.drill.low_stock)"><small>Below minimum stock</small><strong t-esc="sec.low_stock_count === false ? 'Not configured' : this.formatOpsCount(sec.low_stock_count)"/><span>Current stock vs the branch's reorder rules</span></article>
+                    <article t-att-class="(sec.drill and sec.drill.expiring) ? 'is-drill' : ''" t-att-role="(sec.drill and sec.drill.expiring) ? 'button' : false" t-att-tabindex="(sec.drill and sec.drill.expiring) ? 0 : false" t-on-click="() => this.openDrill(sec.drill and sec.drill.expiring)" t-on-keydown="(ev) => this.onDrillKey(ev, sec.drill and sec.drill.expiring)"><small>Expiring within 7 days</small><strong t-esc="sec.expiry_tracking_available ? this.formatOpsCount(sec.expiring_count) : 'Not tracked'"/><span>Lots with an expiry date, current stock</span></article>
+                    <article t-att-class="(sec.drill and sec.drill.waste) ? 'is-drill' : ''" t-att-role="(sec.drill and sec.drill.waste) ? 'button' : false" t-att-tabindex="(sec.drill and sec.drill.waste) ? 0 : false" t-on-click="() => this.openDrill(sec.drill and sec.drill.waste)" t-on-keydown="(ev) => this.onDrillKey(ev, sec.drill and sec.drill.waste)"><small>Recorded waste</small><strong t-esc="this.formatOpsMoney(sec.waste_cost, sec)"/><span><t t-if="sec.waste_by_reason.length"><t t-foreach="sec.waste_by_reason" t-as="reason" t-key="reason.reason"><t t-if="reason_index"> · </t><t t-esc="reason.reason"/> <t t-esc="this.formatOpsMoney(reason.cost, sec)"/></t></t><t t-else="">Spoilage/Expiry and Damaged Goods in the period</t></span></article>
+                    <article t-att-class="(sec.drill and sec.drill.receipts) ? 'is-drill' : ''" t-att-role="(sec.drill and sec.drill.receipts) ? 'button' : false" t-att-tabindex="(sec.drill and sec.drill.receipts) ? 0 : false" t-on-click="() => this.openDrill(sec.drill and sec.drill.receipts)" t-on-keydown="(ev) => this.onDrillKey(ev, sec.drill and sec.drill.receipts)"><small>Receipts completed</small><strong t-esc="this.formatOpsCount(sec.receipts_done)"/><span>Supplier receipts validated in the period</span></article>
+                </section>
+                <section class="o_sm_br_grid">
+                    <article class="o_sm_br_panel">
+                        <div class="o_sm_br_panel_heading"><div><h2>Below minimum stock</h2><p>Now, from reorder rules</p></div></div>
+                        <table t-if="sec.low_stock.length" class="o_sm_task_table o_sm_ops_table"><thead><tr><th>Product</th><th>On hand</th><th>Minimum</th></tr></thead><tbody>
+                            <tr t-foreach="sec.low_stock" t-as="row" t-key="row.product_id"><td><strong t-esc="row.name"/><small t-esc="row.status"/></td>
+                                <td t-esc="this.formatInventoryQuantity(row.available, row.unit)"/><td t-esc="this.formatInventoryQuantity(row.minimum, row.unit)"/></tr>
+                        </tbody></table>
+                        <p t-else="" class="o_sm_br_empty"><t t-esc="sec.low_stock_count === false ? 'No reorder rules are set for your branch, so low stock cannot be judged.' : 'Nothing is below its minimum.'"/></p>
+                    </article>
+                    <article class="o_sm_br_panel">
+                        <div class="o_sm_br_panel_heading"><div><h2>Recorded waste</h2><p>In the period, by product</p></div></div>
+                        <table t-if="sec.waste_by_product.length" class="o_sm_task_table o_sm_ops_table"><thead><tr><th>Product</th><th>Quantity</th><th>Value</th></tr></thead><tbody>
+                            <tr t-foreach="sec.waste_by_product" t-as="row" t-key="row_index"><td><strong t-esc="row.product"/></td>
+                                <td t-esc="this.formatInventoryQuantity(row.quantity, row.unit)"/><td t-esc="this.formatOpsMoney(row.cost, sec)"/></tr>
+                        </tbody></table>
+                        <p t-else="" class="o_sm_br_empty"><t t-esc="sec.waste_breakdown_available ? 'No waste recorded in this period.' : 'Waste cannot be broken down: some scrap records have no Spoilage/Expiry or Damaged Goods reason, or no value.'"/></p>
+                    </article>
+                </section>
+                <article t-if="sec.expiry_tracking_available" class="o_sm_br_panel">
+                    <div class="o_sm_br_panel_heading"><div><h2>Expiring stock</h2><p>Lots on hand expiring within seven days or already expired</p></div></div>
+                    <table t-if="sec.expiring.length" class="o_sm_task_table o_sm_ops_table"><thead><tr><th>Product</th><th>Quantity</th><th>Expiry</th></tr></thead><tbody>
+                        <tr t-foreach="sec.expiring" t-as="row" t-key="row_index"><td><strong t-esc="row.product"/></td><td t-esc="this.formatInventoryQuantity(row.quantity, row.unit)"/>
+                            <td><t t-esc="this.formatPurchaseDate(row.expiry_date)"/><span t-if="row.days_left &lt; 0" class="o_sm_task_overdue">Expired</span></td></tr>
+                    </tbody></table>
+                    <p t-else="" class="o_sm_br_empty">No tracked lots expire within seven days.</p>
+                </article>
+                <t t-if="this.departmentCode">
+                    <article class="o_sm_br_panel">
+                        <div class="o_sm_br_panel_heading"><div><h2>Available stock</h2><p>Current balances, not period figures</p></div></div>
+                        <t t-if="sec.stock_levels.length">
+                            <table class="o_sm_task_table o_sm_ops_table"><thead><tr><th>Product</th><th>On hand</th><th>Available</th></tr></thead><tbody>
+                                <tr t-foreach="this.pageRows('department_stock', sec.stock_levels)" t-as="row" t-key="row.product_id"><td><strong t-esc="row.name"/></td>
+                                    <td t-esc="this.formatInventoryQuantity(row.on_hand, row.unit)"/><td t-esc="this.formatInventoryQuantity(row.available, row.unit)"/></tr>
+                            </tbody></table>
+                            <t t-call="strategic_management.ListPager" pagerKey="'department_stock'" pagerRows="sec.stock_levels"/>
+                        </t>
+                        <p t-else="" class="o_sm_br_empty">No stock is recorded at your branch.</p>
+                    </article>
+                    <article t-if="sec.products.length" class="o_sm_br_panel">
+                        <div class="o_sm_br_panel_heading"><div><h2>Stock movement</h2><p>One product over the period, in its own unit</p></div>
+                            <label class="o_sm_pur_filter"><span>Product</span><select aria-label="Stock movement product" t-on-change="this.onDepartmentProductChanged"><option t-foreach="sec.products" t-as="product" t-key="product.id" t-att-value="product.id" t-att-selected="product.id === sec.selected_product_id" t-esc="product.name"/></select></label></div>
+                        <t t-set="mv" t-value="sec.movement"/>
+                        <dl t-if="mv and mv.received_quantity !== undefined" class="o_sm_dept_movement">
+                            <div t-foreach="[['Opening stock', mv.opening_stock], ['Received', mv.received_quantity], ['Used', mv.consumption_quantity], ['Waste', mv.waste_quantity], ['Adjustments', mv.adjustment_quantity], ['Expected closing', mv.expected_closing_stock]]" t-as="fact" t-key="fact[0]"><dt t-esc="fact[0]"/><dd t-esc="fact[1] === false ? 'Not available' : this.formatInventoryQuantity(fact[1], mv.unit)"/></div>
+                        </dl>
+                        <p t-elif="mv" class="o_sm_br_empty" t-esc="mv.message"/>
+                    </article>
+                    <article t-if="sec.warnings.length" class="o_sm_br_panel">
+                        <div class="o_sm_br_panel_heading"><div><h2>Inventory warnings</h2><p>Current stock, expiry and count issues</p></div></div>
+                        <ul class="o_sm_dept_warnings"><li t-foreach="sec.warnings.slice(0, 10)" t-as="warning" t-key="warning_index"><strong t-esc="warning.title"/> <span t-esc="warning.detail"/></li></ul>
+                    </article>
+                </t>
+                <p t-if="!this.departmentCode" class="o_sm_br_hint">Ordered, received, used, wasted and remaining quantities for one product are on Inventory → Inventory Movement, in that product's unit. <button type="button" class="o_sm_br_link" t-on-click="() => this.selectSection('inventory_waste')">Open Inventory →</button></p>
+            </t>
+
+            <t t-elif="this.state.opsTab === 'purchasing'">
+                <section class="o_sm_ops_cards">
+                    <article t-att-class="(sec.drill and sec.drill.purchase_orders) ? 'is-drill' : ''" t-att-role="(sec.drill and sec.drill.purchase_orders) ? 'button' : false" t-att-tabindex="(sec.drill and sec.drill.purchase_orders) ? 0 : false" t-on-click="() => this.openDrill(sec.drill and sec.drill.purchase_orders)" t-on-keydown="(ev) => this.onDrillKey(ev, sec.drill and sec.drill.purchase_orders)"><small>Confirmed purchases</small><strong t-esc="this.formatOpsMoney(sec.confirmed_value, sec)"/><span><t t-esc="this.formatOpsCount(sec.confirmed_count)"/> confirmed orders in the period, excl. tax</span></article>
+                    <article t-att-class="(sec.drill and sec.drill.pending) ? 'is-drill' : ''" t-att-role="(sec.drill and sec.drill.pending) ? 'button' : false" t-att-tabindex="(sec.drill and sec.drill.pending) ? 0 : false" t-on-click="() => this.openDrill(sec.drill and sec.drill.pending)" t-on-keydown="(ev) => this.onDrillKey(ev, sec.drill and sec.drill.pending)"><small>Awaiting delivery</small><strong t-esc="this.formatOpsCount(sec.awaiting_count)"/><span>Open receipts now, any order date · <t t-esc="this.formatOpsMoney(sec.awaiting_value, sec)"/></span></article>
+                    <article t-att-class="((sec.drill and sec.drill.overdue) ? 'is-drill ' : '') + sec.overdue_count ? 'is-warn' : ''" t-att-role="(sec.drill and sec.drill.overdue) ? 'button' : false" t-att-tabindex="(sec.drill and sec.drill.overdue) ? 0 : false" t-on-click="() => this.openDrill(sec.drill and sec.drill.overdue)" t-on-keydown="(ev) => this.onDrillKey(ev, sec.drill and sec.drill.overdue)"><small>Overdue deliveries</small><strong t-esc="this.formatOpsCount(sec.overdue_count)"/><span>Past the expected date · <t t-esc="this.formatOpsMoney(sec.overdue_value, sec)"/></span></article>
+                </section>
+                <article class="o_sm_br_panel">
+                    <div class="o_sm_br_panel_heading"><div><h2>Outstanding deliveries</h2><p>Orders with goods still to receive, overdue first</p></div></div>
+                    <table t-if="sec.deliveries.length" class="o_sm_task_table o_sm_ops_table"><thead><tr><th>Order</th><th>Supplier</th><th>Expected</th><th>Still to receive</th><th>Status</th></tr></thead><tbody>
+                        <tr t-foreach="sec.deliveries" t-as="row" t-key="row.name"><td><strong t-esc="row.name"/><small t-if="row.date_order">Ordered <t t-esc="this.formatPurchaseDate(row.date_order)"/></small></td><td t-esc="row.supplier"/>
+                            <td t-esc="row.expected_date ? this.formatPurchaseDate(row.expected_date) : '—'"/><td t-esc="this.formatOpsMoney(row.outstanding_value, sec)"/>
+                            <td><span t-att-class="'o_sm_task_status ' + (row.status === 'Overdue' ? 'is-changes_requested' : 'is-in_progress')" t-esc="row.status"/></td></tr>
+                    </tbody></table>
+                    <p t-else="" class="o_sm_br_empty">Nothing is waiting to be delivered to your branch.</p>
+                    <small t-foreach="sec.messages" t-as="message" t-key="message_index" class="o_sm_br_hint" t-esc="message"/>
+                </article>
+                <t t-if="this.departmentCode">
+                    <section class="o_sm_ops_cards"><article t-att-class="(sec.drill and sec.drill.receipts) ? 'is-drill' : ''" t-att-role="(sec.drill and sec.drill.receipts) ? 'button' : false" t-att-tabindex="(sec.drill and sec.drill.receipts) ? 0 : false" t-on-click="() => this.openDrill(sec.drill and sec.drill.receipts)" t-on-keydown="(ev) => this.onDrillKey(ev, sec.drill and sec.drill.receipts)"><small>Receipts completed</small><strong t-esc="this.formatOpsCount(sec.receipts_done)"/><span>Supplier receipts validated in the period</span></article></section>
+                    <t t-foreach="[['Received on open deliveries', 'Now, any order date', sec.deliveries], ['Received on orders from this period', 'Confirmed in the period', sec.period_orders]]" t-as="panel" t-key="panel[0]">
+                        <article t-if="panel[2].length" class="o_sm_br_panel">
+                            <div class="o_sm_br_panel_heading"><div><h2 t-esc="panel[0]"/><p t-esc="panel[1]"/></div></div>
+                            <table class="o_sm_task_table o_sm_ops_table"><thead><tr><th>Order</th><th>Product</th><th>Ordered</th><th>Received</th></tr></thead><tbody>
+                                <tr t-foreach="this.departmentOrderLines(panel[2])" t-as="line" t-key="line.key"><td><strong t-esc="line.order"/><small t-esc="line.supplier"/></td><td t-esc="line.product"/>
+                                    <td t-esc="this.formatInventoryQuantity(line.ordered, line.unit)"/><td t-esc="this.formatInventoryQuantity(line.received, line.unit)"/></tr>
+                            </tbody></table>
+                        </article>
+                    </t>
+                </t>
+            </t>
+        </section>
+        <t t-set="br" t-value="this.state.branchesData"/>
+        <t t-set="bx" t-value="this.state.brExpanded"/>
+        <section t-if="br and br.available" class="o_sm_br_grid o_sm_ops_attention">
+                <article t-att-class="'o_sm_br_panel' + (bx.attention ? ' is-expanded' : '')">
+                    <div class="o_sm_br_panel_heading"><div><h2 class="is-warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 21.5 20h-19Z"/><path d="M12 10v4.5M12 17.2h.01"/></svg>Needs Attention</h2><p>Most important open branch issues</p></div>
+                        <button t-if="br.attention.length" type="button" class="o_sm_br_link" t-on-click="() => this.toggleBranches('attention')"><t t-esc="bx.attention ? 'Show top 3' : 'See all issues →'"/></button></div>
+                    <p t-if="!br.attention.length" class="o_sm_br_empty">No measurable issues: no KPI targets or objectives below target and no overdue supplier receipts.</p>
+                    <div t-elif="!bx.attention" class="o_sm_br_issue_items">
+                        <div t-foreach="br.attention.slice(0, 3)" t-as="item" t-key="item_index" class="o_sm_br_issue_item">
+                            <span t-att-class="'o_sm_br_status ' + (item.severity === 'critical' ? 'o_sm_br_status_critical' : 'o_sm_br_status_warn')"><t t-esc="item.severity === 'critical' ? 'Critical' : 'Warning'"/></span>
+                            <div class="o_sm_br_issue_copy"><strong t-att-title="item.title"><t t-esc="item.title"/></strong><small t-att-title="item.evidence"><t t-esc="item.branch"/> · <t t-esc="item.evidence"/></small></div>
+                            <button t-if="item.res_model" type="button" class="o_sm_br_item_action" t-on-click="() => this.openIssueRecord(item)">View</button>
+                        </div>
+                    </div>
+                    <t t-else="">
+                        <div class="o_sm_pur_table_wrap"><table class="o_sm_pur_table">
+                            <thead><tr><th>Severity</th><th>Issue</th><th>Branch</th><th>Evidence</th><th>Responsible</th><th>Deadline</th><th>Action status</th><th>Actions</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="this.pageRows('br_attention', br.attention)" t-as="item" t-key="item_index">
+                                    <td><span t-att-class="'o_sm_br_status ' + (item.severity === 'critical' ? 'o_sm_br_status_critical' : 'o_sm_br_status_warn')"><t t-esc="item.severity === 'critical' ? 'Critical' : 'Warning'"/></span></td>
+                                    <td><t t-esc="item.title"/></td>
+                                    <td><t t-esc="item.branch"/></td>
+                                    <td style="white-space:normal"><t t-esc="item.evidence"/></td>
+                                    <td><t t-esc="item.responsible"/></td>
+                                    <td><t t-esc="this.formatPurchaseDate(item.deadline)"/></td>
+                                    <td><t t-esc="item.action_status"/></td>
+                                    <td><span t-if="item.res_model" class="o_sm_issue_actions"><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.openIssueRecord(item)">Open</button><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.createIssueFollowup(item)">Assign follow-up</button></span></td>
+                                </tr>
+                            </tbody>
+                        </table></div><t t-call="strategic_management.ListPager" pagerKey="'br_attention'" pagerRows="br.attention"/>
+                    </t>
+                </article>
+        </section>
+    </t>
+</templates>

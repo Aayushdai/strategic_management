@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- App Dependencies. Called from strategic_management.NavigationShell. -->
+<templates xml:space="preserve">
+    <t t-name="strategic_management.AppDependenciesPage">
+    <div class="o_sm_appdep_page">
+        <header class="o_sm_appdep_header">
+            <div>
+                <h1>App Dependencies</h1>
+                <p>See which Odoo apps Strategic Management uses and what each one enables.</p>
+            </div>
+            <button type="button" class="o_sm_appdep_refresh" t-on-click="() => this.loadAppDependencies()"><i class="oi" data-icon="refresh" aria-hidden="true"/> Refresh status</button>
+        </header>
+        <div class="o_sm_appdep_intro"><i class="oi" data-icon="info" aria-hidden="true"/><span>Installation status is read directly from Odoo. An installed app may still need setup or usable business data. This page never installs or changes apps.</span></div>
+        <div t-if="this.state.appDependenciesLoading" class="o_sm_appdep_state">Checking Odoo app status…</div>
+        <div t-elif="this.state.appDependenciesError" class="o_sm_appdep_state o_sm_appdep_error">
+            <strong>App status could not be loaded.</strong><span><t t-esc="this.state.appDependenciesError"/></span>
+            <button type="button" class="o_sm_appdep_refresh" t-on-click="() => this.loadAppDependencies()">Try again</button>
+        </div>
+        <t t-elif="this.state.appDependenciesData">
+            <div class="o_sm_appdep_totals">
+                <div class="o_sm_appdep_total"><span>Apps checked</span><strong><t t-esc="this.state.appDependenciesData.summary.total_count"/></strong></div>
+                <div class="o_sm_appdep_total"><span>Installed</span><strong class="o_sm_appdep_total_installed"><t t-esc="this.state.appDependenciesData.summary.installed_count"/></strong></div>
+                <div class="o_sm_appdep_total"><span>Not installed</span><strong class="o_sm_appdep_total_missing"><t t-esc="this.state.appDependenciesData.summary.not_installed_count"/></strong></div>
+            </div>
+            <section class="o_sm_appdep_list" aria-label="Odoo app dependencies">
+                <article t-foreach="this.state.appDependenciesData.apps" t-as="app" t-key="app.id" class="o_sm_appdep_row">
+                    <div class="o_sm_appdep_row_main">
+                        <div t-att-class="'o_sm_appdep_icon' + (app.icon_url ? ' o_sm_appdep_icon_app' : '')"><img t-if="app.icon_url" t-att-src="app.icon_url" alt="" loading="lazy"/><i t-else="" class="oi" t-att-data-icon="app.icon" aria-hidden="true"/></div>
+                        <div class="o_sm_appdep_name"><strong><t t-esc="app.name"/></strong><small><t t-esc="app.requirement_label"/></small></div>
+                        <span t-att-class="'o_sm_appdep_status ' + (app.installed ? 'is-installed' : 'is-missing')"><i class="oi" t-att-data-icon="app.installed ? 'check_circle' : 'cancel'" aria-hidden="true"/> <t t-esc="app.status_label"/></span>
+                        <button type="button" class="o_sm_appdep_expand" t-att-aria-expanded="this.state.expandedDependencyId === app.id ? 'true' : 'false'" t-att-aria-label="(this.state.expandedDependencyId === app.id ? 'Hide details for ' : 'Show details for ') + app.name" t-on-click="() => this.toggleAppDependency(app.id)">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path t-if="this.state.expandedDependencyId === app.id" d="m6 14 6-6 6 6"/><path t-else="" d="m6 9 6 6 6-6"/></svg>
+                        </button>
+                    </div>
+                    <div t-if="this.state.expandedDependencyId === app.id" class="o_sm_appdep_details">
+                        <div><h3>What it supports</h3><p><t t-esc="app.purpose"/></p></div>
+                        <div><h3>Setup to check</h3><p><t t-esc="app.setup"/></p></div>
+                        <div class="o_sm_appdep_modules">
+                            <strong>Odoo modules checked</strong>
+                            <div t-foreach="app.modules" t-as="module" t-key="module.name" class="o_sm_appdep_module">
+                                <span><t t-esc="module.label"/> (<code><t t-esc="module.name"/></code>)</span>
+                                <span t-att-class="'o_sm_appdep_module_state ' + (module.installed ? 'is-installed' : 'is-missing')"><t t-esc="module.state_label"/></span>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            </section>
+        </t>
+    </div>
+    </t>
+</templates>

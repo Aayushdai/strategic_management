@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Purchasing. Called from strategic_management.NavigationShell. -->
+<templates xml:space="preserve">
+    <t t-name="strategic_management.PurchasingPage">
+    <t t-set="pd" t-value="this.state.purchasingData"/>
+    <t t-set="ex" t-value="this.state.purExpanded"/>
+    <div class="o_sm_purchasing_ui">
+        <header class="o_sm_pur_header">
+            <div class="o_sm_pur_title_block">
+                <h1>Purchasing</h1>
+                <p>Purchasing performance and supplier deliveries.</p>
+                <span class="o_sm_pur_preview_badge"><i class="o_sm_pur_live_dot"/> Live Odoo Purchase data</span>
+            </div>
+            <div class="o_sm_pur_filters">
+                <label class="o_sm_pur_filter"><span>From</span><input type="date" t-att-value="this.state.dateStart" t-on-change="this.onStartDateChanged" aria-label="Purchasing start date"/></label>
+                <label class="o_sm_pur_filter"><span>To</span><input type="date" t-att-value="this.state.dateEnd" t-on-change="this.onEndDateChanged" aria-label="Purchasing end date"/></label>
+                <label class="o_sm_pur_filter"><span>Branch</span><select t-att-value="this.branchSelectValue" t-on-change="this.onWarehouseChanged" aria-label="Purchasing branch filter"><option t-if="!this.isBranchManager" value="all">All Branches</option><t t-foreach="(pd ? pd.branch_options : [])" t-as="branch" t-key="branch.id"><option t-att-value="branch.id"><t t-esc="branch.name"/></option></t></select></label>
+            </div>
+        </header>
+
+        <section class="o_sm_pur_goals_strip" aria-label="Purchasing goals">
+            <t t-set="goalSummary" t-value="this.purchasingGoalSummary"/>
+            <span class="o_sm_pur_strip_icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg></span>
+            <strong>Purchasing goals</strong>
+            <t t-if="goalSummary and goalSummary.total">
+                <span class="o_sm_pur_strip_count"><b><t t-esc="goalSummary.total"/></b> goals</span>
+                <span class="o_sm_pur_pill is-good"><t t-esc="goalSummary.onTrack"/> on track</span>
+                <span class="o_sm_pur_pill is-warn"><t t-esc="goalSummary.attention"/> need attention</span>
+                <span class="o_sm_pur_pill is-neutral"><t t-esc="goalSummary.other"/> in setup or waiting</span>
+            </t>
+            <span t-elif="goalSummary" class="o_sm_pur_strip_count">No purchasing goals yet</span>
+            <span t-else="" class="o_sm_pur_strip_count">Loading goals…</span>
+            <button t-if="goalSummary and goalSummary.total" type="button" class="o_sm_pur_link" t-on-click="() => this.togglePurchasing('goals')"><t t-esc="ex.goals ? 'Hide goals' : 'View goals →'"/></button>
+        </section>
+        <t t-if="ex.goals"><t t-call="strategic_management.AreaGoals" areaKey="'purchasing'"/></t>
+
+        <div t-if="this.state.purchasingLoading" class="o_sm_pur_notice">Loading live purchasing data…</div>
+        <div t-if="!this.state.purchasingLoading &amp;&amp; !(pd &amp;&amp; pd.available)" class="o_sm_pur_notice"><t t-esc="(pd &amp;&amp; pd.messages &amp;&amp; pd.messages[0]) || 'Purchasing data is not available yet. Check that Odoo Purchase is installed and that you have access to purchase records.'"/></div>
+        <div t-if="!this.state.purchasingLoading &amp;&amp; pd &amp;&amp; pd.available &amp;&amp; pd.messages &amp;&amp; pd.messages.length" class="o_sm_pur_notice"><t t-esc="pd.messages[0]"/></div>
+
+        <section class="o_sm_pur_summary" aria-label="Purchasing summary">
+            <article t-att-class="'o_sm_pur_metric' + ((pd and pd.drill and pd.drill.purchase_orders) ? ' is-drill' : '')" t-att-role="(pd and pd.drill and pd.drill.purchase_orders) ? 'button' : false" t-att-tabindex="(pd and pd.drill and pd.drill.purchase_orders) ? 0 : false" t-on-click="() => this.openDrill(pd and pd.drill and pd.drill.purchase_orders)" t-on-keydown="(ev) => this.onDrillKey(ev, pd and pd.drill and pd.drill.purchase_orders)"><span class="o_sm_pur_metric_icon is-purple"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 12h7M9 16h7"/></svg></span><div class="o_sm_pur_metric_copy"><span>Purchase Orders</span><strong><t t-esc="pd ? this.formatNumber(pd.purchase_order_count) : '—'"/></strong><small title="Confirmed order value, excluding tax, in company currency"><t t-esc="pd ? this.formatPurchaseCurrency(pd.purchase_order_value) : '—'"/> confirmed (excl. tax)</small></div></article>
+            <article t-att-class="'o_sm_pur_metric' + ((pd and pd.drill and pd.drill.pending) ? ' is-drill' : '')" t-att-role="(pd and pd.drill and pd.drill.pending) ? 'button' : false" t-att-tabindex="(pd and pd.drill and pd.drill.pending) ? 0 : false" t-on-click="() => this.openDrill(pd and pd.drill and pd.drill.pending)" t-on-keydown="(ev) => this.onDrillKey(ev, pd and pd.drill and pd.drill.pending)"><span class="o_sm_pur_metric_icon is-orange"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h12v10H3zM15 10h4l3 3v4h-7"/><circle cx="7" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg></span><div class="o_sm_pur_metric_copy"><span>Pending Deliveries</span><strong><t t-esc="pd ? this.formatNumber(pd.pending_delivery_count) : '—'"/></strong><small title="Estimated value of unreceived quantities"><t t-esc="pd ? this.formatPurchaseCurrency(pd.pending_delivery_value) : '—'"/> still to receive</small></div></article>
+            <article t-att-class="'o_sm_pur_metric' + ((pd and pd.drill and pd.drill.overdue) ? ' is-drill' : '')" t-att-role="(pd and pd.drill and pd.drill.overdue) ? 'button' : false" t-att-tabindex="(pd and pd.drill and pd.drill.overdue) ? 0 : false" t-on-click="() => this.openDrill(pd and pd.drill and pd.drill.overdue)" t-on-keydown="(ev) => this.onDrillKey(ev, pd and pd.drill and pd.drill.overdue)"><span class="o_sm_pur_metric_icon is-red"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div class="o_sm_pur_metric_copy"><span>Overdue Deliveries</span><strong><t t-esc="pd ? this.formatNumber(pd.overdue_delivery_count) : '—'"/></strong><small title="Open incoming receipts past their scheduled date" t-att-class="pd and pd.overdue_delivery_count ? 'is-bad' : ''"><t t-esc="pd ? this.formatPurchaseCurrency(pd.overdue_delivery_value) : '—'"/> past schedule</small></div></article>
+            <article t-att-class="'o_sm_pur_metric' + ((pd and pd.drill and pd.drill.on_time) ? ' is-drill' : '')" t-att-role="(pd and pd.drill and pd.drill.on_time) ? 'button' : false" t-att-tabindex="(pd and pd.drill and pd.drill.on_time) ? 0 : false" t-on-click="() => this.openDrill(pd and pd.drill and pd.drill.on_time)" t-on-keydown="(ev) => this.onDrillKey(ev, pd and pd.drill and pd.drill.on_time)"><span class="o_sm_pur_metric_icon is-green"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m7.5 12.5 3 3 6-7"/></svg></span><div class="o_sm_pur_metric_copy"><span>On-time Delivery</span><strong><t t-esc="pd ? this.formatPurchaseRate(pd.on_time_delivery_rate) : '—'"/></strong><small title="Completed orders with recorded planned and receipt dates">Of completed receipts</small></div></article>
+        </section>
+
+        <section class="o_sm_pur_grid">
+            <article class="o_sm_pur_panel">
+                <div class="o_sm_pur_panel_heading"><h2>Purchasing Expenditure Trend</h2><span class="o_sm_pur_panel_tag"><t t-esc="pd &amp;&amp; pd.period ? this.formatPurchaseDate(pd.period.start) + ' – ' + this.formatPurchaseDate(pd.period.end) : ''"/></span></div>
+                <div class="o_sm_pur_chart_legend"><span><i class="o_sm_pur_legend_current"/>This period</span><span><i class="o_sm_pur_legend_previous"/>Previous period</span></div>
+                <div class="o_sm_pur_line_chart" role="img" aria-label="Purchasing expenditure from confirmed purchase orders">
+                    <div class="o_sm_pur_ylabels"><span><t t-esc="this.formatPurchaseCurrency(this.purchasingTrendMax())"/></span><span><t t-esc="this.formatPurchaseCurrency(this.purchasingTrendMax() * 0.75)"/></span><span><t t-esc="this.formatPurchaseCurrency(this.purchasingTrendMax() * 0.5)"/></span><span><t t-esc="this.formatPurchaseCurrency(this.purchasingTrendMax() * 0.25)"/></span><span>0</span></div>
+                    <svg viewBox="0 0 600 205" preserveAspectRatio="none" aria-hidden="true"><path class="o_sm_pur_gridline" d="M0 18H600M0 58H600M0 98H600M0 138H600M0 178H600"/><polyline class="o_sm_pur_previous_line" t-att-points="this.purchasingTrendPoints('previous')" fill="none"/><polyline class="o_sm_pur_current_line" t-att-points="this.purchasingTrendPoints('current')" fill="none"/><t t-foreach="pd ? pd.expenditure_trend : []" t-as="point" t-key="point.key"><g class="o_sm_pur_current_points"><circle t-att-cx="this.purchasingTrendX(point_index, pd.expenditure_trend.length)" t-att-cy="this.purchasingTrendY(point.current)" r="3.8"/></g><text t-att-x="this.purchasingTrendX(point_index, pd.expenditure_trend.length)" y="199" text-anchor="middle"><t t-esc="point.label"/></text></t></svg>
+                </div>
+            </article>
+            <article class="o_sm_pur_panel">
+                <div class="o_sm_pur_panel_heading"><h2>Purchasing by Category</h2><button t-if="pd and pd.purchase_categories and pd.purchase_categories.length > 4" type="button" class="o_sm_pur_link" t-on-click="() => this.togglePurchasing('categories')"><t t-esc="ex.categories ? 'Show fewer' : 'See all categories →'"/></button></div>
+                <div class="o_sm_pur_category_layout">
+                    <div class="o_sm_pur_donut" t-att-style="this.purchasingCategoryDonutStyle()" role="img" aria-label="Purchase spend by product category"><div class="o_sm_pur_donut_hole"><strong><t t-esc="this.formatPurchaseCurrency(pd ? pd.purchase_category_total : false)"/></strong><small>Category spend</small></div></div>
+                    <div class="o_sm_pur_category_legend">
+                        <t t-foreach="pd ? (ex.categories ? pd.purchase_categories : pd.purchase_categories.slice(0, 4)) : []" t-as="category" t-key="category.name"><div><i t-att-style="'background:' + this.purchasingCategoryColor(category_index)"/><span t-att-title="category.name"><t t-esc="category.name"/></span><b><t t-esc="category.share"/>%</b><strong><t t-esc="this.formatPurchaseCurrency(category.value)"/></strong></div></t>
+                        <p t-if="!(pd &amp;&amp; pd.purchase_categories &amp;&amp; pd.purchase_categories.length)">No categorized purchase lines in this period.</p>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        <section class="o_sm_pur_grid">
+            <article t-att-class="'o_sm_pur_panel' + (ex.attention ? ' is-expanded' : '')">
+                <div class="o_sm_pur_panel_heading"><h2 class="is-warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 21.5 20h-19Z"/><path d="M12 10v4.5M12 17.2h.01"/></svg>Needs Attention <span class="o_sm_pur_count"><t t-esc="pd ? pd.orders_attention.length : 0"/></span></h2><button t-if="pd and pd.orders_attention.length > 3" type="button" class="o_sm_pur_link" t-on-click="() => this.togglePurchasing('attention')"><t t-esc="ex.attention ? 'Show top 3' : 'See all orders →'"/></button></div>
+                <t t-if="!ex.attention">
+                    <div class="o_sm_pur_items">
+                        <div t-foreach="pd ? pd.orders_attention.slice(0, 3) : []" t-as="order" t-key="order.name" class="o_sm_pur_item">
+                            <div class="o_sm_pur_item_text"><strong><t t-esc="order.name"/> · <t t-esc="order.supplier"/></strong><span t-att-title="order.issue"><t t-esc="order.issue"/> · expected <t t-esc="this.formatPurchaseDate(order.expected_date)"/><t t-if="order.branch"> · <t t-esc="order.branch"/></t></span></div>
+                            <span t-att-class="'o_sm_pur_status ' + this.purchaseStatusClass(order.status_class)"><t t-esc="order.status"/></span>
+                            <button t-if="this.canOpenPurchaseOrders" type="button" class="o_sm_pur_item_action" t-on-click="() => this.openPurchaseOrder(order)">Open</button>
+                        </div>
+                        <p t-if="!(pd &amp;&amp; pd.orders_attention &amp;&amp; pd.orders_attention.length)" class="o_sm_pur_empty">No purchase orders need follow-up in this period.</p>
+                    </div>
+                </t>
+                <t t-else="">
+                    <div class="o_sm_pur_table_wrap"><table class="o_sm_pur_table"><thead><tr><th>Order</th><th>Supplier</th><th>Branch</th><th>Issue</th><th>Expected date</th><th>Status</th><th t-if="this.canOpenPurchaseOrders"/></tr></thead><tbody><t t-foreach="this.pageRows('pur_attention', pd ? pd.orders_attention : [])" t-as="order" t-key="order.name"><tr><td><t t-esc="order.name"/></td><td><t t-esc="order.supplier"/></td><td><t t-esc="order.branch"/></td><td t-att-class="order.status === 'Overdue' ? 'o_sm_pur_text_bad' : 'o_sm_pur_text_warn'"><t t-esc="order.issue"/></td><td><t t-esc="this.formatPurchaseDate(order.expected_date)"/></td><td><span t-att-class="'o_sm_pur_status ' + this.purchaseStatusClass(order.status_class)"><t t-esc="order.status"/></span></td><td t-if="this.canOpenPurchaseOrders"><button type="button" class="o_sm_pur_link" t-on-click="() => this.openPurchaseOrder(order)">Open</button></td></tr></t></tbody></table></div>
+                    <t t-call="strategic_management.ListPager" pagerKey="'pur_attention'" pagerRows="pd ? pd.orders_attention : []"/>
+                </t>
+            </article>
+            <article t-att-class="'o_sm_pur_panel' + (ex.suppliers ? ' is-expanded' : '')">
+                <div class="o_sm_pur_panel_heading"><h2>Supplier Performance</h2><button t-if="pd and pd.supplier_performance.length > 4" type="button" class="o_sm_pur_link" t-on-click="() => this.togglePurchasing('suppliers')"><t t-esc="ex.suppliers ? 'Show top 4' : 'See more →'"/></button></div>
+                <span class="o_sm_pur_panel_sub">On-time delivery of completed orders</span>
+                <div class="o_sm_pur_supplier_list">
+                    <t t-foreach="ex.suppliers ? this.pageRows('pur_suppliers', pd ? pd.supplier_performance : []) : (pd ? pd.supplier_performance.slice(0, 4) : [])" t-as="supplier" t-key="supplier.name"><div class="o_sm_pur_supplier_row"><span t-att-title="supplier.name"><t t-esc="supplier.name"/></span><div class="o_sm_pur_bar_track"><i t-att-class="this.purchaseSupplierBarClass(supplier.rate)" t-att-style="'width:' + supplier.rate + '%'"/></div><b><t t-esc="this.formatPurchaseRate(supplier.rate)"/></b></div></t>
+                    <p t-if="!(pd &amp;&amp; pd.supplier_performance &amp;&amp; pd.supplier_performance.length)" class="o_sm_pur_empty">No completed receipts with expected dates in this period.</p>
+                </div>
+                <t t-if="ex.suppliers"><t t-call="strategic_management.ListPager" pagerKey="'pur_suppliers'" pagerRows="pd ? pd.supplier_performance : []"/></t>
+            </article>
+        </section>
+
+        <section class="o_sm_pur_grid">
+            <article t-att-class="'o_sm_pur_panel' + (ex.recent ? ' is-expanded' : '')">
+                <div class="o_sm_pur_panel_heading"><h2>Recent Purchase Orders</h2><button t-if="pd and pd.recent_orders.length > 3" type="button" class="o_sm_pur_link" t-on-click="() => this.togglePurchasing('recent')"><t t-esc="ex.recent ? 'Show latest 3' : 'See all orders →'"/></button></div>
+                <t t-if="!ex.recent">
+                    <div class="o_sm_pur_items">
+                        <div t-foreach="pd ? pd.recent_orders.slice(0, 3) : []" t-as="order" t-key="order.id" class="o_sm_pur_item">
+                            <div class="o_sm_pur_item_text"><strong><t t-esc="order.name"/> · <t t-esc="order.supplier"/></strong><span><t t-esc="this.formatPurchaseDate(order.date)"/><t t-if="order.branch"> · <t t-esc="order.branch"/></t></span></div>
+                            <b class="o_sm_pur_item_amount"><t t-esc="this.formatPurchaseCurrency(order.amount)"/></b>
+                            <span t-att-class="'o_sm_pur_status ' + this.purchaseStatusClass(order.status_class)"><t t-esc="order.status"/></span>
+                            <button t-if="this.canOpenPurchaseOrders" type="button" class="o_sm_pur_item_action" t-on-click="() => this.openPurchaseOrder(order)">Open</button>
+                        </div>
+                        <p t-if="!(pd &amp;&amp; pd.recent_orders &amp;&amp; pd.recent_orders.length)" class="o_sm_pur_empty">No purchase orders in this period.</p>
+                    </div>
+                </t>
+                <t t-else="">
+                    <div class="o_sm_pur_table_wrap"><table class="o_sm_pur_table"><thead><tr><th>Order</th><th>Supplier</th><th>Branch</th><th>Order date</th><th>Amount</th><th>Status</th><th t-if="this.canOpenPurchaseOrders"/></tr></thead><tbody><t t-foreach="this.pageRows('pur_recent', pd ? pd.recent_orders : [])" t-as="order" t-key="order.id"><tr><td><t t-esc="order.name"/></td><td><t t-esc="order.supplier"/></td><td><t t-esc="order.branch"/></td><td><t t-esc="this.formatPurchaseDate(order.date)"/></td><td><t t-esc="this.formatPurchaseCurrency(order.amount)"/></td><td><span t-att-class="'o_sm_pur_status ' + this.purchaseStatusClass(order.status_class)"><t t-esc="order.status"/></span></td><td t-if="this.canOpenPurchaseOrders"><button type="button" class="o_sm_pur_link" t-on-click="() => this.openPurchaseOrder(order)">Open</button></td></tr></t></tbody></table></div>
+                    <t t-call="strategic_management.ListPager" pagerKey="'pur_recent'" pagerRows="pd ? pd.recent_orders : []"/>
+                </t>
+            </article>
+            <article t-att-class="'o_sm_pur_panel' + (ex.prices ? ' is-expanded' : '')">
+                <div class="o_sm_pur_panel_heading"><h2>Ingredient Price Trend</h2><button t-if="pd and pd.ingredient_price_trend.length" type="button" class="o_sm_pur_link" t-on-click="() => this.togglePurchasing('prices')"><t t-esc="ex.prices ? 'Show summary' : 'See price history →'"/></button></div>
+                <t t-if="!ex.prices">
+                    <div class="o_sm_pur_items">
+                        <div t-foreach="pd ? pd.ingredient_price_trend.slice(0, 3) : []" t-as="product" t-key="product.product_id" class="o_sm_pur_item">
+                            <div class="o_sm_pur_item_text"><strong><t t-esc="product.name"/></strong><span><t t-if="product.unit">per <t t-esc="product.unit"/> · </t>latest month price</span></div>
+                            <t t-set="latestPrice" t-value="product.monthly_prices.filter((price) => price.value !== false).at(-1)"/>
+                            <b class="o_sm_pur_item_amount"><t t-esc="latestPrice ? this.formatPurchaseCurrency(latestPrice.value) : '—'"/></b>
+                            <span class="o_sm_pur_trend_tag"><t t-esc="product.trend"/></span>
+                        </div>
+                        <p t-if="!(pd &amp;&amp; pd.ingredient_price_trend &amp;&amp; pd.ingredient_price_trend.length)" class="o_sm_pur_empty">No purchase prices in this period.</p>
+                    </div>
+                </t>
+                <t t-else="">
+                    <div class="o_sm_pur_table_wrap"><table class="o_sm_pur_table o_sm_pur_price_table"><thead><tr><th>Product</th><th>Unit</th><t t-foreach="pd ? pd.price_months : []" t-as="month" t-key="month.key"><th><t t-esc="month.label"/></th></t><th>Trend</th></tr></thead><tbody><t t-foreach="pd ? pd.ingredient_price_trend : []" t-as="product" t-key="product.product_id"><tr><td><t t-esc="product.name"/></td><td><t t-esc="product.unit"/></td><t t-foreach="product.monthly_prices" t-as="monthPrice" t-key="monthPrice.key"><td><t t-esc="monthPrice.value === false ? '—' : this.formatPurchaseCurrency(monthPrice.value)"/></td></t><td><t t-esc="product.trend"/></td></tr></t></tbody></table></div>
+                </t>
+            </article>
+        </section>
+    </div>
+    </t>
+</templates>

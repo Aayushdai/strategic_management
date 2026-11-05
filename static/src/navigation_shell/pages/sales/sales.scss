@@ -1,0 +1,233 @@
+// Sales.
+
+/* Sales base styles */
+.o_sm_navigation_shell .o_sm_sales_finance { display: flex; flex-direction: column; gap: .8rem; min-width: 0; color: #152238; }
+.o_sm_navigation_shell .o_sm_sf_header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: .15rem; }
+.o_sm_navigation_shell .o_sm_sf_title_block { min-width: 0; }
+.o_sm_navigation_shell .o_sm_sf_header h1 { margin: 0 0 .15rem; color: #151d31; font-size: 1.65rem; font-weight: 650; line-height: 1.25; }
+.o_sm_navigation_shell .o_sm_sf_header p { margin: 0 0 .35rem; color: #56657b; font-size: .84rem; }
+.o_sm_navigation_shell .o_sm_sf_preview_badge { display: inline-flex; align-items: center; gap: .35rem; padding: .2rem .45rem; border: 1px solid #ded6eb; border-radius: .3rem; background: #f5f0fa; color: #755d8d; font-size: .66rem; }
+.o_sm_navigation_shell .o_sm_sf_filters { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .5rem; }
+.o_sm_navigation_shell .o_sm_sf_filter { display: flex; align-items: center; gap: .45rem; min-height: 2.45rem; padding: .4rem .65rem; border: 1px solid #dfe4ec; border-radius: .5rem; background: #fff; color: #34445e; font-size: .78rem; white-space: nowrap; }
+.o_sm_navigation_shell .o_sm_sf_filter > i:first-child { color: #66758b; }
+.o_sm_navigation_shell .o_sm_sf_filter > i:last-child { margin-left: .25rem; color: #66758b; font-size: .66rem; }
+.o_sm_navigation_shell .o_sm_sf_summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; }
+.o_sm_navigation_shell .o_sm_sf_metric { display: flex; align-items: flex-start; gap: .75rem; min-width: 0; min-height: 6.2rem; padding: .9rem; border: 1px solid #e3e8f0; border-radius: .7rem; background: #fff; box-shadow: 0 1px 2px #10182808; }
+.o_sm_navigation_shell .o_sm_sf_metric_icon { display: flex; flex: 0 0 3rem; align-items: center; justify-content: center; width: 3rem; height: 3rem; border-radius: .6rem; font-size: 1.25rem; }
+.o_sm_navigation_shell .o_sm_sf_icon_sales { color: #21a45a; background: #e2f7e9; }
+.o_sm_navigation_shell .o_sm_sf_icon_orders { color: #1687db; background: #e4f2ff; }
+.o_sm_navigation_shell .o_sm_sf_icon_average { color: #e98312; background: #fff0db; }
+.o_sm_navigation_shell .o_sm_sf_icon_adjustments { color: #c43131; background: #ffe6e7; }
+.o_sm_navigation_shell .o_sm_sf_metric_copy { display: flex; flex-direction: column; min-width: 0; gap: .2rem; padding-top: .1rem; }
+.o_sm_navigation_shell .o_sm_sf_metric_copy > span { color: #44536d; font-size: .78rem; }
+.o_sm_navigation_shell .o_sm_sf_metric_copy > strong { color: #101b30; font-size: clamp(.95rem, 1.05vw, 1.25rem); font-weight: 700; line-height: 1.25; white-space: nowrap; }
+.o_sm_navigation_shell .o_sm_sf_metric_copy small { font-size: .7rem; }
+.o_sm_navigation_shell .o_sm_sf_metric_copy small em { color: #6b7890; font-style: normal; }
+
+.o_sm_navigation_shell .o_sm_sf_grid { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr); gap: .8rem; min-width: 0; }
+.o_sm_navigation_shell .o_sm_sf_panel { min-width: 0; padding: .9rem 1rem; border: 1px solid #e2e7ef; border-radius: .7rem; background: #fff; box-shadow: 0 1px 2px #10182808; }
+.o_sm_navigation_shell .o_sm_sf_panel_heading { display: flex; justify-content: space-between; align-items: center; gap: .6rem; margin-bottom: .8rem; }
+.o_sm_navigation_shell .o_sm_sf_panel_heading h2 { margin: 0; color: #131e32; font-size: .98rem; font-weight: 650; }
+.o_sm_navigation_shell .o_sm_sf_toggle { display: inline-flex; padding: .15rem; border: 1px solid #e1e5ed; border-radius: .45rem; background: #fbfcfe; color: #34445e; font-size: .7rem; }
+.o_sm_navigation_shell .o_sm_sf_toggle > span, .o_sm_navigation_shell .o_sm_sf_toggle > strong { padding: .35rem .65rem; border-radius: .32rem; font-weight: 500; }
+.o_sm_navigation_shell .o_sm_sf_toggle > strong { border: 1px solid #7957a6; background: #fff; color: #634186; font-weight: 650; }
+.o_sm_navigation_shell .o_sm_sf_toggle > button { border: 0; background: transparent; color: inherit; padding: .35rem .65rem; border-radius: .32rem; font: inherit; cursor: pointer; }
+.o_sm_navigation_shell .o_sm_sf_toggle > button.is-active { border: 1px solid #7957a6; background: #fff; color: #634186; font-weight: 650; }
+.o_sm_navigation_shell .o_sm_sf_toggle > button:focus-visible { outline: 2px solid #7957a6; outline-offset: 2px; }
+.o_sm_navigation_shell .o_sm_sf_legend { display: flex; flex-wrap: wrap; gap: 1rem; margin: 0 0 .25rem 3.1rem; color: #5d6b80; font-size: .68rem; }
+.o_sm_navigation_shell .o_sm_sf_legend > span { display: inline-flex; align-items: center; gap: .35rem; }
+.o_sm_navigation_shell .o_sm_sf_legend_current { width: 1.1rem; height: .22rem; border-radius: .3rem; background: #7752a5; }
+
+.o_sm_navigation_shell .o_sm_sf_trend_chart { display: block; width: 100%; height: 11.6rem; overflow: visible; }
+.o_sm_navigation_shell .o_sm_sf_trend_chart line { stroke: #e9edf3; stroke-width: 1; }
+.o_sm_navigation_shell .o_sm_sf_trend_chart line.o_sm_sf_axis { stroke: #d5dce7; }
+.o_sm_navigation_shell .o_sm_sf_trend_chart text { fill: #4f607b; font-size: 10px; }
+.o_sm_navigation_shell .o_sm_sf_current_line { fill: none; stroke: #8056b1; stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+
+.o_sm_navigation_shell .o_sm_sf_select_static { display: inline-flex; align-items: center; gap: .65rem; padding: .4rem .6rem; border: 1px solid #e0e5ed; border-radius: .4rem; color: #34445e; font-size: .7rem; white-space: nowrap; }
+.o_sm_navigation_shell .o_sm_sf_select_control { max-width: 12rem; background: #fff; font-family: inherit; cursor: pointer; }
+.o_sm_navigation_shell .o_sm_sf_select_static i { color: #66758b; font-size: .65rem; }
+.o_sm_navigation_shell .o_sm_sf_branch_rows { display: flex; flex-direction: column; gap: .85rem; padding: .55rem 0 .25rem; }
+.o_sm_navigation_shell .o_sm_sf_branch_row { display: grid; grid-template-columns: minmax(5.5rem, .8fr) minmax(3.5rem, 1.25fr) auto; align-items: center; gap: .55rem; color: #34445e; font-size: .72rem; }
+.o_sm_navigation_shell .o_sm_sf_branch_row > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.o_sm_navigation_shell .o_sm_sf_branch_row > strong { color: #18253b; font-size: .7rem; font-weight: 550; white-space: nowrap; }
+.o_sm_navigation_shell .o_sm_sf_track { height: 1.45rem; overflow: hidden; border-radius: .28rem; background: #f0f2f7; }
+.o_sm_navigation_shell .o_sm_sf_track > i { display: block; height: 100%; border-radius: .28rem; background: linear-gradient(90deg, #8056b1, #b18bd4); }
+.o_sm_navigation_shell .o_sm_sf_table_wrap { overflow-x: auto; }
+.o_sm_navigation_shell .o_sm_sf_table { width: 100%; border-collapse: collapse; color: #34445e; font-size: .7rem; }
+.o_sm_navigation_shell .o_sm_sf_table th { padding: .55rem .42rem; background: #f7f9fc; color: #26364f; font-weight: 650; text-align: left; white-space: nowrap; }
+.o_sm_navigation_shell .o_sm_sf_table td { padding: .48rem .42rem; border-top: 1px solid #ebeff4; white-space: nowrap; }
+.o_sm_navigation_shell .o_sm_sf_table td:nth-child(4), .o_sm_navigation_shell .o_sm_sf_table td:last-child, .o_sm_navigation_shell .o_sm_sf_table th:nth-last-child(-n+2) { text-align: right; }
+.o_sm_navigation_shell .o_sm_sf_product_icon { display: inline-flex; align-items: center; justify-content: center; width: 1.55rem; height: 1.55rem; margin-right: .4rem; border: 1px solid #e3e6ed; border-radius: .35rem; background: #f4e6d6; color: #6e4d31; vertical-align: middle; }
+
+.o_sm_navigation_shell .o_sm_sf_donut_layout { display: flex; align-items: center; gap: 1.1rem; min-height: 12rem; }
+.o_sm_navigation_shell .o_sm_sf_donut { display: flex; flex: 0 0 10.5rem; align-items: center; justify-content: center; width: 10.5rem; height: 10.5rem; border-radius: 50%; }
+.o_sm_navigation_shell .o_sm_sf_category_donut { background: conic-gradient(#8056b1 0 56.2%, #46c982 56.2% 84.6%, #ff9d24 84.6% 92.7%, #79bfff 92.7% 100%); }
+
+.o_sm_navigation_shell .o_sm_sf_donut_hole { display: flex; align-items: center; justify-content: center; flex-direction: column; width: 6.2rem; height: 6.2rem; border-radius: 50%; background: #fff; text-align: center; }
+.o_sm_navigation_shell .o_sm_sf_donut_hole strong { color: #152238; font-size: .98rem; font-weight: 700; }
+.o_sm_navigation_shell .o_sm_sf_donut_hole span { margin-top: .12rem; color: #66758b; font-size: .7rem; }
+.o_sm_navigation_shell .o_sm_sf_donut_legend { display: flex; flex: 1 1 auto; flex-direction: column; gap: .72rem; min-width: 0; }
+.o_sm_navigation_shell .o_sm_sf_donut_legend > div { display: grid; grid-template-columns: .6rem minmax(3.6rem, 1fr) auto; align-items: center; column-gap: .45rem; color: #35455e; font-size: .68rem; }
+.o_sm_navigation_shell .o_sm_sf_donut_legend > div > i { width: .58rem; height: .58rem; border-radius: 50%; }
+.o_sm_navigation_shell .o_sm_sf_donut_legend > div > b { color: #53627b; font-weight: 500; text-align: right; }
+.o_sm_navigation_shell .o_sm_sf_donut_legend > div > strong { grid-column: 2 / -1; padding-top: .12rem; color: #1f2d44; font-size: .68rem; font-weight: 600; text-align: right; white-space: nowrap; }
+
+.o_sm_navigation_shell .o_sm_sf_hour_chart { display: flex; min-height: 11.8rem; gap: .6rem; }
+.o_sm_navigation_shell .o_sm_sf_hour_y { display: flex; flex: 0 0 2.5rem; flex-direction: column; justify-content: space-between; padding: .1rem 0 1.55rem; color: #58677e; font-size: .65rem; text-align: right; }
+.o_sm_navigation_shell .o_sm_sf_hour_plot { position: relative; flex: 1 1 auto; min-width: 0; }
+.o_sm_navigation_shell .o_sm_sf_hour_grid { position: absolute; inset: .35rem 0 1.5rem; display: flex; flex-direction: column; justify-content: space-between; }
+.o_sm_navigation_shell .o_sm_sf_hour_grid > i { display: block; border-top: 1px solid #e9edf3; }
+.o_sm_navigation_shell .o_sm_sf_hour_bars { position: absolute; inset: .45rem 0 0; display: flex; align-items: stretch; justify-content: space-between; gap: .2rem; }
+.o_sm_navigation_shell .o_sm_sf_hour_bars > div { display: flex; flex: 1 1 0; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 0; gap: .4rem; }
+.o_sm_navigation_shell .o_sm_sf_hour_bars > div > i { display: block; width: 72%; max-width: 1.25rem; min-height: .25rem; border-radius: .22rem .22rem 0 0; background: linear-gradient(180deg, #b28bd7, #8b67bf); }
+.o_sm_navigation_shell .o_sm_sf_hour_bars > div > span { color: #58677e; font-size: .58rem; white-space: nowrap; }
+@media (max-width: 1350px) {
+    .o_sm_navigation_shell .o_sm_sf_summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .o_sm_navigation_shell .o_sm_sf_grid { grid-template-columns: minmax(0, 1fr); }
+    .o_sm_navigation_shell .o_sm_sf_donut_layout { justify-content: flex-start; }
+}
+
+@media (max-width: 850px) {
+    .o_sm_navigation_shell .o_sm_sf_header { flex-direction: column; }
+    .o_sm_navigation_shell .o_sm_sf_filters { justify-content: flex-start; }
+    .o_sm_navigation_shell .o_sm_sf_donut_layout { flex-wrap: wrap; }
+}
+
+@media (max-width: 560px) {
+    .o_sm_navigation_shell .o_sm_sf_summary { grid-template-columns: minmax(0, 1fr); }
+    .o_sm_navigation_shell .o_sm_sf_metric_copy > strong { white-space: normal; }
+    .o_sm_navigation_shell .o_sm_sf_donut { flex-basis: 9rem; width: 9rem; height: 9rem; }
+    .o_sm_navigation_shell .o_sm_sf_donut_hole { width: 5.6rem; height: 5.6rem; }
+    .o_sm_navigation_shell .o_sm_sf_branch_row { grid-template-columns: minmax(5rem, .75fr) minmax(3rem, 1fr); }
+    .o_sm_navigation_shell .o_sm_sf_branch_row > strong { grid-column: 2; text-align: right; }
+    .o_sm_navigation_shell .o_sm_sf_hour_bars > div > span { transform: rotate(-45deg); transform-origin: top center; }
+}
+
+/* Inline icon sizing */
+.o_sm_navigation_shell .o_sm_sales_finance .o_sm_sf_ui_icon { display: inline-block; flex: 0 0 auto; width: 1.05rem; height: 1.05rem; vertical-align: middle; }
+
+.o_sm_navigation_shell .o_sm_sales_finance .o_sm_sf_metric_icon .o_sm_sf_ui_icon { width: 1.42rem; height: 1.42rem; }
+.o_sm_navigation_shell .o_sm_sales_finance .o_sm_sf_product_icon .o_sm_sf_ui_icon { width: 1rem; height: 1rem; }
+
+/* Sales page look. Every rule starts with .o_sm_sales_finance,
+so the shared goals table, notices and the old .o_sm_sf_* defaults stay as they are on other pages. */
+.o_sm_navigation_shell .o_sm_workspace:has(> .o_sm_sales_finance) { padding: 0; background: #f7f7fb; }
+
+.o_sm_navigation_shell .o_sm_sales_finance {
+    gap: 1rem; padding: 1.1rem 1.5rem 1.5rem 1.75rem; color: var(--sm-home-navy);
+
+    /* header and filters */
+    .o_sm_sf_header { align-items: flex-start; gap: 1rem; margin: 0; }
+    .o_sm_sf_header h1 { margin: 0 0 .25rem; color: var(--sm-home-navy); font-size: 1.875rem; font-weight: 700; letter-spacing: -.015em; line-height: 1.2; }
+    .o_sm_sf_header p { margin: 0 0 .5rem; color: #4a5069; font-size: .95rem; }
+    .o_sm_sf_preview_badge { padding: .2rem .65rem; border: 0; border-radius: 999px; background: #efecfb; color: #5a48b8; font-size: .75rem; font-weight: 500; }
+    .o_sm_sf_filters { align-items: center; gap: .65rem; }
+    .o_sm_sf_filter {
+        gap: .45rem; min-height: 2.4rem; padding: 0 .75rem; border: 1px solid var(--sm-home-border); border-radius: .5rem; background: #fff;
+        box-shadow: 0 1px 2px rgba(29, 35, 64, .05); color: var(--sm-home-navy); font-size: .9rem;
+        > span { color: var(--sm-home-muted); font-size: .8rem; }
+        input, select { padding: .25rem .15rem; border: 0; background-color: transparent; color: inherit; font: inherit; }
+        input:focus, select:focus { outline: none; }
+        &:focus-within { border-color: var(--sm-home-purple); }
+    }
+
+    /* goals in this area (shared table, restyled here only) */
+    .o_sm_area_goals { margin: 0; padding: 1rem 1.15rem; border: 1px solid var(--sm-home-border); border-radius: .75rem; box-shadow: 0 1px 3px rgba(29, 35, 64, .04); }
+    .o_sm_area_goals_head { margin-bottom: .5rem; h2 { color: var(--sm-home-navy); font-size: 1rem; } span { color: var(--sm-home-muted); font-size: .8rem; } }
+    .o_sm_area_goals_empty { color: var(--sm-home-muted); font-size: .875rem; }
+    .o_sm_pur_table { color: var(--sm-home-navy); font-size: .85rem;
+        th { padding: .5rem .6rem; border-bottom: 1px solid var(--sm-home-border); background: transparent; color: var(--sm-home-muted); font-size: .78rem; font-weight: 600; }
+        td { padding: .6rem .6rem; border-top: 1px solid #eef0f5; vertical-align: middle; }
+        tbody tr:first-child td { border-top: 0; }
+        tbody tr:hover td { background: #faf9fe; }
+    }
+    .o_sm_area_goals_sub { color: var(--sm-home-muted); font-size: .78rem; }
+    .o_sm_area_goal_status { padding: .2rem .6rem; font-size: .75rem; font-weight: 600; }
+    .o_sm_area_goal_status.is-neutral { background: #efecfb; color: #5a48b8; }
+    .o_sm_ov_text_action { color: var(--sm-home-purple); font-size: .85rem; font-weight: 500; }
+
+    /* KPI cards */
+    .o_sm_sf_summary { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .85rem; }
+    .o_sm_sf_metric { gap: .75rem; min-height: 6.6rem; padding: .95rem 1rem; border: 1px solid var(--sm-home-border); border-radius: .75rem; background: #fff; box-shadow: 0 1px 3px rgba(29, 35, 64, .04); }
+    .o_sm_sf_metric_icon { flex: 0 0 2.5rem; width: 2.5rem; height: 2.5rem; border-radius: 50%; color: #fff; .o_sm_sf_ui_icon { width: 1.2rem; height: 1.2rem; stroke-width: 2; } }
+    .o_sm_sf_icon_sales { background: var(--sm-home-purple); color: #fff; }
+    .o_sm_sf_icon_orders { background: #4a8fe7; color: #fff; }
+    .o_sm_sf_icon_average { background: #35b56f; color: #fff; }
+    .o_sm_sf_icon_adjustments { background: #f5a524; color: #fff; }
+    .o_sm_sf_metric_copy { gap: .3rem; padding: 0; }
+    .o_sm_sf_metric_copy > span { overflow: hidden; color: #39405a; font-size: .875rem; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+    .o_sm_sf_metric_copy > strong { overflow: hidden; color: var(--sm-home-navy); font-size: 1.4rem; font-weight: 700; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+    .o_sm_sf_metric_copy small { color: var(--sm-home-muted); font-size: .76rem; line-height: 1.35; }
+
+    /* panels, headings, controls */
+    .o_sm_sf_grid { gap: .85rem; }
+    .o_sm_sf_panel { padding: 1rem 1.15rem; border: 1px solid var(--sm-home-border); border-radius: .75rem; background: #fff; box-shadow: 0 1px 3px rgba(29, 35, 64, .04); }
+    .o_sm_sf_panel_heading { margin-bottom: .6rem; h2 { color: var(--sm-home-navy); font-size: 1rem; font-weight: 650; } }
+    .o_sm_sf_toggle { padding: .2rem; border: 0; border-radius: .5rem; background: #f1f0f8; font-size: .8rem;
+        > button { padding: .3rem .7rem; border: 0; border-radius: .4rem; color: #4a5069; }
+        > button.is-active { border: 0; background: #fff; box-shadow: 0 1px 2px rgba(29, 35, 64, .12); color: var(--sm-home-purple); font-weight: 600; }
+        > button:focus-visible { outline-color: var(--sm-home-purple); }
+    }
+    .o_sm_sf_select_control { padding: .35rem .6rem; border: 1px solid var(--sm-home-border); border-radius: .5rem; color: var(--sm-home-navy); font-size: .8rem; }
+    .o_sm_sf_legend { margin: 0 0 .35rem; color: var(--sm-home-muted); font-size: .78rem; }
+    .o_sm_sf_legend_current { background: #7462d6; }
+    .o_sm_sf_empty_state, .o_sm_br_notice { color: var(--sm-home-muted); font-size: .85rem; }
+    .o_sm_br_notice { padding: .6rem .8rem; border-color: var(--sm-home-border); border-radius: .6rem; background: #fff; }
+
+    /* Sales Trend */
+    .o_sm_sf_trend_chart { height: auto; line { stroke: #eceef4; } line.o_sm_sf_axis { stroke: #e1e3ec; } text { fill: #4a5069; font-size: 11px; } }
+    .o_sm_sf_current_line { stroke: #7462d6; stroke-width: 2.6; }
+    .o_sm_sf_sales_point { fill: #6f5bd3; stroke: #fff; stroke-width: 1.5; }
+
+    /* Sales by Branch */
+    .o_sm_sf_branch_rows { gap: .75rem; padding: .35rem 0 .15rem; }
+    .o_sm_sf_branch_row { gap: .7rem; color: #39405a; font-size: .85rem; > strong { color: var(--sm-home-navy); font-size: .85rem; font-weight: 600; } }
+    .o_sm_sf_track { height: 1rem; border-radius: .35rem; background: #f1f0f8; > i { border-radius: .35rem; background: linear-gradient(90deg, #7b68d9, #9d8fe3); } }
+
+    /* Best-Selling Products */
+    .o_sm_sf_table { color: var(--sm-home-navy); font-size: .85rem;
+        th { padding: .5rem .6rem; border-bottom: 1px solid var(--sm-home-border); background: transparent; color: var(--sm-home-muted); font-size: .78rem; font-weight: 600; }
+        td { padding: .6rem .6rem; border-top: 1px solid #eef0f5; }
+        tbody tr:first-child td { border-top: 0; }
+    }
+    .o_sm_sf_product_icon { width: 1.4rem; height: 1.4rem; border: 0; border-radius: 50%; background: #efecfb; color: var(--sm-home-purple); font-size: .6rem; }
+
+    /* Sales by Category */
+    .o_sm_sf_donut_layout { gap: 1.4rem; min-height: 10rem; }
+    .o_sm_sf_donut { flex-basis: 9rem; width: 9rem; height: 9rem; }
+    .o_sm_sf_donut_hole { width: 5.6rem; height: 5.6rem; strong { color: var(--sm-home-navy); font-size: .95rem; } span { color: var(--sm-home-muted); font-size: .75rem; } }
+    .o_sm_sf_donut_legend { gap: .6rem;
+        > div { color: #39405a; font-size: .85rem; > i { width: .65rem; height: .65rem; } > b { color: var(--sm-home-muted); } > strong { color: var(--sm-home-navy); font-size: .82rem; } }
+        > p { color: var(--sm-home-muted); font-size: .85rem; }
+    }
+
+    /* Sales by Hour */
+    .o_sm_sf_hour_y { color: #4a5069; font-size: .72rem; }
+    .o_sm_sf_hour_grid > i { border-top-color: #eceef4; }
+    .o_sm_sf_hour_bars > div > i { border-radius: .3rem .3rem 0 0; background: linear-gradient(180deg, #9d8fe3, #7462d6); }
+    .o_sm_sf_hour_bars > div > span { min-height: 1rem; color: #4a5069; font-size: .68rem; line-height: 1rem; }
+    .o_sm_sf_grid_bottom { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 1200px) {
+    .o_sm_navigation_shell .o_sm_sales_finance {
+        .o_sm_sf_summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .o_sm_sf_grid { grid-template-columns: minmax(0, 1fr); }
+    }
+}
+
+@media (max-width: 900px) {
+    .o_sm_navigation_shell .o_sm_sales_finance {
+        padding: .8rem 1rem 1.5rem;
+        .o_sm_sf_header { flex-direction: column; }
+        .o_sm_sf_filters { justify-content: flex-start; }
+    }
+}
+
+@media (max-width: 620px) {
+    .o_sm_navigation_shell .o_sm_sales_finance {
+        .o_sm_sf_summary { grid-template-columns: minmax(0, 1fr); }
+        .o_sm_sf_header h1 { font-size: 1.6rem; }
+        .o_sm_sf_donut_layout { flex-wrap: wrap; }
+    }
+}
