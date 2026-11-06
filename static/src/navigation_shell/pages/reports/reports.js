@@ -4,7 +4,7 @@
 // These functions become methods of StrategicNavigationShell (see navigation_shell.js); this page's
 // template is reports.xml and its styles reports.scss, next to this file.
 
-import { SECTION_LINKS, REPORT_MODEL, REPORT_SECTIONS, CONFIG_GROUPS } from "../../constants";
+import { SECTION_LINKS, REPORT_MODEL, REPORT_SECTIONS, CONFIG_GROUPS, REPORT_GROUPS } from "../../constants";
 
 export const reportsPage = {
     // ------------------------------------------------------------ Branch reports
@@ -111,10 +111,11 @@ export const reportsPage = {
         });
     },
 
-    /** Settings: the configuration links of this role, grouped. */
-    get configGroups() {
-        const links = this.sectionLinks("configuration");
-        return CONFIG_GROUPS.map((group) => ({ ...group, links: links.filter((link) => link.group === group.key) })).filter((group) => group.links.length);
+    /** Reports and Settings: this role's links for the open page, grouped. */
+    get linkGroups() {
+        const section = this.state.activeSection;
+        const links = this.sectionLinks(section);
+        return (section === "reports" ? REPORT_GROUPS : CONFIG_GROUPS).map((group) => ({ ...group, links: links.filter((link) => link.group === group.key) })).filter((group) => group.links.length);
     },
 
     sectionLinks(sectionId) {

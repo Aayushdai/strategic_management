@@ -11,8 +11,8 @@
         </div></header>
         <t t-if="this.state.activeSection === 'reports' and this.canUseReports"><t t-call="strategic_management.BranchReports"/></t>
         <p t-if="!links.length" class="o_sm_br_notice">No items are available for your role.</p>
-        <div t-if="this.state.activeSection === 'configuration'" class="o_sm_cfg">
-            <section t-foreach="this.configGroups" t-as="group" t-key="group.key" t-att-class="'o_sm_cfg_group is-' + group.key" t-att-aria-labelledby="'o_sm_cfg_' + group.key">
+        <div class="o_sm_cfg">
+            <section t-foreach="this.linkGroups" t-as="group" t-key="group.key" t-att-class="'o_sm_cfg_group is-' + group.key" t-att-aria-labelledby="'o_sm_cfg_' + group.key">
                 <header class="o_sm_cfg_group_head">
                     <h2 t-att-id="'o_sm_cfg_' + group.key" t-esc="group.label"/>
                     <p t-esc="group.description"/>
@@ -26,12 +26,6 @@
                 </div>
             </section>
         </div>
-        <section t-else="" class="o_sm_ov_ops_grid">
-            <article t-foreach="links" t-as="link" t-key="link.xmlid" class="o_sm_ov_panel">
-                <div class="o_sm_ov_panel_heading"><div><h2><t t-esc="link.label"/></h2><p><t t-esc="link.description"/></p></div></div>
-                <button type="button" class="o_sm_ov_text_action" t-on-click="() => this.openAction(link.xmlid)">Open <span>→</span></button>
-            </article>
-        </section>
     </div>
     </t>
     <t t-name="strategic_management.BranchReports">

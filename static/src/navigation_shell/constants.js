@@ -25,14 +25,20 @@ export const CONFIG_GROUPS = [
     { key: "operations", label: "Operations", description: "Branches, recipes and stock levels the figures come from." },
     { key: "access", label: "Access", description: "Who can use the app and for which branch." },
 ];
+// Reports groups its analysis links the same way, with the same card look.
+export const REPORT_GROUPS = [
+    { key: "sales", label: "Sales & Finance", description: "What was sold and what it earned." },
+    { key: "stock", label: "Purchasing & Stock", description: "What was bought, received and moved." },
+    { key: "kpi", label: "KPIs", description: "KPI results over time, and the ones that could not be measured." },
+];
 export const SECTION_LINKS = {
     reports: [
-        { xmlid: "point_of_sale.action_report_pos_order_all", label: "POS Sales Analysis", description: "Sales, margin and quantities by product, branch and period.", roles: ["head_office"] },
-        { xmlid: "purchase.action_purchase_order_report_all", label: "Purchase Analysis", description: "Purchasing spend, suppliers and delivery performance.", roles: ["head_office"] },
-        { xmlid: "stock.stock_move_action", label: "Stock Movements", description: "Receipts, consumption, scrap and adjustments by location.", roles: ["head_office"] },
-        { xmlid: "account.action_account_moves_all", label: "Journal Items", description: "Posted income and expenses behind net profit.", roles: ["head_office"] },
-        { xmlid: "strategic_management.action_strategic_kpi_analysis", label: "KPI Analysis", description: "KPI evaluations over time, by branch and status.", roles: ["head_office", "branch_manager"] },
-        { xmlid: "strategic_management.action_strategic_kpi_exceptions", label: "KPI Exceptions", description: "Targets that could not be evaluated, with reasons.", roles: ["head_office", "branch_manager"] },
+        { xmlid: "point_of_sale.action_report_pos_order_all", group: "sales", icon: "M4 20V10M9 20V4M14 20v-8M19 20v-5", label: "POS Sales Analysis", description: "Sales, margin and quantities by product, branch and period.", roles: ["head_office"] },
+        { xmlid: "purchase.action_purchase_order_report_all", group: "stock", icon: "M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h8.2a2 2 0 0 0 2-1.5L21 8H6M10 21h.01M18 21h.01", label: "Purchase Analysis", description: "Purchasing spend, suppliers and delivery performance.", roles: ["head_office"] },
+        { xmlid: "stock.stock_move_action", group: "stock", icon: "M4 7h13l-3-3M20 17H7l3 3", label: "Stock Movements", description: "Receipts, consumption, scrap and adjustments by location.", roles: ["head_office"] },
+        { xmlid: "account.action_account_moves_all", group: "sales", icon: "M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h3", label: "Journal Items", description: "Posted income and expenses behind net profit.", roles: ["head_office"] },
+        { xmlid: "strategic_management.action_strategic_kpi_analysis", group: "kpi", icon: "M4 19l5-6 4 3 7-9M15 7h5v5", label: "KPI Analysis", description: "KPI evaluations over time, by branch and status.", roles: ["head_office", "branch_manager"] },
+        { xmlid: "strategic_management.action_strategic_kpi_exceptions", group: "kpi", icon: "M12 3 2 20h20L12 3ZM12 10v4M12 17h.01", label: "KPI Exceptions", description: "Targets that could not be evaluated, with reasons.", roles: ["head_office", "branch_manager"] },
     ],
     configuration: [
         { xmlid: "strategic_management.action_strategic_plan", group: "strategy", icon: "M4 5h16M4 12h10M4 19h7M17 15l3 3-3 3", label: "Strategic Plans", description: "Plan periods that group objectives.", roles: ["head_office"] },

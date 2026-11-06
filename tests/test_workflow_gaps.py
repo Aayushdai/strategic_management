@@ -98,22 +98,11 @@ class TestWorkflowGaps(TransactionCase):
         with self.assertRaises(ValidationError):
             Task.with_user(self.head).set_employee_position(self.emp.id, "   ")
 
-    # ------------------------------------------------------------------ Branch Manager's own Purchasing page
-    def test_branch_manager_sees_own_branch_purchasing_without_the_purchase_app(self):
+    # ------------------------------------------------------------------ Branch Manager without Purchase rights
+    def test_purchasing_without_purchase_rights_says_not_available(self):
         self.assertFalse(self.manager1.has_group("purchase.group_purchase_user"))
-        partner = self.env["res.partner"].create({"name": "WFG Supplier"})
-        product = self.env["product.product"].create({"name": "WFG Beans", "type": "consu", "standard_price": 5.0})
-        orders = {}
-        for branch in (self.branch1, self.branch2):
-            order = self.env["purchase.order"].with_company(self.company).create({
-                "partner_id": partner.id, "company_id": self.company.id, "picking_type_id": branch.in_type_id.id,
-                "order_line": [(0, 0, {"product_id": product.id, "product_qty": 3, "price_unit": 5.0})]})
-            order.button_confirm()
-            orders[branch] = order
         today = fields.Date.to_string(fields.Date.context_today(self.env.user))
-        data = self.env["strategic.performance.dashboard"].with_user(self.manager1).with_company(self.company).get_purchasing_overview_data(today, today, self.branch2.id)
-        self.assertTrue(data.get("available"), data.get("messages"))
-        self.assertEqual(data["selected_warehouse_id"], self.branch1.id, "pinned to the manager's own branch, whatever the browser sends")
-        self.assertEqual(data["branch_options"], [{"id": self.branch1.id, "name": self.branch1.display_name}])
-        with self.assertRaises(AccessError, msg="still no direct access to purchase orders"):
-            self.env["purchase.order"].with_user(self.manager1).browse(orders[self.branch1].id).read(["name"])
+        data = self.env["strategic.performance.dashboard"].with_user(self.manager1).with_company(self.company).get_purchasing_overview_data(today, today)
+        self.assertFalse(data["available"], "no Purchase rights, no purchasing figures")
+        self.assertIn("Purchase access", data["messages"][0])
+        self.assertEqual(data["selected_warehouse_id"], self.branch1.id)

@@ -9,7 +9,6 @@ from odoo import api, fields, models
 from odoo.exceptions import AccessError, ValidationError
 
 from ..services.kpi_sources.purchase import confirmed_purchase_commitments
-from .department_access import _DEPARTMENT_READ
 from .business_overview import _LIST_LIMIT
 
 
@@ -21,10 +20,6 @@ class StrategicPerformanceDashboardPurchasingOverview(models.AbstractModel):
         """Return Purchasing dashboard figures from actual Purchase and Stock records."""
         self._strategic_role()  # Admin stops here.
         user = self.env.user
-        if not self.env.su and user.has_group("strategic_management.group_strategic_branch_manager")                 and not user.has_group("strategic_management.group_strategic_head_office_manager")                 and not user.has_group("purchase.group_purchase_user"):
-            # A Branch Manager reviews their branch's purchasing without the Purchase app, like the department pages:
-            # read with sudo, the branch pinned to their own account (the browser's warehouse_id is ignored), no drill-through.
-            return self.sudo().with_context(**{_DEPARTMENT_READ: True}).get_purchasing_overview_data(date_start, date_end, False)
         start, end = self._resolve_period(date_start, date_end)
         company = self.env.company
         is_head_office = user.has_group("strategic_management.group_strategic_head_office_manager")
@@ -88,6 +83,13 @@ class StrategicPerformanceDashboardPurchasingOverview(models.AbstractModel):
 
         warehouse_ids = [selected_warehouse.id] if selected_warehouse else [item["id"] for item in branch_options]
         PurchaseOrder = self.env["purchase.order"]
+        if not PurchaseOrder.has_access("read"):
+            # Purchasing figures stay with Odoo's Purchase rights: say so plainly instead of failing.
+            empty["messages"] = ["Purchasing figures need Odoo's Purchase access. Ask Head Office to give your account Purchase rights."]
+            empty["branch_options"] = branch_options
+            if selected_warehouse:
+                empty["selected_warehouse_id"] = selected_warehouse.id
+            return empty
         if not {"company_id", "date_order", "state", "amount_untaxed", "partner_id"}.issubset(PurchaseOrder._fields):
             empty["messages"] = ["The Purchase order model does not expose the fields required for this report."]
             empty["branch_options"] = branch_options
