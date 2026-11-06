@@ -21,6 +21,7 @@ import { reportsPage } from "./pages/reports/reports";
 import { appDependenciesPage } from "./pages/app_dependencies/app_dependencies";
 import { branchManagerPage } from "./pages/branch_manager/branch_manager";
 import { employeeHomePage } from "./pages/employee_home/employee_home";
+import { adminPage } from "./pages/admin/admin";
 
 export class StrategicNavigationShell extends Component {
     static template = "strategic_management.NavigationShell";
@@ -150,6 +151,10 @@ export class StrategicNavigationShell extends Component {
             rejectReason: "",
             deciding: false,
             pages: {},
+            // Admin console (pages/admin): loaded data, filters and the open dialog.
+            admin: { overview: null, people: null, peopleOptions: null, branches: null, work: null, health: null, audit: null, error: "",
+                     workKind: "objectives", workSearch: "", workStatus: "all", search: "", roleFilter: "all", showInactive: false,
+                     auditAction: "all", edit: null, create: null, confirm: null, branchEdit: null, busy: false },
             areaGoals: {},
         });
         this.purchasingRequestId = 0;
@@ -206,6 +211,10 @@ export class StrategicNavigationShell extends Component {
             tasks_issues: "loadTasksIssues",
             app_dependencies: "loadAppDependencies",
         };
+        if (this.state.activeSection.startsWith("admin_")) {
+            if (document.visibilityState !== "hidden") this.loadAdminSection({ silent: true });
+            return;
+        }
         const loader = this.departmentCode ? "loadBranchOps" : loaders[this.state.activeSection];
         if (!loader || this.branchError || document.visibilityState === "hidden") {
             return;
@@ -323,6 +332,9 @@ export class StrategicNavigationShell extends Component {
 
     selectSection(sectionId) {
         this.state.activeSection = sectionId;
+        if (sectionId.startsWith("admin_")) {
+            return this.loadAdminSection();
+        }
         if (this.branchError) {
             // Without a valid branch assignment the server refuses branch data; nothing is requested.
             return;
@@ -597,7 +609,7 @@ export class StrategicNavigationShell extends Component {
 }
 
 // Add every page's functions to the component. A name defined twice would silently replace the other, so it is refused.
-for (const page of [inboxPage, salesPage, purchasingPage, inventoryPage, branchesPage, peoplePage, employeesPage, tasksPage, reportsPage, appDependenciesPage, branchManagerPage, employeeHomePage]) {
+for (const page of [inboxPage, salesPage, purchasingPage, inventoryPage, branchesPage, peoplePage, employeesPage, tasksPage, reportsPage, appDependenciesPage, branchManagerPage, employeeHomePage, adminPage]) {
     for (const [name, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(page))) {
         if (name in StrategicNavigationShell.prototype) {
             throw new Error(`Strategic Management: "${name}" is defined twice in the navigation shell.`);

@@ -91,3 +91,4 @@ access_strategic_admin_lot,Strategic Admin restriction - stock.lot,stock.lot,,cr
 access_strategic_admin_sale_order,Strategic Admin restriction - sale.order,sale.order,,crud,"user._strategic_access_domain('sale.order', 'branch')"
 access_strategic_admin_sale_line,Strategic Admin restriction - sale.order.line,sale.order.line,,crud,"user._strategic_access_domain('sale.order.line', 'branch')"
 access_strategic_admin_sale_report,Strategic Admin restriction - sale.report,sale.report,,crud,"user._strategic_access_domain('sale.report', 'branch')"
+access_strategic_admin_audit_head_office,Admin Audit - Head Office (read),strategic.admin.audit,strategic_management.group_strategic_head_office_manager,r,

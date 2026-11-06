@@ -236,7 +236,9 @@ class TestAdminRole(TransactionCase):
 
     # ------------------------------------------------------------------ no data by any route
     def test_every_data_method_refuses_admin(self):
-        allowed = {"get_navigation_context"}
+        # The Admin console is the Admin's own tool; test_admin_console checks it returns nothing sensitive.
+        from odoo.addons.strategic_management.models.admin_console import ADMIN_CONSOLE_METHODS
+        allowed = {"get_navigation_context"} | ADMIN_CONSOLE_METHODS
         leaks, checked = [], []
         Models = [name for name in self.env.registry if name.startswith("strategic.")]
         for name in Models:

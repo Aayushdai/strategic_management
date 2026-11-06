@@ -16,7 +16,7 @@ export const branchManagerPage = {
         const context = this.state.navContext;
         if (context && context.role === "admin") {
             this.state.activeSection = "admin_home";
-            return;
+            return this.loadAdminSection();
         }
         if (context && context.role === "branch_manager") {
             // A Branch Manager lands on their own dashboard.

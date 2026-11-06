@@ -1,0 +1,383 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Admin console: overview, people and access, branches, work records, system health and audit log. Called from strategic_management.NavigationShell. -->
+<templates xml:space="preserve">
+    <t t-name="strategic_management.AdminHeader">
+        <header class="o_sm_adm_header">
+            <div>
+                <span class="o_sm_adm_kicker">Admin console</span>
+                <h1 t-esc="adminTitle"/>
+                <p t-esc="adminSubtitle"/>
+            </div>
+            <button type="button" class="o_sm_adm_btn is-ghost" t-on-click="() => this.loadAdminSection()">Refresh</button>
+        </header>
+        <div t-if="this.state.admin.error" class="o_sm_adm_notice is-error" role="alert" t-esc="this.state.admin.error"/>
+    </t>
+
+    <t t-name="strategic_management.AdminPager">
+        <t t-set="pagerTotal" t-value="this.adminPageCount(pagerRows)"/>
+        <div t-if="pagerTotal > 1" class="o_sm_adm_pager">
+            <span><t t-esc="pagerRows.length"/> rows · page <t t-esc="this.adminPageOf(pagerKey, pagerRows)"/> of <t t-esc="pagerTotal"/></span>
+            <button type="button" t-att-disabled="this.adminPageOf(pagerKey, pagerRows) &lt;= 1" t-on-click="() => this.setPage(pagerKey, this.adminPageOf(pagerKey, pagerRows) - 1)">Previous</button>
+            <button type="button" t-att-disabled="this.adminPageOf(pagerKey, pagerRows) >= pagerTotal" t-on-click="() => this.setPage(pagerKey, this.adminPageOf(pagerKey, pagerRows) + 1)">Next</button>
+        </div>
+    </t>
+
+    <!-- ============================================================ Overview -->
+    <t t-name="strategic_management.AdminOverviewPage">
+        <div class="o_sm_admin">
+            <t t-call="strategic_management.AdminHeader" adminTitle="'Overview'" adminSubtitle="'People, access, branches and the health of the system. Sales, costs, personal details and ratings are not shown to the Admin.'"/>
+            <t t-set="ov" t-value="this.state.admin.overview"/>
+            <p t-if="!ov and !this.state.admin.error" class="o_sm_adm_loading">Loading…</p>
+            <t t-if="ov">
+                <section class="o_sm_adm_cards">
+                    <button type="button" class="o_sm_adm_card is-people" t-on-click="() => this.adminGo('admin_people')">
+                        <span class="o_sm_adm_card_label">Active users</span><strong t-esc="ov.people.active"/>
+                        <small><t t-esc="ov.people.inactive"/> inactive · <t t-esc="ov.people.no_role"/> without a role</small>
+                    </button>
+                    <button type="button" class="o_sm_adm_card is-branches" t-on-click="() => this.adminGo('admin_branches')">
+                        <span class="o_sm_adm_card_label">Branches</span><strong t-esc="ov.branches"/>
+                        <small><t t-esc="ov.work.staffing_open"/> open staffing request<t t-if="ov.work.staffing_open !== 1">s</t></small>
+                    </button>
+                    <button type="button" class="o_sm_adm_card is-work" t-on-click="() => this.adminGo('admin_work')">
+                        <span class="o_sm_adm_card_label">Open tasks</span><strong t-esc="ov.work.tasks_open"/>
+                        <small t-att-class="ov.work.tasks_overdue ? 'is-warn' : ''"><t t-esc="ov.work.tasks_overdue"/> overdue · <t t-esc="ov.work.reports_waiting"/> report<t t-if="ov.work.reports_waiting !== 1">s</t> awaiting review</small>
+                    </button>
+                    <button type="button" t-att-class="'o_sm_adm_card is-health' + (ov.health.critical ? ' is-critical' : ov.health.warning ? ' is-warning' : ' is-good')" t-on-click="() => this.adminGo('admin_health')">
+                        <span class="o_sm_adm_card_label">System health</span>
+                        <strong t-esc="ov.health.critical + ov.health.warning ? (ov.health.critical + ov.health.warning) + ' to fix' : 'All good'"/>
+                        <small><t t-esc="ov.health.critical"/> critical · <t t-esc="ov.health.warning"/> warning<t t-if="ov.health.warning !== 1">s</t></small>
+                    </button>
+                </section>
+                <div class="o_sm_adm_grid">
+                    <article class="o_sm_adm_panel">
+                        <header><h2>Users by role</h2><button type="button" class="o_sm_adm_link" t-on-click="() => this.adminGo('admin_people')">Manage people →</button></header>
+                        <t t-set="roleMax" t-value="this.adminRoleMax"/>
+                        <ul class="o_sm_adm_bars">
+                            <li t-foreach="ov.people.roles" t-as="role" t-key="role.key">
+                                <span t-esc="role.label"/>
+                                <span class="o_sm_adm_bar"><span t-att-class="'is-' + role.key" t-att-style="'width:' + (role.count / roleMax * 100) + '%'"/></span>
+                                <strong t-esc="role.count"/>
+                            </li>
+                        </ul>
+                    </article>
+                    <article class="o_sm_adm_panel">
+                        <header><h2>Needs attention</h2><button type="button" class="o_sm_adm_link" t-on-click="() => this.adminGo('admin_health')">All checks →</button></header>
+                        <p t-if="!ov.health.top.length" class="o_sm_adm_empty">Nothing needs attention.</p>
+                        <ul class="o_sm_adm_issues">
+                            <li t-foreach="ov.health.top" t-as="issue" t-key="issue_index" t-att-class="'is-' + issue.severity">
+                                <span class="o_sm_adm_dot"/><div><strong t-esc="issue.title"/><small t-esc="issue.items.length ? issue.items.slice(0, 3).join(', ') + (issue.count > 3 ? ' and ' + (issue.count - 3) + ' more' : '') : issue.detail"/></div>
+                                <button t-if="issue.section" type="button" class="o_sm_adm_link" t-on-click="() => this.adminGo(issue.section)">Fix →</button>
+                            </li>
+                        </ul>
+                    </article>
+                    <article class="o_sm_adm_panel">
+                        <header><h2>Recent logins</h2></header>
+                        <p t-if="!ov.logins.length" class="o_sm_adm_empty">No logins recorded yet.</p>
+                        <ul class="o_sm_adm_list">
+                            <li t-foreach="ov.logins" t-as="login" t-key="login_index"><span t-esc="login.name"/><small t-esc="this.adminDateTime(login.when)"/></li>
+                        </ul>
+                    </article>
+                    <article class="o_sm_adm_panel">
+                        <header><h2>Recent changes</h2><button type="button" class="o_sm_adm_link" t-on-click="() => this.adminGo('admin_audit')">Audit log →</button></header>
+                        <p t-if="!ov.audit.length" class="o_sm_adm_empty">No changes recorded yet.</p>
+                        <ul class="o_sm_adm_list">
+                            <li t-foreach="ov.audit" t-as="entry" t-key="entry.id"><span><strong t-esc="entry.action"/><t t-if="entry.user"> · <t t-esc="entry.user"/></t></span><small><t t-esc="entry.actor"/> · <t t-esc="this.adminDateTime(entry.when)"/></small></li>
+                        </ul>
+                    </article>
+                </div>
+            </t>
+        </div>
+    </t>
+
+    <!-- ============================================================ People and access -->
+    <t t-name="strategic_management.AdminPeoplePage">
+        <div class="o_sm_admin">
+            <t t-call="strategic_management.AdminHeader" adminTitle="'People &amp; Access'" adminSubtitle="'Roles, branches, departments and logins. Head Office accounts are managed by Head Office.'"/>
+            <t t-set="pd" t-value="this.state.admin.people"/>
+            <div class="o_sm_adm_toolbar">
+                <label class="o_sm_adm_search"><span class="visually-hidden">Search people</span><input type="search" placeholder="Search name, email or branch" t-att-value="this.state.admin.search" t-on-input="(ev) => this.adminSetFilter('search', ev)"/></label>
+                <label class="o_sm_adm_select"><span>Role</span>
+                    <select t-on-change="(ev) => this.adminSetFilter('roleFilter', ev)">
+                        <option value="all" t-att-selected="this.state.admin.roleFilter === 'all'">All roles</option>
+                        <option value="head_office" t-att-selected="this.state.admin.roleFilter === 'head_office'">Head Office Manager</option>
+                        <option value="branch_manager" t-att-selected="this.state.admin.roleFilter === 'branch_manager'">Branch Manager</option>
+                        <option value="employee" t-att-selected="this.state.admin.roleFilter === 'employee'">Employee</option>
+                        <option value="admin" t-att-selected="this.state.admin.roleFilter === 'admin'">Admin</option>
+                        <option value="none" t-att-selected="this.state.admin.roleFilter === 'none'">No role</option>
+                    </select>
+                </label>
+                <label class="o_sm_adm_check"><input type="checkbox" t-att-checked="this.state.admin.showInactive" t-on-change="(ev) => this.adminSetFilter('showInactive', ev)"/> Show inactive</label>
+                <button type="button" class="o_sm_adm_btn is-primary" t-on-click="() => this.openAdminCreate()">Add user</button>
+            </div>
+            <p t-if="!pd and !this.state.admin.error" class="o_sm_adm_loading">Loading…</p>
+            <t t-if="pd">
+                <t t-set="peopleRows" t-value="this.adminPeopleRows"/>
+                <div class="o_sm_adm_table_wrap"><table class="o_sm_adm_table">
+                    <thead><tr><th>Person</th><th>Role</th><th>Branch</th><th>Departments</th><th>Status</th><th>Last login</th><th>App rights</th><th class="is-actions">Actions</th></tr></thead>
+                    <tbody>
+                        <tr t-if="!peopleRows.length"><td colspan="8" class="o_sm_adm_empty">No one matches these filters.</td></tr>
+                        <tr t-foreach="this.adminPageRows('admin_people', peopleRows)" t-as="person" t-key="person.id" t-att-class="person.active ? '' : 'is-inactive'">
+                            <td data-label="Person"><strong t-esc="person.name"/><small t-esc="person.login"/></td>
+                            <td data-label="Role"><span t-att-class="'o_sm_adm_role is-' + (person.role || 'none')" t-esc="person.role_label"/></td>
+                            <td data-label="Branch" t-esc="person.branch or '—'"/>
+                            <td data-label="Departments" t-esc="person.departments.length ? person.departments.join(', ') : '—'"/>
+                            <td data-label="Status"><span t-att-class="'o_sm_adm_badge ' + (person.active ? 'is-good' : 'is-muted')" t-esc="person.active ? 'Active' : 'Inactive'"/></td>
+                            <td data-label="Last login" t-esc="this.adminDateTime(person.last_login)"/>
+                            <td data-label="App rights"><span t-foreach="person.app_rights" t-as="right" t-key="right" class="o_sm_adm_chip" t-esc="right"/><t t-if="!person.app_rights.length">—</t></td>
+                            <td data-label="Actions" class="is-actions">
+                                <span t-if="person.locked" class="o_sm_adm_locked" t-esc="person.is_self ? 'You' : 'Head Office manages'"/>
+                                <t t-else="">
+                                    <button type="button" class="o_sm_adm_btn is-small" t-att-disabled="!person.active" t-on-click="() => this.openAdminEdit(person)">Edit access</button>
+                                    <button t-if="person.active" type="button" class="o_sm_adm_btn is-small is-ghost" t-att-disabled="this.state.admin.busy" t-on-click="() => this.sendAdminReset(person)">Send reset link</button>
+                                    <button type="button" t-att-class="'o_sm_adm_btn is-small ' + (person.active ? 'is-danger' : 'is-ghost')" t-on-click="() => this.askAdminActive(person, !person.active)" t-esc="person.active ? 'Deactivate' : 'Activate'"/>
+                                </t>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table></div>
+                <t t-call="strategic_management.AdminPager" pagerKey="'admin_people'" pagerRows="peopleRows"/>
+            </t>
+            <t t-call="strategic_management.AdminDialogs"/>
+        </div>
+    </t>
+
+    <!-- ============================================================ Branches -->
+    <t t-name="strategic_management.AdminBranchesPage">
+        <div class="o_sm_admin">
+            <t t-call="strategic_management.AdminHeader" adminTitle="'Branches'" adminSubtitle="'Each branch’s manager, logins and staffing against its plan. No stock or sales figures.'"/>
+            <t t-set="bd" t-value="this.state.admin.branches"/>
+            <p t-if="!bd and !this.state.admin.error" class="o_sm_adm_loading">Loading…</p>
+            <div t-if="bd" class="o_sm_adm_branch_grid">
+                <article t-foreach="bd.branches" t-as="branch" t-key="branch.id" class="o_sm_adm_branch">
+                    <header>
+                        <div><h2 t-esc="branch.name"/><span class="o_sm_adm_code" t-esc="branch.code"/></div>
+                        <button type="button" class="o_sm_adm_btn is-small is-ghost" t-on-click="() => this.openAdminBranch(branch)">Edit</button>
+                    </header>
+                    <dl>
+                        <div><dt>Branch Manager</dt><dd t-att-class="branch.managers.length ? '' : 'is-warn'" t-esc="branch.managers.length ? branch.managers.join(', ') : 'None assigned'"/></div>
+                        <div><dt>Logins</dt><dd t-esc="branch.logins"/></div>
+                        <div><dt>Open staffing requests</dt><dd t-esc="branch.open_requests"/></div>
+                    </dl>
+                    <div class="o_sm_adm_staff">
+                        <div><span>Staff</span><strong><t t-esc="branch.staff"/><t t-if="branch.planned"> of <t t-esc="branch.planned"/> planned</t></strong></div>
+                        <span class="o_sm_adm_bar"><span t-att-class="branch.short ? 'is-short' : 'is-full'" t-att-style="'width:' + this.adminStaffWidth(branch) + '%'"/></span>
+                        <small t-if="branch.short" class="is-warn"><t t-esc="branch.short"/> short of plan</small>
+                        <small t-elif="!branch.planned">No planned staff set</small>
+                    </div>
+                </article>
+            </div>
+            <t t-call="strategic_management.AdminDialogs"/>
+        </div>
+    </t>
+
+    <!-- ============================================================ Work records -->
+    <t t-name="strategic_management.AdminWorkPage">
+        <div class="o_sm_admin">
+            <t t-call="strategic_management.AdminHeader" adminTitle="'Work Records'" adminSubtitle="'Titles, owners, branches, status and dates. Figures, descriptions and notes stay private.'"/>
+            <nav class="o_sm_adm_tabs" aria-label="Record type">
+                <button t-foreach="this.adminWorkKinds" t-as="kind" t-key="kind.key" type="button" t-att-class="'o_sm_adm_tab' + (kind.key === this.state.admin.workKind ? ' is-active' : '')"
+                        t-att-aria-current="kind.key === this.state.admin.workKind ? 'page' : false" t-on-click="() => this.setAdminWorkKind(kind.key)" t-esc="kind.label"/>
+            </nav>
+            <div class="o_sm_adm_toolbar">
+                <label class="o_sm_adm_search"><span class="visually-hidden">Search records</span><input type="search" placeholder="Search title, branch or owner" t-att-value="this.state.admin.workSearch" t-on-input="(ev) => this.adminSetFilter('workSearch', ev)"/></label>
+                <label class="o_sm_adm_select"><span>Status</span>
+                    <select t-on-change="(ev) => this.adminSetFilter('workStatus', ev)">
+                        <option value="all" t-att-selected="this.state.admin.workStatus === 'all'">All</option>
+                        <option value="overdue" t-att-selected="this.state.admin.workStatus === 'overdue'">Overdue</option>
+                        <option t-foreach="this.adminWorkStatuses" t-as="status" t-key="status.key" t-att-value="status.key" t-att-selected="this.state.admin.workStatus === status.key" t-esc="status.label"/>
+                    </select>
+                </label>
+            </div>
+            <t t-set="wd" t-value="this.state.admin.work"/>
+            <p t-if="!wd and !this.state.admin.error" class="o_sm_adm_loading">Loading…</p>
+            <t t-if="wd">
+                <t t-set="workRows" t-value="this.adminWorkRows"/>
+                <div class="o_sm_adm_table_wrap"><table class="o_sm_adm_table">
+                    <thead><tr><th>Title</th><th>Branch</th><th t-esc="wd.kind === 'tasks' ? 'Assigned to' : wd.kind === 'reports' ? 'Submitted by' : wd.kind === 'staffing' ? 'Requested by' : 'Owner'"/><th t-if="wd.kind === 'goals'">Area</th><th>Status</th><th t-esc="wd.kind === 'reports' ? 'Period end' : wd.kind === 'staffing' ? 'Joining' : 'Deadline'"/></tr></thead>
+                    <tbody>
+                        <tr t-if="!workRows.length"><td t-att-colspan="wd.kind === 'goals' ? 6 : 5" class="o_sm_adm_empty">No records match.</td></tr>
+                        <tr t-foreach="this.adminPageRows('admin_work', workRows)" t-as="row" t-key="row.id">
+                            <td data-label="Title"><strong t-esc="row.title"/></td>
+                            <td data-label="Branch" t-esc="row.branch or '—'"/>
+                            <td data-label="Owner" t-esc="row.owner or '—'"/>
+                            <td t-if="wd.kind === 'goals'" data-label="Area" t-esc="row.area or '—'"/>
+                            <td data-label="Status"><span t-att-class="'o_sm_adm_badge is-state-' + row.status_key" t-esc="row.status"/></td>
+                            <td data-label="Date" t-att-class="row.overdue ? 'is-overdue' : ''"><t t-esc="this.adminDate(row.date)"/><small t-if="row.overdue"> · overdue</small></td>
+                        </tr>
+                    </tbody>
+                </table></div>
+                <t t-call="strategic_management.AdminPager" pagerKey="'admin_work'" pagerRows="workRows"/>
+                <p t-if="wd.truncated" class="o_sm_adm_hint">Showing the newest 500 records.</p>
+            </t>
+        </div>
+    </t>
+
+    <!-- ============================================================ System health -->
+    <t t-name="strategic_management.AdminHealthPage">
+        <div class="o_sm_admin">
+            <t t-call="strategic_management.AdminHeader" adminTitle="'System Health'" adminSubtitle="'Setup problems that stop the app from working well, and the scheduled jobs that keep figures current.'"/>
+            <t t-set="hd" t-value="this.state.admin.health"/>
+            <p t-if="!hd and !this.state.admin.error" class="o_sm_adm_loading">Loading…</p>
+            <t t-if="hd">
+                <div t-if="!hd.issues.length" class="o_sm_adm_notice is-good">Every check passed.</div>
+                <div class="o_sm_adm_checks">
+                    <article t-foreach="hd.issues" t-as="issue" t-key="issue_index" t-att-class="'o_sm_adm_check_card is-' + issue.severity">
+                        <header>
+                            <span class="o_sm_adm_sev" t-esc="issue.severity === 'critical' ? 'Critical' : issue.severity === 'warning' ? 'Warning' : 'Info'"/>
+                            <span class="o_sm_adm_area" t-esc="issue.area"/>
+                        </header>
+                        <h2 t-esc="issue.title"/>
+                        <p t-esc="issue.detail"/>
+                        <ul t-if="issue.items.length"><li t-foreach="issue.items" t-as="item" t-key="item_index" t-esc="item"/></ul>
+                        <small t-if="issue.count > issue.items.length">and <t t-esc="issue.count - issue.items.length"/> more</small>
+                        <button t-if="issue.section" type="button" class="o_sm_adm_link" t-on-click="() => this.adminGo(issue.section)">Go to <t t-esc="issue.section === 'admin_people' ? 'People &amp; Access' : issue.section === 'admin_branches' ? 'Branches' : 'Work Records'"/> →</button>
+                    </article>
+                </div>
+                <article class="o_sm_adm_panel">
+                    <header><h2>Scheduled jobs</h2></header>
+                    <div class="o_sm_adm_table_wrap"><table class="o_sm_adm_table">
+                        <thead><tr><th>Job</th><th>Status</th><th>Last run</th><th>Next run</th></tr></thead>
+                        <tbody>
+                            <tr t-if="!hd.jobs.length"><td colspan="4" class="o_sm_adm_empty">No scheduled jobs found.</td></tr>
+                            <tr t-foreach="hd.jobs" t-as="job" t-key="job_index">
+                                <td data-label="Job" t-esc="job.name"/>
+                                <td data-label="Status"><span t-att-class="'o_sm_adm_badge ' + (!job.active ? 'is-muted' : job.failures ? 'is-bad' : 'is-good')" t-esc="!job.active ? 'Off' : job.failures ? 'Failing' : 'Running'"/></td>
+                                <td data-label="Last run" t-esc="this.adminDateTime(job.last)"/>
+                                <td data-label="Next run" t-esc="job.active ? this.adminDateTime(job.next) : '—'"/>
+                            </tr>
+                        </tbody>
+                    </table></div>
+                </article>
+            </t>
+        </div>
+    </t>
+
+    <!-- ============================================================ Audit log -->
+    <t t-name="strategic_management.AdminAuditPage">
+        <div class="o_sm_admin">
+            <t t-call="strategic_management.AdminHeader" adminTitle="'Audit Log'" adminSubtitle="'Every change made from the Admin console. Head Office also gets a To-Do for new users, role changes and reactivations.'"/>
+            <div class="o_sm_adm_toolbar">
+                <label class="o_sm_adm_select"><span>Change</span>
+                    <select t-on-change="(ev) => this.adminSetFilter('auditAction', ev)">
+                        <option value="all">All changes</option>
+                        <option value="role">Role changed</option><option value="branch">Branch changed</option><option value="departments">Departments changed</option>
+                        <option value="create_user">User created</option><option value="activate">User activated</option><option value="deactivate">User deactivated</option>
+                        <option value="reset_link">Password reset link sent</option><option value="branch_setup">Branch setup changed</option>
+                    </select>
+                </label>
+            </div>
+            <t t-set="ad" t-value="this.state.admin.audit"/>
+            <p t-if="!ad and !this.state.admin.error" class="o_sm_adm_loading">Loading…</p>
+            <t t-if="ad">
+                <t t-set="auditRows" t-value="this.adminAuditRows"/>
+                <div class="o_sm_adm_table_wrap"><table class="o_sm_adm_table">
+                    <thead><tr><th>When</th><th>Changed by</th><th>Change</th><th>User</th><th>Branch</th><th>Detail</th></tr></thead>
+                    <tbody>
+                        <tr t-if="!auditRows.length"><td colspan="6" class="o_sm_adm_empty">No changes recorded.</td></tr>
+                        <tr t-foreach="this.adminPageRows('admin_audit', auditRows)" t-as="entry" t-key="entry.id">
+                            <td data-label="When" t-esc="this.adminDateTime(entry.when)"/>
+                            <td data-label="Changed by" t-esc="entry.actor"/>
+                            <td data-label="Change"><span t-att-class="'o_sm_adm_badge is-audit-' + entry.action_key" t-esc="entry.action"/></td>
+                            <td data-label="User" t-esc="entry.user or '—'"/>
+                            <td data-label="Branch" t-esc="entry.branch or '—'"/>
+                            <td data-label="Detail" t-esc="entry.detail or '—'"/>
+                        </tr>
+                    </tbody>
+                </table></div>
+                <t t-call="strategic_management.AdminPager" pagerKey="'admin_audit'" pagerRows="auditRows"/>
+            </t>
+        </div>
+    </t>
+
+    <!-- ============================================================ Dialogs -->
+    <t t-name="strategic_management.AdminDialogs">
+        <t t-set="admin" t-value="this.state.admin"/>
+        <t t-set="options" t-value="admin.people or admin.peopleOptions"/>
+        <div t-if="admin.edit" class="o_sm_adm_overlay" t-on-click="() => this.closeAdminDialog()">
+            <form class="o_sm_adm_dialog" role="dialog" aria-modal="true" aria-labelledby="o_sm_adm_edit_title" t-on-click.stop="() => {}" t-on-submit.prevent="() => this.saveAdminEdit()">
+                <header><div><span class="o_sm_adm_kicker">Edit access</span><h2 id="o_sm_adm_edit_title" t-esc="admin.edit.person.name"/><small t-esc="admin.edit.person.login"/></div>
+                    <button type="button" class="o_sm_adm_close" aria-label="Close" t-on-click="() => this.closeAdminDialog()">×</button></header>
+                <t t-call="strategic_management.AdminAccessFields" form="admin.edit"/>
+                <footer><button type="button" class="o_sm_adm_btn is-ghost" t-on-click="() => this.closeAdminDialog()">Cancel</button>
+                    <button type="submit" class="o_sm_adm_btn is-primary" t-att-disabled="admin.busy">Save</button></footer>
+            </form>
+        </div>
+        <div t-if="admin.create" class="o_sm_adm_overlay" t-on-click="() => this.closeAdminDialog()">
+            <form class="o_sm_adm_dialog" role="dialog" aria-modal="true" aria-labelledby="o_sm_adm_create_title" t-on-click.stop="() => {}" t-on-submit.prevent="() => this.saveAdminCreate()">
+                <header><div><span class="o_sm_adm_kicker">New user</span><h2 id="o_sm_adm_create_title">Add a user</h2><small>They get an email to set their own password.</small></div>
+                    <button type="button" class="o_sm_adm_close" aria-label="Close" t-on-click="() => this.closeAdminDialog()">×</button></header>
+                <t t-if="admin.create.result">
+                    <div class="o_sm_adm_body">
+                        <div t-att-class="'o_sm_adm_notice ' + (admin.create.result.invitation.sent ? 'is-good' : 'is-warn')">
+                            <strong><t t-esc="admin.create.result.person.name"/> was added as <t t-esc="admin.create.result.person.role_label"/>.</strong>
+                            <span t-esc="admin.create.result.invitation.message"/>
+                            <span t-if="!admin.create.result.invitation.sent">You can send the link again from People &amp; Access once email works.</span>
+                        </div>
+                    </div>
+                    <footer><button type="button" class="o_sm_adm_btn is-primary" t-on-click="() => this.closeAdminDialog()">Done</button></footer>
+                </t>
+                <t t-else="">
+                    <div class="o_sm_adm_body">
+                        <label class="o_sm_adm_field"><span>Full name</span><input type="text" required="required" maxlength="120" t-att-value="admin.create.name" t-on-input="(ev) => this.adminFormValue(admin.create, 'name', ev)"/></label>
+                        <label class="o_sm_adm_field"><span>Work email (their login)</span><input type="email" required="required" t-att-value="admin.create.email" t-on-input="(ev) => this.adminFormValue(admin.create, 'email', ev)"/></label>
+                    </div>
+                    <t t-call="strategic_management.AdminAccessFields" form="admin.create"/>
+                    <footer><button type="button" class="o_sm_adm_btn is-ghost" t-on-click="() => this.closeAdminDialog()">Cancel</button>
+                        <button type="submit" class="o_sm_adm_btn is-primary" t-att-disabled="admin.busy">Add user</button></footer>
+                </t>
+            </form>
+        </div>
+        <div t-if="admin.confirm" class="o_sm_adm_overlay" t-on-click="() => this.closeAdminDialog()">
+            <section class="o_sm_adm_dialog is-small" role="dialog" aria-modal="true" aria-labelledby="o_sm_adm_confirm_title" t-on-click.stop="() => {}">
+                <header><div><span class="o_sm_adm_kicker" t-esc="admin.confirm.active ? 'Activate user' : 'Deactivate user'"/><h2 id="o_sm_adm_confirm_title" t-esc="admin.confirm.person.name"/></div></header>
+                <div class="o_sm_adm_body">
+                    <p t-if="admin.confirm.active">They can log in again with their existing password. Head Office is told.</p>
+                    <p t-else="">They can no longer log in. Their records, tasks and history stay as they are, and you can activate them again later.</p>
+                    <div t-if="admin.confirm.error" class="o_sm_adm_notice is-error" t-esc="admin.confirm.error"/>
+                </div>
+                <footer><button type="button" class="o_sm_adm_btn is-ghost" t-on-click="() => this.closeAdminDialog()">Cancel</button>
+                    <button type="button" t-att-class="'o_sm_adm_btn ' + (admin.confirm.active ? 'is-primary' : 'is-danger-solid')" t-att-disabled="admin.busy" t-on-click="() => this.confirmAdminActive()" t-esc="admin.confirm.active ? 'Activate' : 'Deactivate'"/></footer>
+            </section>
+        </div>
+        <div t-if="admin.branchEdit" class="o_sm_adm_overlay" t-on-click="() => this.closeAdminDialog()">
+            <form class="o_sm_adm_dialog is-small" role="dialog" aria-modal="true" aria-labelledby="o_sm_adm_branch_title" t-on-click.stop="() => {}" t-on-submit.prevent="() => this.saveAdminBranch()">
+                <header><div><span class="o_sm_adm_kicker">Branch setup</span><h2 id="o_sm_adm_branch_title" t-esc="admin.branchEdit.branch.name"/></div>
+                    <button type="button" class="o_sm_adm_close" aria-label="Close" t-on-click="() => this.closeAdminDialog()">×</button></header>
+                <div class="o_sm_adm_body">
+                    <label class="o_sm_adm_field"><span>Branch name</span><input type="text" required="required" maxlength="80" t-att-value="admin.branchEdit.name" t-on-input="(ev) => this.adminFormValue(admin.branchEdit, 'name', ev)"/></label>
+                    <label class="o_sm_adm_field"><span>Short code (up to 5 letters)</span><input type="text" required="required" maxlength="5" t-att-value="admin.branchEdit.code" t-on-input="(ev) => this.adminFormValue(admin.branchEdit, 'code', ev)"/></label>
+                    <label class="o_sm_adm_field"><span>Planned staff</span><input type="number" min="0" step="1" required="required" t-att-value="admin.branchEdit.planned" t-on-input="(ev) => this.adminFormValue(admin.branchEdit, 'planned', ev)"/></label>
+                    <div t-if="admin.branchEdit.error" class="o_sm_adm_notice is-error" t-esc="admin.branchEdit.error"/>
+                </div>
+                <footer><button type="button" class="o_sm_adm_btn is-ghost" t-on-click="() => this.closeAdminDialog()">Cancel</button>
+                    <button type="submit" class="o_sm_adm_btn is-primary" t-att-disabled="admin.busy">Save</button></footer>
+            </form>
+        </div>
+    </t>
+
+    <t t-name="strategic_management.AdminAccessFields">
+        <div class="o_sm_adm_body">
+            <label class="o_sm_adm_field"><span>Role</span>
+                <select t-on-change="(ev) => this.adminFormValue(form, 'role', ev)">
+                    <option t-foreach="options ? options.roles : []" t-as="role" t-key="role.id" t-att-value="role.id" t-att-selected="role.id === form.role" t-esc="role.name"/>
+                </select>
+                <small>Head Office Manager is granted by Head Office.</small>
+            </label>
+            <label t-if="form.role !== 'admin'" class="o_sm_adm_field"><span>Branch</span>
+                <select required="required" t-on-change="(ev) => this.adminFormValue(form, 'branchId', ev)">
+                    <option value="" t-att-selected="!form.branchId">Choose a branch</option>
+                    <option t-foreach="options ? options.branches : []" t-as="branch" t-key="branch.id" t-att-value="branch.id" t-att-selected="branch.id == form.branchId" t-esc="branch.name"/>
+                </select>
+            </label>
+            <small t-else="" class="o_sm_adm_hint">An Admin has no branch.</small>
+            <fieldset t-if="form.role === 'employee'" class="o_sm_adm_field"><legend>Departments</legend>
+                <div class="o_sm_adm_departments">
+                    <label t-foreach="options ? options.departments : []" t-as="department" t-key="department.id" class="o_sm_adm_check">
+                        <input type="checkbox" t-att-checked="form.departmentIds.includes(department.id)" t-on-change="(ev) => this.adminToggleDepartment(form, department.id, ev)"/> <t t-esc="department.name"/>
+                    </label>
+                </div>
+            </fieldset>
+            <div t-if="form.error" class="o_sm_adm_notice is-error" role="alert" t-esc="form.error"/>
+        </div>
+    </t>
+</templates>

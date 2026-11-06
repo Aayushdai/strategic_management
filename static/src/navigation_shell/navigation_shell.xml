@@ -66,12 +66,12 @@
 <t t-elif="this.state.activeSection === 'inventory_waste'"><t t-call="strategic_management.InventoryPage"/></t>
                 <t t-elif="this.state.activeSection === 'purchasing'"><t t-call="strategic_management.PurchasingPage"/></t>
 <t t-elif="this.state.activeSection === 'branches'"><t t-call="strategic_management.BranchesPage"/></t>
-                <t t-elif="this.state.activeSection === 'admin_home'">
-    <div class="o_sm_bm o_sm_tasks">
-        <header class="o_sm_bm_header"><div class="o_sm_bm_title"><span class="o_sm_bm_kicker">Admin</span><h1 t-esc="this.userName"/><p>Your Admin workspace will appear here.</p></div></header>
-        <p class="o_sm_bm_empty">This role has no branch or department data.</p>
-    </div>
-</t>
+                <t t-elif="this.state.activeSection === 'admin_home'"><t t-call="strategic_management.AdminOverviewPage"/></t>
+                <t t-elif="this.state.activeSection === 'admin_people'"><t t-call="strategic_management.AdminPeoplePage"/></t>
+                <t t-elif="this.state.activeSection === 'admin_branches'"><t t-call="strategic_management.AdminBranchesPage"/></t>
+                <t t-elif="this.state.activeSection === 'admin_work'"><t t-call="strategic_management.AdminWorkPage"/></t>
+                <t t-elif="this.state.activeSection === 'admin_health'"><t t-call="strategic_management.AdminHealthPage"/></t>
+                <t t-elif="this.state.activeSection === 'admin_audit'"><t t-call="strategic_management.AdminAuditPage"/></t>
                 <t t-elif="this.state.activeSection === 'people'"><t t-call="strategic_management.PeoplePage"/></t>
                 <!-- Tasks & Issues UI-only preview -->
 <t t-elif="this.state.activeSection === 'tasks_issues'"><t t-call="strategic_management.TasksIssuesPage"/></t>
@@ -102,13 +102,15 @@
     <g t-elif="item.id === 'purchasing' or item.id === 'department_purchasing'"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 4h2l2.1 11.2a2 2 0 0 0 2 1.6h9.5a2 2 0 0 0 1.9-1.5L22 8H6"/></g>
     <g t-elif="item.id === 'business_goals'"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></g>
     <g t-elif="item.id === 'branches'"><path d="M4 21V4.5h11V21M15 10h5v11M2 21h20"/><path d="M7.5 8h4M7.5 12h4M7.5 16h4M17 14h1.5M17 17h1.5"/></g>
-    <g t-elif="item.id === 'people'"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1.4a6 6 0 0 1 12 0V20Z"/><path d="M16 5.5a3 3 0 0 1 0 5.8M18 14a5 5 0 0 1 3 4.6V20h-4"/></g>
-    <g t-elif="item.id === 'tasks_issues'"><rect x="5" y="4.5" width="14" height="17" rx="2"/><path d="M9 4.5v-2h6v2M8 11l2 2 4-4M8 17h8"/></g>
-    <g t-elif="item.id === 'reports'"><path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></g>
+    <g t-elif="item.id === 'people' or item.id === 'admin_people'"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1.4a6 6 0 0 1 12 0V20Z"/><path d="M16 5.5a3 3 0 0 1 0 5.8M18 14a5 5 0 0 1 3 4.6V20h-4"/></g>
+    <g t-elif="item.id === 'tasks_issues' or item.id === 'admin_work'"><rect x="5" y="4.5" width="14" height="17" rx="2"/><path d="M9 4.5v-2h6v2M8 11l2 2 4-4M8 17h8"/></g>
+    <g t-elif="item.id === 'reports' or item.id === 'admin_audit'"><path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></g>
     <g t-elif="item.id === 'app_dependencies'"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><path d="M16.5 13.5v6M13.5 16.5h6"/></g>
     <g t-elif="item.id === 'bm_dashboard' or item.id === 'employee_dashboard' or item.id === 'admin_home' or item.id === 'my_performance'"><rect x="3.5" y="3.5" width="7" height="8" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="5" rx="1.5"/><rect x="13.5" y="11.5" width="7" height="9" rx="1.5"/><rect x="3.5" y="14.5" width="7" height="6" rx="1.5"/></g>
     <g t-elif="item.id === 'my_tasks' or item.id === 'task_management'"><rect x="5" y="4.5" width="14" height="17" rx="2"/><path d="M9 4.5v-2h6v2M8 11l2 2 4-4M8 17h8"/></g>
     <g t-elif="item.id === 'employee_management' or item.id === 'department_assignment' or item.id === 'staffing_requests' or item.id === 'employee_performance'"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1.4a6 6 0 0 1 12 0V20Z"/><path d="M16 5.5a3 3 0 0 1 0 5.8M18 14a5 5 0 0 1 3 4.6V20h-4"/></g>
+    <g t-elif="item.id === 'admin_branches'"><path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-6h6v6"/></g>
+    <g t-elif="item.id === 'admin_health'"><path d="M3 12h4l2-5 4 10 2-5h6"/></g>
     <g t-elif="item.id === 'propose_objective'"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></g>
     <g t-elif="item.id === 'notifications'"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2H4.5Z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></g>
     <g t-elif="item.id === 'configuration'"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></g>

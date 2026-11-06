@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Opened from Head Office's To-Do when the Admin creates a user, changes a role or reactivates someone. Read-only. -->
+    <record id="view_strategic_admin_audit_form" model="ir.ui.view">
+        <field name="name">strategic.admin.audit.form</field>
+        <field name="model">strategic.admin.audit</field>
+        <field name="arch" type="xml">
+            <form string="Admin change" create="false" edit="false" delete="false">
+                <sheet>
+                    <group>
+                        <field name="action"/>
+                        <field name="target_user_id"/>
+                        <field name="warehouse_id"/>
+                        <field name="detail"/>
+                        <field name="actor_id"/>
+                        <field name="create_date" string="When"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="view_strategic_admin_audit_list" model="ir.ui.view">
+        <field name="name">strategic.admin.audit.list</field>
+        <field name="model">strategic.admin.audit</field>
+        <field name="arch" type="xml">
+            <list string="Admin changes" create="false" edit="false" delete="false">
+                <field name="create_date" string="When"/>
+                <field name="actor_id"/>
+                <field name="action"/>
+                <field name="target_user_id"/>
+                <field name="warehouse_id"/>
+                <field name="detail"/>
+            </list>
+        </field>
+    </record>
+</odoo>

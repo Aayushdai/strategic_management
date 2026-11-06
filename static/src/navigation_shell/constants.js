@@ -81,7 +81,15 @@ export const BRANCH_SIDEBAR = [
     { id: "reports", label: "Reports" },
 ];
 // Employees: their dashboard and tasks; assigned departments come from the server (see sidebarMore).
-export const ADMIN_SIDEBAR = [{ id: "admin_home", label: "Home" }];
+// Admin console: people, access, branches, work status, system health and the audit log; never money, personal details or ratings.
+export const ADMIN_SIDEBAR = [
+    { id: "admin_home", label: "Overview" },
+    { id: "admin_people", label: "People & Access" },
+    { id: "admin_branches", label: "Branches" },
+    { id: "admin_work", label: "Work Records" },
+    { id: "admin_health", label: "System Health" },
+    { id: "admin_audit", label: "Audit Log" },
+];
 export const EMPLOYEE_SIDEBAR = [{ id: "employee_dashboard", label: "Dashboard" }, { id: "my_tasks", label: "My Tasks" },
     { id: "my_performance", label: "My Performance" }];
 export const TASK_MODEL = "strategic.branch.task";
