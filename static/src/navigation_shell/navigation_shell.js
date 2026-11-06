@@ -165,6 +165,8 @@ export class StrategicNavigationShell extends Component {
             adminRequests: null,
             adminRequestsError: "",
             adminForm: null,
+            adminStart: null,
+            adminWithdraw: null,
             adminSaving: false,
             workSaving: false,
             // Admin console (pages/admin): loaded data, filters and the open dialog.

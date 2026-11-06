@@ -39,3 +39,10 @@
             &:focus { border-color: var(--sm-home-purple); outline: none; } }
     }
 }
+
+// An Admin's own proposal: labelled on the Admin's list and on Head Office's card.
+.o_sm_navigation_shell .o_sm_req_source.is-admin { display: inline-block; margin: .25rem 0 0; background: #fdf1e2; color: #b5650d; }
+.o_sm_navigation_shell .o_sm_admin_requests .o_sm_bm_card_head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.o_sm_navigation_shell .o_sm_bm, .o_sm_navigation_shell .o_sm_ops {
+    .o_sm_task_btn.is-danger { border-color: #f3c3bc; color: #b4321f; &:hover { border-color: #d6453a; background: #fde7e5; color: #b4321f; } }
+}

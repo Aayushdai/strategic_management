@@ -34,6 +34,10 @@ _ADMIN = "strategic_management.group_strategic_admin"
 _OPEN_STATES = ("draft", "submitted", "assigned")
 _ADMIN_STATES = ("assigned", "in_progress", "changes_requested", "pending_review", "approved", "rejected")
 _EDITABLE_STATES = ("in_progress", "changes_requested")
+# An Admin's own proposal names the department it is for; its KPIs must read that department's data,
+# and an approved OKR lands in that department's business area.
+_DEPARTMENT_SOURCES = {"sales": ("pos", "accounting"), "inventory": ("inventory",), "purchasing": ("purchase",)}
+_DEPARTMENT_AREA = {"sales": "sales_finance", "inventory": "inventory_waste", "purchasing": "purchasing"}
 # A request whose work an Admin holds: if they lose the role, Head Office recovers it.
 _HELD_STATES = ("in_progress", "changes_requested", "pending_review")
 # Calculations an Admin can propose: the engine can run them and they need no product record, which Admin cannot read.
@@ -77,6 +81,9 @@ class StrategicKpiWorkRequest(models.Model):
                               ("approved", "Approved"), ("rejected", "Rejected"), ("withdrawn", "Withdrawn")],
                              default="draft", required=True, readonly=True, index=True, tracking=True)
     requested_by_id = fields.Many2one("res.users", "Requested By", required=True, readonly=True)
+    origin = fields.Selection([("head_office", "Head Office request"), ("admin", "Admin proposal")], required=True, default="head_office", readonly=True, index=True)
+    department_id = fields.Many2one("strategic.department", "Department", readonly=True,
+                                    help="Admin proposals: the department the KPI or OKR is for. Its KPIs must use that department's data.")
     admin_user_id = fields.Many2one("res.users", "Assigned Admin", index=True, tracking=True)
     scope = fields.Selection([("all", "All Branches"), ("selected", "Selected Branches")], required=True, default="all", tracking=True)
     warehouse_ids = fields.Many2many("stock.warehouse", string="Branches")
@@ -183,6 +190,7 @@ class StrategicKpiWorkRequest(models.Model):
             "type_label": dict(self._fields["request_type"].selection)[request.request_type],
             "state": request.state, "status": dict(self._fields["state"].selection)[request.state],
             "requested_by": request.requested_by_id.name, "admin_user_id": admin.id, "admin": admin.name or False,
+            "origin": request.origin, "department": request.department_id.name or False,
             "admin_lost_role": request._admin_lost_role(),
             "scope": request.scope, "scope_label": dict(self._fields["scope"].selection)[request.scope],
             "warehouse_ids": request.warehouse_ids.ids, "branches": request.warehouse_ids.mapped("display_name"),
@@ -203,6 +211,7 @@ class StrategicKpiWorkRequest(models.Model):
     def get_work_requests(self):
         self._require_head_office()
         requests = self.sudo().search([("company_id", "=", self.env.company.id)])
+        requests = requests.filtered(lambda request: request.origin != "admin" or "submitted" in request.history_ids.mapped("action"))
         return {"requests": [request._row() for request in requests],
                 "admins": [{"id": user.id, "name": user.name} for user in self._assignable_admins()],
                 "branches": [{"id": branch.id, "name": branch.display_name} for branch in self.env["stock.warehouse"]._strategic_branches(self.env.company).sorted("name")],
@@ -382,6 +391,8 @@ class StrategicKpiWorkRequest(models.Model):
             "time_start": _to_clock(request.time_start) if request.has_interval else "", "time_end": _to_clock(request.time_end) if request.has_interval else "",
             "instructions": request.instructions or "", "created_at": fields.Datetime.to_string(request.create_date),
             "can_accept": request.state == "assigned", "can_edit_proposal": request.state in _EDITABLE_STATES,
+            "origin": request.origin, "department": request.department_id.name or False,
+            "can_withdraw_own": request.origin == "admin" and request.state in _EDITABLE_STATES,
             "proposal": proposal._row() if proposal else False,
             "history": request.history_ids._rows(),
         }
@@ -400,7 +411,56 @@ class StrategicKpiWorkRequest(models.Model):
             "directions": [{"id": key, "name": label} for key, label in definition["direction"].selection],
             "frequencies": [{"id": key, "name": label} for key, label in REPORTING_FREQUENCIES],
             "perspectives": [{"id": key, "name": label} for key, label in self.env["strategic.objective"]._fields["perspective"].selection],
+            "departments": [{"id": d.id, "code": d.code, "name": d.name} for d in self.env["strategic.department"].sudo().search([("code", "in", list(_DEPARTMENT_SOURCES))], order="sequence, id")],
+            "branches": [{"id": b.id, "name": b.display_name} for b in self.env["stock.warehouse"]._strategic_branches(self.env.company).sorted("name")],
         }
+
+    @api.model
+    def admin_start_proposal(self, values):
+        """The Admin proposes a KPI or OKR without a Head Office request. It follows the same path from here: the Admin
+        writes the proposal, Head Office reviews it, and only an approval creates anything."""
+        self._require_admin()
+        name = (values.get("name") or "").strip()
+        description = (values.get("description") or "").strip()
+        if not name or not description:
+            raise ValidationError("Give the proposal a title and explain what it should measure.")
+        request_type = values.get("request_type")
+        if request_type not in ("kpi", "okr"):
+            raise ValidationError("Choose KPI or OKR.")
+        department = self.env["strategic.department"].sudo().browse(int(values.get("department_id") or 0)).exists()
+        if not department or department.code not in _DEPARTMENT_SOURCES:
+            raise ValidationError("Choose the department this is for: Sales, Inventory or Purchasing.")
+        scope = values.get("scope") or "all"
+        if scope not in ("all", "selected"):
+            raise ValidationError("Choose all branches or selected branches.")
+        branches = self.env["stock.warehouse"]
+        if scope == "selected":
+            wanted = {int(value) for value in values.get("warehouse_ids") or []}
+            branches = self.env["stock.warehouse"]._strategic_branches(self.env.company).filtered(lambda branch: branch.id in wanted)
+            if not wanted or len(branches) != len(wanted):
+                raise ValidationError("Choose at least one branch of this company.")
+        try:
+            date_start, date_end = fields.Date.to_date(values.get("date_start") or False), fields.Date.to_date(values.get("date_end") or False)
+        except ValueError:
+            raise ValidationError("Enter valid dates.")
+        now = fields.Datetime.now()
+        request = self.sudo().create({
+            "name": name, "description": description, "request_type": request_type, "origin": "admin", "department_id": department.id,
+            "scope": scope, "warehouse_ids": [(6, 0, branches.ids)], "date_start": date_start, "date_end": date_end,
+            "requested_by_id": self.env.user.id, "admin_user_id": self.env.user.id, "company_id": self.env.company.id,
+            "state": "in_progress", "submitted_at": now, "assigned_at": now, "started_at": now})
+        request._log("proposed")
+        return request._admin_row()
+
+    def action_withdraw_own_proposal(self):
+        """The Admin drops their own proposal before Head Office has decided it."""
+        request = self._assigned_to_me()
+        if request.origin != "admin" or request.state not in _EDITABLE_STATES:
+            raise UserError("Only your own proposal, before Head Office reviews it, can be withdrawn here.")
+        request.write({"state": "withdrawn", "withdrawn_by_id": self.env.user.id, "withdrawn_at": fields.Datetime.now()})
+        request._log("withdrawn")
+        request.sudo().activity_ids.action_feedback(feedback="Withdrawn by the Admin.")
+        return True
 
     def action_accept_start(self):
         """From here the requirement is locked: Head Office can no longer edit, reassign or withdraw it."""
@@ -431,6 +491,7 @@ class StrategicKpiWorkRequest(models.Model):
             proposal = Proposal.create(dict(vals, request_id=request.id, author_id=self.env.user.id))
         if submit:
             proposal._check_complete()
+            proposal._check_department()
             proposal.write({"state": "submitted", "submitted_at": fields.Datetime.now(), "revision": proposal.revision + 1})
             request.write({"state": "pending_review"})
             request._log("submitted", snapshot=proposal._row())
@@ -613,13 +674,31 @@ class StrategicKpiWorkProposal(models.Model):
         self.write({"activated_kpi_id": kpi.id})
         return kpi
 
+    def _check_department(self):
+        """An Admin proposal's KPIs read the data of the department it is for (manual values are allowed)."""
+        self.ensure_one()
+        department = self.request_id.department_id
+        if self.request_id.origin != "admin" or not department:
+            return
+        allowed = _DEPARTMENT_SOURCES.get(department.code, ())
+        sources = [self.source_type] if self.proposal_type == "kpi" else self.key_result_ids.mapped("source_type")
+        wrong = [source for source in sources if source and source not in ("manual", "other") and source not in allowed]
+        if wrong:
+            raise ValidationError("This proposal is for %s, so its KPIs must use %s data." % (department.name, " or ".join(
+                dict(self.env["strategic.kpi.definition"]._fields["source_type"].selection)[source] for source in allowed)))
+
     def _activate_okr(self):
         """A real objective with its Key Results, through the same steps goal set-up uses. Key Result KPIs are per Key Result."""
         request = self.request_id
         user_env = self.env(su=False)
         plan = user_env["strategic.goal.setup"]._resolve_plan(self.date_end)
-        objective = user_env["strategic.objective"].create({"name": self.objective_title, "description": self.objective_description, "plan_id": plan.id, "perspective": self.perspective,
-                                                            "scope": "organization", "deadline": self.date_end, "owner_id": request.requested_by_id.id})
+        # An Admin proposal is owned by the Head Office manager who approves it, and lands in its department's area.
+        owner = request.requested_by_id if request.origin != "admin" else self.env.user
+        values = {"name": self.objective_title, "description": self.objective_description, "plan_id": plan.id, "perspective": self.perspective,
+                  "scope": "organization", "deadline": self.date_end, "owner_id": owner.id}
+        if request.department_id.code in _DEPARTMENT_AREA:
+            values["business_area"] = _DEPARTMENT_AREA[request.department_id.code]
+        objective = user_env["strategic.objective"].create(values)
         okr = user_env["strategic.okr.objective"].create({"name": objective.name, "strategic_objective_id": objective.id, "owner_id": objective.owner_id.id, "date_start": self.date_start, "date_end": self.date_end})
         for index, line in enumerate(self.key_result_ids, 1):
             direction = "lower" if line.has_baseline and line.target_value < line.baseline_value else "higher"
@@ -682,7 +761,7 @@ class StrategicKpiWorkHistory(models.Model):
     _order = "id"
 
     request_id = fields.Many2one("strategic.kpi.work.request", required=True, ondelete="cascade", index=True, readonly=True)
-    action = fields.Selection([("assigned", "Assigned"), ("recovered", "Reassigned"), ("accepted", "Accepted"), ("submitted", "Proposal submitted"), ("changes_requested", "Changes requested"),
+    action = fields.Selection([("proposed", "Proposed by Admin"), ("assigned", "Assigned"), ("recovered", "Reassigned"), ("accepted", "Accepted"), ("submitted", "Proposal submitted"), ("changes_requested", "Changes requested"),
                                ("approved", "Approved"), ("rejected", "Rejected"), ("withdrawn", "Withdrawn")], required=True, readonly=True)
     comment = fields.Text(readonly=True)
     user_id = fields.Many2one("res.users", "By", required=True, readonly=True)

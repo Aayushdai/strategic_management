@@ -30,6 +30,41 @@ export const kpiRequestsPage = {
                                  key_results: (proposal.key_results || []).map((line) => ({ ...line })) };
     },
 
+    // ------------------------------------------------------------ the Admin's own proposals
+    openAdminStart() {
+        this.state.adminStart = { name: "", description: "", request_type: "kpi", department_id: "", scope: "all", warehouse_ids: [], date_start: "", date_end: "", error: "" };
+    },
+
+    toggleAdminStartBranch(branchId, event) {
+        const form = this.state.adminStart;
+        form.warehouse_ids = event.target.checked ? [...form.warehouse_ids, branchId] : form.warehouse_ids.filter((value) => value !== branchId);
+    },
+
+    /** Create the proposal on the server, then go straight to writing it. */
+    async saveAdminStart() {
+        const form = this.state.adminStart;
+        if (this.state.adminSaving) return;
+        this.state.adminSaving = true;
+        try {
+            const { error, ...values } = form;
+            const row = await this.orm.call(WORK_REQUEST_MODEL, "admin_start_proposal", [{ ...values, department_id: Number(values.department_id) || false }]);
+            this.state.adminStart = null;
+            await this.loadAdminRequests();
+            this.openAdminRequest(row);
+        } catch (error) {
+            form.error = error.data?.message || error.message || "The proposal could not be started.";
+        } finally {
+            this.state.adminSaving = false;
+        }
+    },
+
+    async withdrawOwnProposal(row) {
+        if (await this.adminCall("action_withdraw_own_proposal", row, [], "Proposal withdrawn.")) {
+            this.state.adminForm = null;
+            this.state.adminWithdraw = null;
+        }
+    },
+
     calculationsFor(source) {
         const options = this.state.adminRequests?.calculations || [];
         return options.filter((option) => option.source === source || (source === "other" && option.id === "manual_value"));
