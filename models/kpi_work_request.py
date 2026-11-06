@@ -205,7 +205,7 @@ class StrategicKpiWorkRequest(models.Model):
         requests = self.sudo().search([("company_id", "=", self.env.company.id)])
         return {"requests": [request._row() for request in requests],
                 "admins": [{"id": user.id, "name": user.name} for user in self._assignable_admins()],
-                "branches": [{"id": branch.id, "name": branch.display_name} for branch in self.env["stock.warehouse"].search([("company_id", "=", self.env.company.id)], order="name")],
+                "branches": [{"id": branch.id, "name": branch.display_name} for branch in self.env["stock.warehouse"]._strategic_branches(self.env.company).sorted("name")],
                 "types": [{"id": key, "name": label} for key, label in self._fields["request_type"].selection]}
 
     # ------------------------------------------------------------------ Head Office actions
@@ -222,7 +222,7 @@ class StrategicKpiWorkRequest(models.Model):
             raise ValidationError("Choose a valid type and scope.")
         branches = self.env["stock.warehouse"]
         if scope == "selected":
-            branches = self.env["stock.warehouse"].search([("id", "in", [int(value) for value in values.get("warehouse_ids") or []]), ("company_id", "=", self.env.company.id)])
+            branches = self.env["stock.warehouse"]._strategic_branches(self.env.company).filtered(lambda branch: branch.id in [int(value) for value in values.get("warehouse_ids") or []])
             if len(branches) != len(set(values.get("warehouse_ids") or [])):
                 raise ValidationError("Choose branches of this company.")
         admin = self._admin_from(values.get("admin_user_id"))
@@ -607,7 +607,7 @@ class StrategicKpiWorkProposal(models.Model):
         if self.level == "organization":
             schedules = [dict(values, scope="organization", warehouse_id=False)]
         else:
-            branches = request.warehouse_ids if request.scope == "selected" else self.env["stock.warehouse"].sudo().search([("company_id", "=", request.company_id.id)])
+            branches = request.warehouse_ids if request.scope == "selected" else self.env["stock.warehouse"]._strategic_branches(request.company_id)
             schedules = [dict(values, scope="branch", warehouse_id=branch.id) for branch in branches]
         self.env["strategic.kpi.reporting.schedule"].sudo().create(schedules)
         self.write({"activated_kpi_id": kpi.id})

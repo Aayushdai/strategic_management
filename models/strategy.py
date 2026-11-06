@@ -442,6 +442,7 @@ class StrategicObjective(models.Model):
                 }
             )
             objective._log_review("approved")
+            objective._notify_activated(approved=True)
 
     def action_reject(self, reason):
         """Head Office rejects a pending proposal with a reason.
@@ -511,6 +512,32 @@ class StrategicObjective(models.Model):
                     "approved_by_id": self.env.user.id,
                 }
             )
+            objective._notify_activated(approved=False)
+
+    def _notify_activated(self, approved):
+        """Tell the branch about an objective that just became active.
+
+        A branch objective gives that branch's Branch Managers a To-Do; an approved proposal also tells its proposer,
+        as a rejection already does. Organization objectives notify nobody here.
+        """
+        self.ensure_one()
+        proposer = self.proposer_id
+        if approved and proposer and proposer != self.env.user:
+            self.message_post(body="Objective proposal approved by %s." % self.env.user.name,
+                              partner_ids=proposer.partner_id.ids, subtype_xmlid="mail.mt_comment")
+        if self.scope != "branch" or not self.warehouse_id:
+            return
+        managers = self.env["res.users"].sudo().search([
+            ("strategic_branch_warehouse_id", "=", self.warehouse_id.id), ("share", "=", False),
+            ("group_ids", "in", self.env.ref("strategic_management.group_strategic_branch_manager").id),
+            ("group_ids", "not in", self.env.ref("strategic_management.group_strategic_head_office_manager").id),
+        ])
+        if managers:
+            deadline = fields.Date.to_string(self.deadline) if self.deadline else "no deadline"
+            self.env["strategic.kpi.target"].sudo()._create_deduplicated_activity(
+                self.sudo(), "New objective for %s: %s" % (self.warehouse_id.name, self.name),
+                "Head Office %s this objective for your branch (deadline %s). Plan the work and create tasks for it."
+                % ("approved" if approved else "set", deadline), recipients=managers, company=self.company_id)
 
     def _eligible_primary_replacements(self):
         """Return other active organization objectives eligible to become primary."""

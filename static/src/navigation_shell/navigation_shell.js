@@ -107,6 +107,7 @@ export class StrategicNavigationShell extends Component {
             departmentAssignments: null,
             departmentAssignmentsError: "",
             departmentForm: null,
+            positionForm: null,
             departmentSearch: "",
             departmentSaving: false,
             opsTab: "sales",

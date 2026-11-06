@@ -124,14 +124,16 @@
             <t t-call="strategic_management.StaffingRequestForm"/>
             <t t-call="strategic_management.EmployeeRegisterForm"/>
             <t t-call="strategic_management.DepartmentForm"/>
+            <t t-call="strategic_management.PositionForm"/>
             <p t-if="!this.isBranchManager and !this.isHeadOffice" class="o_sm_bm_notice">Employee Management is available to Branch Managers.</p>
             <p t-elif="this.state.employeesLoading and !em" class="o_sm_bm_empty">Loading employees…</p>
             <p t-elif="this.state.employeesError and !em" class="o_sm_bm_notice" t-esc="this.state.employeesError"/>
             <article t-elif="em" class="o_sm_bm_card is-wide">
                 <div t-if="this.filteredEmployees.length" class="o_sm_task_table_wrap"><table class="o_sm_task_table o_sm_emp_table">
-                    <thead><tr><th>Employee</th><th>Departments</th><th class="is-num">Open Tasks</th><th class="is-num">Overdue Tasks</th><th class="is-num">Awaiting Review</th><th class="is-action">Action</th></tr></thead>
+                    <thead><tr><th>Employee</th><th>Position</th><th>Departments</th><th class="is-num">Open Tasks</th><th class="is-num">Overdue Tasks</th><th class="is-num">Awaiting Review</th><th class="is-action">Action</th></tr></thead>
                     <tbody><tr t-foreach="this.pageRows('employee_management', this.filteredEmployees)" t-as="employee" t-key="employee.id">
                         <td data-label="Employee"><strong t-esc="employee.name"/><small t-if="this.isHeadOffice and employee.branch" t-esc="employee.branch"/><small t-if="employee.note" t-esc="employee.note"/></td>
+                        <td data-label="Position"><t t-esc="employee.position or '—'"/> <button t-if="this.isHeadOffice and employee.has_employee" type="button" class="o_sm_task_btn" t-on-click="() => this.openPositionForm(employee)">Change</button></td>
                         <td data-label="Departments"><t t-esc="employee.departments.length ? employee.departments.join(', ') : 'None'"/> <button t-if="employee.can_assign_departments" type="button" class="o_sm_task_btn" t-on-click="() => this.openDepartmentForm(employee)">Change</button></td>
                         <td data-label="Open Tasks" class="is-num" t-esc="employee.counts.open"/>
                         <td data-label="Overdue Tasks" t-att-class="'is-num' + (employee.counts.overdue ? ' is-warn' : '')" t-esc="employee.counts.overdue"/>
@@ -188,6 +190,24 @@
                 </form>
             </div>
         </article>
+    </t>
+    <t t-name="strategic_management.PositionForm">
+        <t t-set="pf" t-value="this.state.positionForm"/>
+        <div t-if="pf" class="o_sm_req_overlay" t-on-click="() => this.closePositionForm()">
+            <form class="o_sm_req_dialog o_sm_task_form" role="dialog" aria-modal="true" aria-labelledby="o_sm_position_title" t-on-click.stop="() => {}" t-on-submit.prevent="() => this.savePosition()">
+                <header class="o_sm_req_dialog_head"><div><span class="o_sm_req_kicker">Change position</span><h2 id="o_sm_position_title" t-esc="pf.row.name"/></div>
+                    <button type="button" class="o_sm_req_close" aria-label="Close" t-on-click="() => this.closePositionForm()">×</button></header>
+                <div class="o_sm_req_dialog_body">
+                    <label>Position<input type="text" list="o_sm_position_list" required="required" maxlength="80" t-att-value="pf.position" t-on-input="(ev) => { pf.position = ev.target.value; }" placeholder="e.g. Barista, Shift Supervisor"/>
+                        <small>Pick an existing position or type a new one.</small></label>
+                    <datalist id="o_sm_position_list"><option t-foreach="(this.state.employees and this.state.employees.positions) or []" t-as="name" t-key="name" t-att-value="name"/></datalist>
+                </div>
+                <footer class="o_sm_req_dialog_foot">
+                    <button type="button" class="o_sm_req_btn is-ghost" t-att-disabled="pf.saving" t-on-click="() => this.closePositionForm()">Cancel</button>
+                    <button type="submit" class="o_sm_req_btn is-solid" t-att-disabled="pf.saving or !pf.position.trim()">Save</button>
+                </footer>
+            </form>
+        </div>
     </t>
     <t t-name="strategic_management.DepartmentForm">
         <t t-set="df" t-value="this.state.departmentForm"/>

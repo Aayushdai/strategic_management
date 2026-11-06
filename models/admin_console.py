@@ -106,7 +106,7 @@ class StrategicAdminConsole(models.AbstractModel):
 
     @api.model
     def _branches(self):
-        return self.env["stock.warehouse"].sudo().search([("company_id", "=", self.env.company.id)], order="name, id")
+        return self.env["stock.warehouse"]._strategic_branches(self.env.company).sorted(lambda warehouse: (warehouse.name, warehouse.id))
 
     @api.model
     def _branch(self, warehouse_id):

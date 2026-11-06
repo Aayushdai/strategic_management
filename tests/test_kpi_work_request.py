@@ -433,7 +433,12 @@ class TestKpiWorkRequest(TransactionCase):
     def test_all_branches_gets_one_schedule_per_branch_and_organization_gets_one(self):
         request = self._submitted()
         request.with_user(self.head).action_review("approve")
-        self.assertEqual(set(request.proposal_ids.activated_kpi_id.reporting_schedule_ids.warehouse_id.ids), set(self.env["stock.warehouse"].search([("company_id", "=", self.company.id)]).ids))
+        # "All Branches" means the branches: the company's main (central) warehouse is not one unless someone works there.
+        branches = self.env["stock.warehouse"]._strategic_branches(self.company)
+        self.assertEqual(set(request.proposal_ids.activated_kpi_id.reporting_schedule_ids.warehouse_id.ids), set(branches.ids))
+        warehouses = self.env["stock.warehouse"].search([("company_id", "=", self.company.id)])
+        if len(warehouses) > 1 and not self.env["res.users"].with_context(active_test=False).search_count([("strategic_branch_warehouse_id", "=", warehouses[:1].id)]):
+            self.assertNotIn(warehouses[:1], request.proposal_ids.activated_kpi_id.reporting_schedule_ids.warehouse_id, "no schedule for the central warehouse")
         other = self._started()
         other.with_user(self.admin).save_proposal(dict(self.KPI, level="organization"), True)
         other.with_user(self.head).action_review("approve")

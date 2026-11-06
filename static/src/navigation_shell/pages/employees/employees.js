@@ -248,6 +248,30 @@ export const employeesPage = {
         return search ? rows.filter((row) => row.name.toLowerCase().includes(search) || (row.branch || "").toLowerCase().includes(search)) : rows;
     },
 
+    // ------------------------------------------------------------ position (Head Office)
+    openPositionForm(row) {
+        this.state.positionForm = { row, position: row.position || "", saving: false };
+    },
+
+    closePositionForm() {
+        if (!this.state.positionForm?.saving) this.state.positionForm = null;
+    },
+
+    async savePosition() {
+        const form = this.state.positionForm;
+        if (!form || form.saving) return;
+        form.saving = true;
+        try {
+            const result = await this.orm.call("strategic.branch.task", "set_employee_position", [form.row.id, form.position]);
+            this.notification.add(`${form.row.name} is now ${result.position}.`, { type: "success" });
+            this.state.positionForm = null;
+            await this.loadEmployeeManagement({ silent: true });
+        } catch (error) {
+            form.saving = false;
+            this.notification.add(error.data?.message || error.message || "The position could not be saved.", { type: "danger" });
+        }
+    },
+
     openDepartmentForm(row) {
         this.state.departmentForm = { row, departmentIds: [...row.department_ids] };
     },

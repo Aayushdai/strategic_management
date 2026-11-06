@@ -9,6 +9,7 @@ from odoo import api, fields, models
 from odoo.exceptions import AccessError, ValidationError
 
 from ..services.kpi_sources.purchase import confirmed_purchase_commitments
+from .department_access import _DEPARTMENT_READ
 from .business_overview import _LIST_LIMIT
 
 
@@ -19,9 +20,13 @@ class StrategicPerformanceDashboardPurchasingOverview(models.AbstractModel):
     def get_purchasing_overview_data(self, date_start=False, date_end=False, warehouse_id=False):
         """Return Purchasing dashboard figures from actual Purchase and Stock records."""
         self._strategic_role()  # Admin stops here.
+        user = self.env.user
+        if not self.env.su and user.has_group("strategic_management.group_strategic_branch_manager")                 and not user.has_group("strategic_management.group_strategic_head_office_manager")                 and not user.has_group("purchase.group_purchase_user"):
+            # A Branch Manager reviews their branch's purchasing without the Purchase app, like the department pages:
+            # read with sudo, the branch pinned to their own account (the browser's warehouse_id is ignored), no drill-through.
+            return self.sudo().with_context(**{_DEPARTMENT_READ: True}).get_purchasing_overview_data(date_start, date_end, False)
         start, end = self._resolve_period(date_start, date_end)
         company = self.env.company
-        user = self.env.user
         is_head_office = user.has_group("strategic_management.group_strategic_head_office_manager")
         is_branch_manager = (user.has_group("strategic_management.group_strategic_branch_manager") and not is_head_office) or self._department_read_active()
         currency = company.currency_id
