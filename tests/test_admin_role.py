@@ -236,9 +236,10 @@ class TestAdminRole(TransactionCase):
 
     # ------------------------------------------------------------------ no data by any route
     def test_every_data_method_refuses_admin(self):
-        # The Admin console is the Admin's own tool; test_admin_console checks it returns nothing sensitive.
+        # The Admin's own tools: the Admin console (test_admin_console) and the Admin's assigned KPI/OKR requests
+        # (test_kpi_work_request); both are checked there to return nothing sensitive.
         from odoo.addons.strategic_management.models.admin_console import ADMIN_CONSOLE_METHODS
-        allowed = {"get_navigation_context"} | ADMIN_CONSOLE_METHODS
+        allowed = {"get_navigation_context", "get_my_work_requests"} | ADMIN_CONSOLE_METHODS
         leaks, checked = [], []
         Models = [name for name in self.env.registry if name.startswith("strategic.")]
         for name in Models:

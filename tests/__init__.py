@@ -52,3 +52,4 @@ from . import test_pos_recipe_lots
 from . import test_staffing
 from . import test_admin_role
 from . import test_admin_console
+from . import test_kpi_work_request

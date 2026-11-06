@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- KPI and OKR work requests: Head Office's card on the Inbox (WorkRequests) and the Admin's list (AdminRequests). -->
+<templates xml:space="preserve">
+    <t t-name="strategic_management.WorkRequests">
+        <t t-set="wr" t-value="this.state.workRequests"/>
+        <p t-if="this.state.workRequestsError" class="o_sm_req_notice" role="alert" t-esc="this.state.workRequestsError"/>
+        <section t-elif="wr" class="o_sm_req_card is-from-head-office" aria-labelledby="o_sm_work_title">
+            <div class="o_sm_req_card_head">
+                <div><h2 id="o_sm_work_title">KPI/OKR Work Requests</h2><span class="o_sm_req_source is-head-office">From Head Office</span><p>What Head Office needs measured, assigned to an Admin.</p></div>
+                <div class="o_sm_req_head_actions"><button type="button" class="o_sm_req_btn is-solid" t-on-click="() => this.openWorkForm()">Create Request</button></div>
+            </div>
+            <p t-if="!wr.admins.length" class="o_sm_req_next">Nobody has the Admin role yet, so requests cannot be assigned. Give someone the role on the People page.</p>
+            <div t-if="wr.requests.length" class="o_sm_req_table_wrap"><table class="o_sm_req_table o_sm_work_table">
+                <thead><tr><th>Request</th><th>Requested By</th><th>Assigned Admin</th><th>Type</th><th>Created</th><th>Status</th><th class="o_sm_req_actions_col">Actions</th></tr></thead>
+                <tbody><tr t-foreach="wr.requests" t-as="row" t-key="row.id">
+                    <td data-label="Request" class="o_sm_req_objective"><strong t-att-title="row.name" t-esc="row.name"/><small t-att-title="row.description" t-esc="row.description or 'No requirement yet'"/><small t-esc="this.workPeriodLabel(row)"/></td>
+                    <td data-label="Requested By" t-esc="row.requested_by"/>
+                    <td data-label="Assigned Admin"><t t-esc="row.admin or 'Not assigned'"/><small t-if="row.admin_lost_role" class="o_sm_req_next">No longer has the Admin role</small></td>
+                    <td data-label="Type" t-esc="row.type_label"/>
+                    <td data-label="Created" class="o_sm_req_date" t-esc="this.formatRequestDate(row.created_at)"/>
+                    <td data-label="Status"><span t-att-class="'o_sm_req_badge is-work-' + row.state" t-esc="row.status"/><small t-if="row.withdrawn_at" class="o_sm_work_withdrawn">Withdrawn by <t t-esc="row.withdrawn_by"/><br/><t t-esc="this.formatWorkDateTime(row.withdrawn_at)"/></small></td>
+                    <td data-label="Actions" class="o_sm_req_actions">
+                        <button t-if="row.can_edit" type="button" class="o_sm_req_btn is-ghost" t-on-click="() => this.openWorkForm(row)">Edit</button>
+                        <button t-if="row.can_delete" type="button" class="o_sm_req_btn is-reject" t-att-disabled="this.state.workSaving" t-on-click="() => this.deleteWorkDraft(row)">Delete</button>
+                        <button t-if="row.can_assign" type="button" class="o_sm_req_btn is-ghost" t-on-click="() => this.openWorkAssign(row)"><t t-esc="row.admin ? 'Reassign' : 'Assign Admin'"/></button>
+                        <button t-if="row.has_details" type="button" t-att-class="'o_sm_req_btn ' + (row.can_review ? 'is-approve' : 'is-ghost')" t-on-click="() => this.openWorkReview(row)"><t t-esc="row.can_review ? 'Review' : 'Open'"/></button>
+                        <button t-if="row.can_recover" type="button" class="o_sm_req_btn is-reject" t-on-click="() => { this.state.workRecover = { row: row, admin_user_id: '', reason: '' }; }">Reassign</button>
+                        <button t-if="row.can_withdraw" type="button" class="o_sm_req_btn is-reject" t-att-disabled="this.state.workSaving" t-on-click="() => { this.state.workWithdraw = row; }">Withdraw</button>
+                    </td>
+                </tr></tbody>
+            </table></div>
+            <div t-else="" class="o_sm_req_empty"><strong>No KPI/OKR work requests yet</strong><span>Create one to give an Admin a requirement to work on.</span></div>
+        </section>
+        <div t-if="this.state.workForm" class="o_sm_bm o_sm_tasks o_sm_work_dialog">
+            <t t-set="wf" t-value="this.state.workForm"/>
+            <div class="o_sm_req_overlay" t-on-click="() => { this.state.workForm = null; }">
+                <form class="o_sm_req_dialog o_sm_task_form" role="dialog" aria-modal="true" aria-label="KPI/OKR work request" t-on-click.stop="() => {}" t-on-submit.prevent="() => this.saveWorkForm(true)">
+                    <header class="o_sm_req_dialog_head"><div><span class="o_sm_req_kicker">From Head Office</span><h2 t-esc="!wf.id ? 'Create request' : wf.is_draft ? 'Edit draft' : 'Edit request'"/></div><button type="button" class="o_sm_req_close" aria-label="Close" t-on-click="() => { this.state.workForm = null; }">×</button></header>
+                    <div class="o_sm_req_dialog_body">
+                        <label>Title<input type="text" required="required" t-att-value="wf.name" t-on-input="(ev) => { wf.name = ev.target.value; }"/></label>
+                        <label>Business requirement<textarea rows="3" required="required" t-att-value="wf.description" t-on-input="(ev) => { wf.description = ev.target.value; }"/></label>
+                        <div class="o_sm_task_form_row"><label>Type<select t-on-change="(ev) => { wf.request_type = ev.target.value; }"><option t-foreach="wr.types" t-as="option" t-key="option.id" t-att-value="option.id" t-att-selected="option.id === wf.request_type" t-esc="option.name"/></select></label>
+                            <label>Assigned Admin<select t-on-change="(ev) => { wf.admin_user_id = ev.target.value; }"><option value="">Choose later</option><option t-foreach="wr.admins" t-as="admin" t-key="admin.id" t-att-value="admin.id" t-att-selected="('' + admin.id) === wf.admin_user_id" t-esc="admin.name"/></select></label></div>
+                        <label>Scope<select t-on-change="(ev) => { wf.scope = ev.target.value; }"><option value="all" t-att-selected="wf.scope === 'all'">All Branches</option><option value="selected" t-att-selected="wf.scope === 'selected'">Selected Branches</option></select></label>
+                        <fieldset t-if="wf.scope === 'selected'" class="o_sm_dept_choices"><legend>Branches</legend><label t-foreach="wr.branches" t-as="branch" t-key="branch.id"><input type="checkbox" t-att-checked="wf.warehouse_ids.includes(branch.id)" t-on-change="(ev) => this.toggleWorkBranch(branch.id, ev)"/> <t t-esc="branch.name"/></label></fieldset>
+                        <div class="o_sm_task_form_row"><label>Period from (if applicable)<input type="date" t-att-value="wf.date_start" t-on-change="(ev) => { wf.date_start = ev.target.value; }"/></label>
+                            <label>Period to<input type="date" t-att-value="wf.date_end" t-on-change="(ev) => { wf.date_end = ev.target.value; }"/></label></div>
+                        <div class="o_sm_task_form_row"><label>Time from (if applicable)<input type="time" t-att-value="wf.time_start" t-on-change="(ev) => { wf.time_start = ev.target.value; }"/></label>
+                            <label>Time to<input type="time" t-att-value="wf.time_end" t-on-change="(ev) => { wf.time_end = ev.target.value; }"/></label></div>
+                        <label>Additional instructions<textarea rows="2" t-att-value="wf.instructions" t-on-input="(ev) => { wf.instructions = ev.target.value; }"/></label>
+                    </div>
+                    <footer class="o_sm_req_dialog_foot"><button t-if="wf.is_draft" type="button" class="o_sm_req_btn is-ghost" t-att-disabled="this.state.workSaving" t-on-click="() => this.saveWorkForm(false)">Save draft</button><button type="submit" class="o_sm_req_btn is-solid" t-att-disabled="this.state.workSaving" t-esc="wf.is_draft ? 'Submit' : 'Save changes'"/></footer>
+                </form>
+            </div>
+        </div>
+        <div t-if="this.workReview" class="o_sm_bm o_sm_tasks o_sm_work_dialog">
+            <t t-set="wv" t-value="this.workReview"/>
+            <div class="o_sm_req_overlay" t-on-click="() => { this.state.workReviewId = null; }">
+                <section class="o_sm_req_dialog o_sm_work_review" role="dialog" aria-modal="true" aria-label="Review proposal" t-on-click.stop="() => {}">
+                    <header class="o_sm_req_dialog_head"><div><span class="o_sm_req_kicker" t-esc="wv.status"/><h2 t-esc="wv.name"/></div><button type="button" class="o_sm_req_close" aria-label="Close" t-on-click="() => { this.state.workReviewId = null; }">×</button></header>
+                    <div class="o_sm_req_dialog_body">
+                        <dl class="o_sm_req_details"><div class="is-wide"><dt>Requirement</dt><dd t-esc="wv.description"/></div><div><dt>Admin</dt><dd t-esc="wv.admin"/></div><div><dt>Scope</dt><dd t-esc="this.workPeriodLabel(wv)"/></div></dl>
+                        <t t-if="wv.proposal"><h3 class="o_sm_perf_h">Proposal</h3><t t-call="strategic_management.ProposalDetails" pd="wv.proposal"/></t>
+                        <p t-else="" class="o_sm_bm_empty">No submitted proposal to read right now.</p>
+                        <t t-if="wv.activated and wv.activated.kpi">
+                            <h3 class="o_sm_perf_h">Active KPI <t t-esc="wv.activated.kpi.code"/> · <t t-esc="wv.activated.kpi.frequency"/></h3>
+                            <div t-if="wv.activated.kpi.results.length" class="o_sm_req_table_wrap"><table class="o_sm_req_table o_sm_work_results">
+                                <thead><tr><th>Period</th><th>Branch</th><th>Actual</th><th>Target</th><th>Status</th></tr></thead>
+                                <tbody><tr t-foreach="wv.activated.kpi.results" t-as="result" t-key="result.id"><td data-label="Period"><t t-esc="this.formatPurchaseDate(result.start)"/><t t-if="result.end !== result.start"> – <t t-esc="this.formatPurchaseDate(result.end)"/></t></td><td data-label="Branch" t-esc="result.branch"/><td data-label="Actual"><t t-if="result.actual !== false"><t t-esc="result.actual"/> <t t-esc="result.unit"/></t><t t-else="">—</t></td><td data-label="Target"><t t-esc="result.target"/> <t t-esc="result.unit"/></td><td data-label="Status" t-att-title="result.reason" t-esc="result.status"/></tr></tbody>
+                            </table></div>
+                            <p t-else="" class="o_sm_bm_empty">No results yet. The daily KPI job calculates each period after it closes.</p>
+                        </t>
+                        <t t-if="wv.activated and wv.activated.objective"><h3 class="o_sm_perf_h">Active objective</h3><p><strong t-esc="wv.activated.objective.name"/> · <t t-esc="wv.activated.objective.state"/></p><ul class="o_sm_work_krs"><li t-foreach="wv.activated.objective.key_results" t-as="name" t-key="name_index" t-esc="name"/></ul></t>
+                        <t t-call="strategic_management.WorkHistory" history="wv.history"/>
+                        <label t-if="wv.can_review" class="o_sm_req_reason"><span>Comment <small>(required to request changes or reject)</small></span><textarea rows="3" t-att-value="this.state.workReviewComment" t-on-input="(ev) => { this.state.workReviewComment = ev.target.value; }"/></label>
+                    </div>
+                    <footer t-if="wv.can_review" class="o_sm_req_dialog_foot">
+                        <button type="button" class="o_sm_req_btn is-reject" t-att-disabled="this.state.workSaving" t-on-click="() => this.reviewWorkRequest('reject')">Reject</button>
+                        <button type="button" class="o_sm_req_btn is-ghost" t-att-disabled="this.state.workSaving" t-on-click="() => this.reviewWorkRequest('changes')">Request Changes</button>
+                        <button type="button" class="o_sm_req_btn is-approve" t-att-disabled="this.state.workSaving" t-on-click="() => this.reviewWorkRequest('approve')">Approve</button>
+                    </footer>
+                </section>
+            </div>
+        </div>
+        <div t-if="this.state.workRecover" class="o_sm_bm o_sm_tasks o_sm_work_dialog">
+            <t t-set="wc" t-value="this.state.workRecover"/>
+            <div class="o_sm_req_overlay" t-on-click="() => { this.state.workRecover = null; }">
+                <form class="o_sm_req_dialog o_sm_task_form" role="dialog" aria-modal="true" aria-label="Reassign request" t-on-click.stop="() => {}" t-on-submit.prevent="() => this.saveWorkRecover()">
+                    <header class="o_sm_req_dialog_head"><div><span class="o_sm_req_kicker">Admin no longer has the role</span><h2 t-esc="wc.row.name"/></div><button type="button" class="o_sm_req_close" aria-label="Close" t-on-click="() => { this.state.workRecover = null; }">×</button></header>
+                    <div class="o_sm_req_dialog_body">
+                        <label>New Admin<select required="required" t-on-change="(ev) => { wc.admin_user_id = ev.target.value; }"><option value="">Choose an Admin</option><option t-foreach="wr.admins" t-as="admin" t-key="admin.id" t-att-value="admin.id" t-esc="admin.name"/></select></label>
+                        <label>Reason (kept in the history)<textarea rows="2" required="required" t-on-input="(ev) => { wc.reason = ev.target.value; }"/></label>
+                        <p class="o_sm_bm_empty">Any draft proposal stays and passes to the new Admin.</p>
+                    </div>
+                    <footer class="o_sm_req_dialog_foot"><button type="submit" class="o_sm_req_btn is-solid" t-att-disabled="this.state.workSaving">Reassign</button></footer>
+                </form>
+            </div>
+        </div>
+        <div t-if="this.state.workWithdraw" class="o_sm_bm o_sm_tasks o_sm_work_dialog">
+            <div class="o_sm_req_overlay" t-on-click="() => { this.state.workWithdraw = null; }">
+                <section class="o_sm_req_dialog o_sm_work_confirm" role="alertdialog" aria-modal="true" aria-labelledby="o_sm_work_confirm_title" aria-describedby="o_sm_work_confirm_text" t-on-click.stop="() => {}">
+                    <header class="o_sm_req_dialog_head"><div><span class="o_sm_req_kicker">Withdraw request</span><h2 id="o_sm_work_confirm_title" t-esc="this.state.workWithdraw.name"/></div></header>
+                    <div class="o_sm_req_dialog_body"><p id="o_sm_work_confirm_text">Are you sure you want to withdraw this request? This action cannot be undone.</p></div>
+                    <footer class="o_sm_req_dialog_foot"><button type="button" class="o_sm_req_btn is-ghost" t-att-disabled="this.state.workSaving" t-on-click="() => { this.state.workWithdraw = null; }">Cancel</button><button type="button" class="o_sm_req_btn is-reject" t-att-disabled="this.state.workSaving" t-on-click="() => this.confirmWorkWithdraw()">Confirm Withdraw</button></footer>
+                </section>
+            </div>
+        </div>
+        <div t-if="this.state.workAssign" class="o_sm_bm o_sm_tasks o_sm_work_dialog">
+            <t t-set="wa" t-value="this.state.workAssign"/>
+            <div class="o_sm_req_overlay" t-on-click="() => { this.state.workAssign = null; }">
+                <form class="o_sm_req_dialog o_sm_task_form" role="dialog" aria-modal="true" aria-label="Assign Admin" t-on-click.stop="() => {}" t-on-submit.prevent="() => this.saveWorkAssign()">
+                    <header class="o_sm_req_dialog_head"><div><span class="o_sm_req_kicker">Assign Admin</span><h2 t-esc="wa.row.name"/></div><button type="button" class="o_sm_req_close" aria-label="Close" t-on-click="() => { this.state.workAssign = null; }">×</button></header>
+                    <div class="o_sm_req_dialog_body"><label>Admin<select required="required" t-on-change="(ev) => { wa.admin_user_id = ev.target.value; }"><option value="">Choose an Admin</option><option t-foreach="wr.admins" t-as="admin" t-key="admin.id" t-att-value="admin.id" t-att-selected="('' + admin.id) === wa.admin_user_id" t-esc="admin.name"/></select></label></div>
+                    <footer class="o_sm_req_dialog_foot"><button type="submit" class="o_sm_req_btn is-solid" t-att-disabled="this.state.workSaving">Save</button></footer>
+                </form>
+            </div>
+        </div>
+    </t>
+    <t t-name="strategic_management.WorkHistory">
+        <section t-if="history and history.length" class="o_sm_work_history" aria-label="History">
+            <h3>History</h3>
+            <ul><li t-foreach="history" t-as="item" t-key="item.id" t-att-class="item.comment ? 'has-comment' : ''">
+                <strong t-esc="item.label"/><t t-if="item.action === 'submitted'"> (submission <t t-esc="item.revision"/>)</t> <small><t t-esc="item.by"/> · <t t-esc="this.formatWorkDateTime(item.at)"/></small>
+                <p t-if="item.comment" t-esc="item.comment"/>
+                <details t-if="item.snapshot"><summary>What was submitted</summary><t t-call="strategic_management.ProposalDetails" pd="item.snapshot"/></details>
+            </li></ul>
+        </section>
+    </t>
+    <t t-name="strategic_management.ProposalDetails">
+        <dl t-if="pd.proposal_type === 'kpi'" class="o_sm_req_details">
+            <div class="is-wide"><dt>KPI</dt><dd t-esc="pd.kpi_name"/></div>
+            <div class="is-wide"><dt>Description</dt><dd t-esc="pd.kpi_description"/></div>
+            <div><dt>Data source</dt><dd t-esc="pd.labels.source"/></div>
+            <div><dt>Calculation</dt><dd t-esc="pd.labels.calculation"/></div>
+            <div class="is-wide"><dt>Measurement method</dt><dd t-esc="pd.measurement_method"/></div>
+            <div><dt>Measurement period</dt><dd><t t-esc="this.formatPurchaseDate(pd.date_start)"/> – <t t-esc="this.formatPurchaseDate(pd.date_end)"/></dd></div>
+            <div><dt>Time window</dt><dd><t t-if="pd.time_window_start"><t t-esc="pd.time_window_start"/>–<t t-esc="pd.time_window_end"/> company time</t><t t-else="">All day</t></dd></div>
+            <div><dt>Reporting frequency</dt><dd t-esc="pd.labels.frequency"/></div>
+            <div><dt>Measured at</dt><dd t-esc="pd.labels.level"/></div>
+            <div><dt>Target per period</dt><dd><t t-esc="pd.target_value"/> <t t-esc="pd.unit"/></dd></div>
+            <div><dt>Better when</dt><dd t-esc="pd.labels.direction"/></div>
+        </dl>
+        <t t-else="">
+            <dl class="o_sm_req_details">
+                <div class="is-wide"><dt>Objective</dt><dd t-esc="pd.objective_title"/></div>
+                <div class="is-wide"><dt>Description</dt><dd t-esc="pd.objective_description"/></div>
+                <div><dt>Measurement period</dt><dd><t t-esc="this.formatPurchaseDate(pd.date_start)"/> – <t t-esc="this.formatPurchaseDate(pd.date_end)"/></dd></div>
+                <div><dt>Perspective</dt><dd t-esc="pd.labels.perspective"/></div>
+            </dl>
+            <ul class="o_sm_work_krs"><li t-foreach="pd.key_results" t-as="line" t-key="line_index"><strong t-esc="line.name"/><span t-esc="line.measurement_method"/><small>Baseline <t t-esc="line.baseline === '' ? 'none' : line.baseline"/> · Target <t t-esc="line.target"/> <t t-esc="line.unit"/></small></li></ul>
+        </t>
+    </t>
+    <t t-name="strategic_management.AdminRequests">
+        <t t-set="ar" t-value="this.state.adminRequests"/>
+        <p t-if="this.state.adminRequestsError" class="o_sm_bm_notice is-error" role="alert" t-esc="this.state.adminRequestsError"/>
+        <p t-elif="!ar" class="o_sm_bm_empty">Loading…</p>
+        <article t-else="" class="o_sm_bm_card is-wide o_sm_admin_requests">
+            <div class="o_sm_bm_card_head"><h2>My Requests</h2><span class="o_sm_emp_hint">From Head Office</span></div>
+            <div t-if="ar.requests.length" class="o_sm_task_table_wrap"><table class="o_sm_task_table">
+                <thead><tr><th>Request</th><th>Type</th><th>Scope and period</th><th>Requested</th><th>Status</th><th class="is-action">Action</th></tr></thead>
+                <tbody><tr t-foreach="ar.requests" t-as="row" t-key="row.id">
+                    <td data-label="Request"><strong t-esc="row.name"/><small t-esc="row.description"/></td>
+                    <td data-label="Type" t-esc="row.type_label"/>
+                    <td data-label="Scope and period" t-esc="this.adminPeriodLabel(row)"/>
+                    <td data-label="Requested"><t t-esc="this.formatRequestDate(row.created_at)"/><small t-esc="row.requested_by"/></td>
+                    <td data-label="Status"><span t-att-class="'o_sm_req_badge is-work-' + row.state" t-esc="row.status"/></td>
+                    <td class="is-action"><button type="button" class="o_sm_task_btn" t-on-click="() => this.openAdminRequest(row)">Open</button></td>
+                </tr></tbody>
+            </table></div>
+            <p t-else="" class="o_sm_bm_empty">Nothing is assigned to you right now.</p>
+        </article>
+        <t t-set="af" t-value="this.state.adminForm"/>
+        <div t-if="af" class="o_sm_req_overlay" t-on-click="() => { this.state.adminForm = null; }">
+            <section class="o_sm_req_dialog o_sm_task_form o_sm_admin_dialog" role="dialog" aria-modal="true" aria-label="KPI/OKR request" t-on-click.stop="() => {}">
+                <header class="o_sm_req_dialog_head"><div><span class="o_sm_req_kicker" t-esc="af.row.status"/><h2 t-esc="af.row.name"/></div><button type="button" class="o_sm_req_close" aria-label="Close" t-on-click="() => { this.state.adminForm = null; }">×</button></header>
+                <div class="o_sm_req_dialog_body">
+                    <dl class="o_sm_req_details">
+                        <div class="is-wide"><dt>Requirement from Head Office</dt><dd t-esc="af.row.description"/></div>
+                        <div><dt>Type requested</dt><dd t-esc="af.row.type_label"/></div>
+                        <div><dt>Requested by</dt><dd t-esc="af.row.requested_by"/></div>
+                        <div class="is-wide"><dt>Scope and period</dt><dd t-esc="this.adminPeriodLabel(af.row)"/></div>
+                        <div t-if="af.row.instructions" class="is-wide"><dt>Additional instructions</dt><dd t-esc="af.row.instructions"/></div>
+                    </dl>
+                    <t t-if="!af.row.can_accept">
+                        <p t-if="af.row.state === 'pending_review'" class="o_sm_bm_notice">Sent to Head Office for review. It cannot be edited while it waits.</p>
+                        <p t-elif="af.row.state === 'changes_requested'" class="o_sm_bm_notice is-error" role="status">Head Office asked for changes. Read the comments below, edit and submit again.</p>
+                        <p t-elif="af.row.state === 'approved'" class="o_sm_bm_notice">Approved by Head Office. The system now measures this; results are visible to Head Office and managers.</p>
+                        <p t-elif="af.row.state === 'rejected'" class="o_sm_bm_notice">Rejected by Head Office.</p>
+                        <fieldset class="o_sm_admin_fields" t-att-disabled="!af.row.can_edit_proposal">
+                            <label t-if="af.row.request_type === 'unsure'">This should become<select t-on-change="(ev) => { af.proposal_type = ev.target.value; }"><option value="kpi" t-att-selected="af.proposal_type === 'kpi'">KPI</option><option value="okr" t-att-selected="af.proposal_type === 'okr'">OKR</option></select></label>
+                            <t t-if="af.proposal_type === 'kpi'">
+                                <label>KPI name<input type="text" t-att-value="af.kpi_name" t-on-input="(ev) => { af.kpi_name = ev.target.value; }"/></label>
+                                <label>Description<textarea rows="2" t-att-value="af.kpi_description" t-on-input="(ev) => { af.kpi_description = ev.target.value; }"/></label>
+                                <div class="o_sm_task_form_row"><label>Data source<select t-on-change="(ev) => { af.source_type = ev.target.value; af.calculation_type = ''; }"><option value="">Choose</option><option t-foreach="ar.sources" t-as="option" t-key="option.id" t-att-value="option.id" t-att-selected="option.id === af.source_type" t-esc="option.name"/></select></label>
+                                    <label>Calculation<select t-on-change="(ev) => { af.calculation_type = ev.target.value; }"><option value="">Choose</option><option t-foreach="this.calculationsFor(af.source_type)" t-as="option" t-key="option.id" t-att-value="option.id" t-att-selected="option.id === af.calculation_type" t-esc="option.name"/></select></label></div>
+                                <label>Measurement method / formula<textarea rows="2" placeholder="Exactly what is counted, and how" t-att-value="af.measurement_method" t-on-input="(ev) => { af.measurement_method = ev.target.value; }"/></label>
+                                <div class="o_sm_task_form_row"><label>Unit<input type="text" t-att-value="af.unit" t-on-input="(ev) => { af.unit = ev.target.value; }"/></label>
+                                    <label>Better when<select t-on-change="(ev) => { af.direction = ev.target.value; }"><option value="">Choose</option><option t-foreach="ar.directions" t-as="option" t-key="option.id" t-att-value="option.id" t-att-selected="option.id === af.direction" t-esc="option.name"/></select></label></div>
+                                <div class="o_sm_task_form_row"><label>Reporting frequency<select t-on-change="(ev) => { af.frequency = ev.target.value; }"><option value="">Choose</option><option t-foreach="ar.frequencies" t-as="option" t-key="option.id" t-att-value="option.id" t-att-selected="option.id === af.frequency" t-esc="option.name"/></select></label>
+                                    <label>Measured at<select t-on-change="(ev) => { af.level = ev.target.value; }"><option value="">Choose</option><option value="organization" t-att-selected="af.level === 'organization'">Organization</option><option value="branch" t-att-selected="af.level === 'branch'">Each Branch</option></select></label></div>
+                                <div class="o_sm_task_form_row"><label>Measurement start<input type="date" t-att-value="af.date_start" t-on-change="(ev) => { af.date_start = ev.target.value; }"/></label>
+                                    <label>Measurement end<input type="date" t-att-value="af.date_end" t-on-change="(ev) => { af.date_end = ev.target.value; }"/></label></div>
+                                <div t-if="this.adminWindowAllowed" class="o_sm_task_form_row"><label>Time window from (company time)<input type="time" t-att-value="af.time_window_start" t-on-change="(ev) => { af.time_window_start = ev.target.value; }"/></label>
+                                    <label>Time window to<input type="time" t-att-value="af.time_window_end" t-on-change="(ev) => { af.time_window_end = ev.target.value; }"/></label></div>
+                                <label>Target for each reporting period<input type="number" step="any" min="0" t-att-value="af.target_value" t-on-input="(ev) => { af.target_value = ev.target.value; }"/></label>
+                            </t>
+                            <t t-else="">
+                                <label>Objective title<input type="text" t-att-value="af.objective_title" t-on-input="(ev) => { af.objective_title = ev.target.value; }"/></label>
+                                <label>Objective description<textarea rows="2" t-att-value="af.objective_description" t-on-input="(ev) => { af.objective_description = ev.target.value; }"/></label>
+                                <label>Perspective<select t-on-change="(ev) => { af.perspective = ev.target.value; }"><option value="">Choose</option><option t-foreach="ar.perspectives" t-as="option" t-key="option.id" t-att-value="option.id" t-att-selected="option.id === af.perspective" t-esc="option.name"/></select></label>
+                                <div class="o_sm_task_form_row"><label>Measurement start<input type="date" t-att-value="af.date_start" t-on-change="(ev) => { af.date_start = ev.target.value; }"/></label>
+                                    <label>Measurement end<input type="date" t-att-value="af.date_end" t-on-change="(ev) => { af.date_end = ev.target.value; }"/></label></div>
+                                <div t-foreach="af.key_results" t-as="line" t-key="line_index" class="o_sm_admin_kr">
+                                    <strong>Key Result <t t-esc="line_index + 1"/></strong>
+                                    <label>Key Result<input type="text" t-att-value="line.name" t-on-input="(ev) => { line.name = ev.target.value; }"/></label>
+                                    <label>Measurement method<textarea rows="2" t-att-value="line.measurement_method" t-on-input="(ev) => { line.measurement_method = ev.target.value; }"/></label>
+                                    <div class="o_sm_task_form_row"><label>Data source<select t-on-change="(ev) => { line.source_type = ev.target.value; line.calculation_type = ''; }"><option value="">Reported by hand</option><option t-foreach="ar.sources" t-as="option" t-key="option.id" t-att-value="option.id" t-att-selected="option.id === line.source_type" t-esc="option.name"/></select></label>
+                                        <label>Calculation<select t-on-change="(ev) => { line.calculation_type = ev.target.value; }"><option value="">Choose</option><option t-foreach="this.calculationsFor(line.source_type)" t-as="option" t-key="option.id" t-att-value="option.id" t-att-selected="option.id === line.calculation_type" t-esc="option.name"/></select></label></div>
+                                    <div class="o_sm_task_form_row"><label>Unit<input type="text" t-att-value="line.unit" t-on-input="(ev) => { line.unit = ev.target.value; }"/></label>
+                                        <label>Baseline<input type="number" step="any" t-att-value="line.baseline" t-on-input="(ev) => { line.baseline = ev.target.value; }"/></label>
+                                        <label>Target<input type="number" step="any" t-att-value="line.target" t-on-input="(ev) => { line.target = ev.target.value; }"/></label></div>
+                                    <button t-if="af.row.can_edit_proposal" type="button" class="o_sm_task_btn" t-on-click="() => af.key_results.splice(line_index, 1)">Remove</button>
+                                </div>
+                                <button t-if="af.row.can_edit_proposal" type="button" class="o_sm_task_btn" t-on-click="() => this.addProposalKeyResult()">Add Key Result</button>
+                            </t>
+                        </fieldset>
+                        <t t-call="strategic_management.WorkHistory" history="af.row.history"/>
+                    </t>
+                </div>
+                <footer class="o_sm_req_dialog_foot">
+                    <button t-if="af.row.can_accept" type="button" class="o_sm_task_btn is-primary" t-att-disabled="this.state.adminSaving" t-on-click="() => this.acceptAdminRequest(af.row)">Accept &amp; Start Work</button>
+                    <t t-if="af.row.can_edit_proposal"><button type="button" class="o_sm_task_btn" t-att-disabled="this.state.adminSaving" t-on-click="() => this.saveProposal(false)">Save draft</button>
+                        <button type="button" class="o_sm_task_btn is-primary" t-att-disabled="this.state.adminSaving" t-on-click="() => this.saveProposal(true)">Submit to Head Office</button></t>
+                </footer>
+            </section>
+        </div>
+    </t>
+    <t t-name="strategic_management.AdminRequestsPage">
+        <div class="o_sm_bm o_sm_tasks">
+            <header class="o_sm_bm_header"><div class="o_sm_bm_title"><span class="o_sm_bm_kicker">Admin console</span><h1>KPI &amp; OKR Requests</h1><p>KPI and OKR requirements Head Office has assigned to you.</p></div></header>
+            <t t-call="strategic_management.AdminRequests"/>
+        </div>
+    </t>
+</templates>

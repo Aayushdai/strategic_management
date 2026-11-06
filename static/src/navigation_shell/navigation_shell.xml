@@ -71,6 +71,7 @@
                 <t t-elif="this.state.activeSection === 'admin_branches'"><t t-call="strategic_management.AdminBranchesPage"/></t>
                 <t t-elif="this.state.activeSection === 'admin_work'"><t t-call="strategic_management.AdminWorkPage"/></t>
                 <t t-elif="this.state.activeSection === 'admin_health'"><t t-call="strategic_management.AdminHealthPage"/></t>
+                <t t-elif="this.state.activeSection === 'admin_requests'"><t t-call="strategic_management.AdminRequestsPage"/></t>
                 <t t-elif="this.state.activeSection === 'admin_audit'"><t t-call="strategic_management.AdminAuditPage"/></t>
                 <t t-elif="this.state.activeSection === 'people'"><t t-call="strategic_management.PeoplePage"/></t>
                 <!-- Tasks & Issues UI-only preview -->
@@ -100,7 +101,7 @@
     <g t-elif="item.id === 'sales_finance' or item.id === 'department_sales'"><path d="M5 20v-7M10 20V8M15 20v-9M20 20V4"/></g>
     <g t-elif="item.id === 'inventory_waste' or item.id === 'department_inventory'"><path d="m12 3 8 4.2v9.6L12 21l-8-4.2V7.2Z"/><path d="m4.3 7.3 7.7 4.1 7.7-4.1M12 11.5V21"/></g>
     <g t-elif="item.id === 'purchasing' or item.id === 'department_purchasing'"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 4h2l2.1 11.2a2 2 0 0 0 2 1.6h9.5a2 2 0 0 0 1.9-1.5L22 8H6"/></g>
-    <g t-elif="item.id === 'business_goals'"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></g>
+    <g t-elif="item.id === 'business_goals' or item.id === 'admin_requests'"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></g>
     <g t-elif="item.id === 'branches'"><path d="M4 21V4.5h11V21M15 10h5v11M2 21h20"/><path d="M7.5 8h4M7.5 12h4M7.5 16h4M17 14h1.5M17 17h1.5"/></g>
     <g t-elif="item.id === 'people' or item.id === 'admin_people'"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1.4a6 6 0 0 1 12 0V20Z"/><path d="M16 5.5a3 3 0 0 1 0 5.8M18 14a5 5 0 0 1 3 4.6V20h-4"/></g>
     <g t-elif="item.id === 'tasks_issues' or item.id === 'admin_work'"><rect x="5" y="4.5" width="14" height="17" rx="2"/><path d="M9 4.5v-2h6v2M8 11l2 2 4-4M8 17h8"/></g>

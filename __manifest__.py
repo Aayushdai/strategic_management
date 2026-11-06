@@ -1,6 +1,6 @@
 {
     "name": "Strategic Performance Management",
-    "version": "20.0.1.9.0",
+    "version": "20.0.1.10.0",
     "category": "Productivity",
     "summary": "Strategic objectives, OKRs, KPIs, and performance management",
     # Set so Odoo does not render README.md (Markdown) as the app description; README.md is the developer map.
@@ -54,6 +54,7 @@
             # Styles load in this order; shared styles first, then each page's own.
             "strategic_management/static/src/navigation_shell/navigation_shell.scss",
             "strategic_management/static/src/navigation_shell/pages/inbox/inbox.scss",
+            "strategic_management/static/src/navigation_shell/pages/kpi_requests/kpi_requests.scss",
             "strategic_management/static/src/navigation_shell/pages/sales/sales.scss",
             "strategic_management/static/src/navigation_shell/pages/purchasing/purchasing.scss",
             "strategic_management/static/src/navigation_shell/pages/inventory/inventory.scss",

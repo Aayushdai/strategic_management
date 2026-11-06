@@ -33,3 +33,4 @@ from . import branch_report
 from . import department_access
 from . import staffing
 from . import admin_console
+from . import kpi_work_request

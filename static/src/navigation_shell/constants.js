@@ -88,6 +88,7 @@ export const ADMIN_SIDEBAR = [
     { id: "admin_branches", label: "Branches" },
     { id: "admin_work", label: "Work Records" },
     { id: "admin_health", label: "System Health" },
+    { id: "admin_requests", label: "KPI & OKR Requests" },
     { id: "admin_audit", label: "Audit Log" },
 ];
 export const EMPLOYEE_SIDEBAR = [{ id: "employee_dashboard", label: "Dashboard" }, { id: "my_tasks", label: "My Tasks" },

@@ -44,10 +44,11 @@
         <div t-if="this.state.requestsLoading and !rq" class="o_sm_req_notice">Loading objective requests…</div>
         <div t-foreach="(rq and !rq.available and rq.messages) || []" t-as="message" t-key="message_index" class="o_sm_req_notice"><t t-esc="message"/></div>
 
+        <t t-if="this.isHeadOffice"><t t-call="strategic_management.WorkRequests"/></t>
         <t t-if="rq and rq.available">
-            <section class="o_sm_req_card" aria-labelledby="o_sm_req_pending_title">
+            <section class="o_sm_req_card is-from-branch" aria-labelledby="o_sm_req_pending_title">
                 <div class="o_sm_req_card_head">
-                    <div><h2 id="o_sm_req_pending_title">Objective Requests</h2><p><t t-esc="rq.can_decide ? 'Review objectives proposed by branch managers.' : 'Objectives your branch has proposed, waiting for Head Office review.'"/></p></div>
+                    <div><h2 id="o_sm_req_pending_title">Objective Requests</h2><span t-if="rq.can_decide" class="o_sm_req_source is-branch">From Branch Manager</span><p><t t-esc="rq.can_decide ? 'Review objectives proposed by branch managers.' : 'Objectives your branch has proposed, waiting for Head Office review.'"/></p></div>
                     <div class="o_sm_req_head_actions">
                         <span class="o_sm_req_count"><t t-esc="rq.pending.length"/> pending</span>
                         <button t-if="rq.pending.length > 5" type="button" class="o_sm_req_link" t-on-click="() => this.toggleRequests('pending')"><t t-esc="rx.pending ? 'Show latest 5' : 'View All →'"/></button>
@@ -104,9 +105,9 @@
                 </table></div>
             </section>
 
-            <section class="o_sm_req_card" aria-labelledby="o_sm_req_history_title">
+            <section class="o_sm_req_card is-from-branch" aria-labelledby="o_sm_req_history_title">
                 <div class="o_sm_req_card_head">
-                    <div><h2 id="o_sm_req_history_title">Objective Request History</h2><p>Recently reviewed objective proposals.</p></div>
+                    <div><h2 id="o_sm_req_history_title">Objective Request History</h2><span t-if="rq.can_decide" class="o_sm_req_source is-branch">From Branch Manager</span><p>Recently reviewed objective proposals.</p></div>
                     <div class="o_sm_req_head_actions">
                         <select class="o_sm_req_status_filter" t-att-value="this.state.historyStatus" t-on-change="this.onHistoryStatusChanged" aria-label="Filter history by status">
                             <option value="all">All Statuses</option><option value="approved">Approved</option><option value="rejected">Rejected</option>

@@ -22,6 +22,7 @@ import { appDependenciesPage } from "./pages/app_dependencies/app_dependencies";
 import { branchManagerPage } from "./pages/branch_manager/branch_manager";
 import { employeeHomePage } from "./pages/employee_home/employee_home";
 import { adminPage } from "./pages/admin/admin";
+import { kpiRequestsPage } from "./pages/kpi_requests/kpi_requests";
 
 export class StrategicNavigationShell extends Component {
     static template = "strategic_management.NavigationShell";
@@ -151,6 +152,20 @@ export class StrategicNavigationShell extends Component {
             rejectReason: "",
             deciding: false,
             pages: {},
+            // KPI/OKR work requests (pages/kpi_requests): Head Office's card on the Inbox and the Admin's list.
+            workRequests: null,
+            workRequestsError: "",
+            workForm: null,
+            workAssign: null,
+            workWithdraw: null,
+            workReviewId: null,
+            workReviewComment: "",
+            workRecover: null,
+            adminRequests: null,
+            adminRequestsError: "",
+            adminForm: null,
+            adminSaving: false,
+            workSaving: false,
             // Admin console (pages/admin): loaded data, filters and the open dialog.
             admin: { overview: null, people: null, peopleOptions: null, branches: null, work: null, health: null, audit: null, error: "",
                      workKind: "objectives", workSearch: "", workStatus: "all", search: "", roleFilter: "all", showInactive: false,
@@ -280,7 +295,7 @@ export class StrategicNavigationShell extends Component {
             if (!this.state.todayDate && data.period) {
                 Object.assign(this.state, { dateStart: data.period.start, dateEnd: data.period.end, todayDate: data.period.end });
             }
-            if (this.state.activeSection === "overview") { this.loadPendingStaffing(); await this.loadObjectiveRequests(); }
+            if (this.state.activeSection === "overview") { this.loadPendingStaffing(); this.loadWorkRequests(); await this.loadObjectiveRequests(); }
             // Period change only: on landing the first load comes from loadBranchObjectives.
             if (this.state.activeSection === "bm_dashboard" && this.branchOpsRequestId) { await this.loadBranchOps(); }
             if (this.departmentCode) { await this.loadBranchOps(); }
@@ -344,6 +359,7 @@ export class StrategicNavigationShell extends Component {
         }
         if (sectionId === "overview") {
             this.loadPendingStaffing();
+            this.loadWorkRequests();
             return this.loadObjectiveRequests();
         }
         if (sectionId === "bm_dashboard" && this.isBranchManager) {
@@ -609,7 +625,7 @@ export class StrategicNavigationShell extends Component {
 }
 
 // Add every page's functions to the component. A name defined twice would silently replace the other, so it is refused.
-for (const page of [inboxPage, salesPage, purchasingPage, inventoryPage, branchesPage, peoplePage, employeesPage, tasksPage, reportsPage, appDependenciesPage, branchManagerPage, employeeHomePage, adminPage]) {
+for (const page of [inboxPage, salesPage, purchasingPage, inventoryPage, branchesPage, peoplePage, employeesPage, tasksPage, reportsPage, appDependenciesPage, branchManagerPage, employeeHomePage, adminPage, kpiRequestsPage]) {
     for (const [name, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(page))) {
         if (name in StrategicNavigationShell.prototype) {
             throw new Error(`Strategic Management: "${name}" is defined twice in the navigation shell.`);

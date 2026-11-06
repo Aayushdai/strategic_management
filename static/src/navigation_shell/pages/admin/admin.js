@@ -31,6 +31,7 @@ export const adminPage = {
     async loadAdminSection({ silent = false } = {}) {
         const admin = this.state.admin;
         const section = this.state.activeSection;
+        if (section === "admin_requests") return this.loadAdminRequests();  // pages/kpi_requests
         if (!silent) admin.error = "";
         try {
             if (section === "admin_work") {

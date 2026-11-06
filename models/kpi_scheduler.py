@@ -2,6 +2,7 @@
 
 import logging
 
+from dateutil.relativedelta import relativedelta
 from markupsafe import escape
 
 from odoo import api, fields, models, _
@@ -23,8 +24,61 @@ _SCHEDULE_FAILURE_SUMMARY = "Scheduled KPI evaluation failed"
 _PENDING_REVIEW_SUMMARY = "KPI measurement pending review"
 
 
+def reporting_periods(date_start, date_end, frequency):
+    """Calendar periods of the frequency that touch the range, clipped to it."""
+    periods, current = [], date_start
+    while current <= date_end:
+        if frequency == "daily":
+            end = current
+        elif frequency == "weekly":
+            end = current + relativedelta(days=6 - current.weekday())
+        elif frequency == "monthly":
+            end = current + relativedelta(day=31)
+        elif frequency == "quarterly":
+            end = current + relativedelta(month=(current.month - 1) // 3 * 3 + 3, day=31)
+        else:
+            end = current + relativedelta(month=12, day=31)
+        periods.append((current, min(end, date_end)))
+        current = end + relativedelta(days=1)
+    return periods
+
+
+class StrategicKpiReportingSchedule(models.Model):
+    """One KPI at one scope, reported every period of its frequency. Each closed period gets its own approved target,
+    which the daily job then evaluates, so a daily KPI has one evaluation per day. The target applies to each period."""
+    _name = "strategic.kpi.reporting.schedule"
+    _description = "KPI Reporting Schedule"
+    _order = "kpi_id, id"
+
+    kpi_id = fields.Many2one("strategic.kpi.definition", required=True, ondelete="restrict", index=True)
+    company_id = fields.Many2one(related="kpi_id.company_id", store=True, readonly=True)
+    scope = fields.Selection([("organization", "Organization"), ("branch", "Branch")], required=True, default="organization")
+    warehouse_id = fields.Many2one("stock.warehouse", string="Branch Warehouse", index=True)
+    date_start = fields.Date(required=True)
+    date_end = fields.Date(required=True)
+    target_value = fields.Float(required=True)
+    target_ids = fields.One2many("strategic.kpi.target", "schedule_id")
+
+    def _generate_due_targets(self):
+        """Idempotent: one target per closed period. An open period is never measured, so no partial result is stored."""
+        created = self.env["strategic.kpi.target"].sudo()
+        for schedule in self.sudo():
+            today = fields.Date.context_today(schedule.with_context(tz=schedule.company_id.partner_id.tz or "UTC"))
+            existing = set(schedule.target_ids.mapped("date_start"))
+            for start, end in reporting_periods(schedule.date_start, schedule.date_end, schedule.kpi_id.reporting_frequency or "monthly"):
+                if end >= today or start in existing:
+                    continue
+                created |= created.create({"kpi_id": schedule.kpi_id.id, "schedule_id": schedule.id, "date_start": start, "date_end": end, "scope": schedule.scope,
+                                           "warehouse_id": schedule.warehouse_id.id or False, "target_basis": "absolute", "target_value": schedule.target_value, "state": "approved"})
+        return created
+
+
 class StrategicKpiScheduledJobs(models.Model):
     _inherit = "strategic.kpi.target"
+
+    schedule_id = fields.Many2one("strategic.kpi.reporting.schedule", readonly=True, index=True, copy=False, ondelete="restrict")
+
+    _one_per_scheduled_period = models.UniqueIndex("(schedule_id, date_start) WHERE schedule_id IS NOT NULL", "This reporting period already has a target.")
 
     @api.model
     def _cron_process_scheduled_kpis(self):
@@ -34,6 +88,12 @@ class StrategicKpiScheduledJobs(models.Model):
         makes retries idempotent; changed source snapshots are retained as a new
         evaluation by the existing immutable evaluation workflow.
         """
+        for schedule in self.env["strategic.kpi.reporting.schedule"].sudo().search([]):
+            try:
+                with self.env.cr.savepoint():
+                    schedule._generate_due_targets()
+            except Exception:
+                _logger.exception("Could not prepare the reporting periods of KPI schedule %s", schedule.id)
         targets = self.sudo().search(
             [("state", "=", "approved"), ("date_end", "!=", False)],
             order="company_id, date_end, id",
@@ -87,7 +147,8 @@ class StrategicKpiScheduledJobs(models.Model):
                     )
                 continue
 
-            if evaluation.status in ("data_quality_issue", "not_evaluated"):
+            # A scheduled period with no sales is an ordinary result, not an exception; a daily KPI would otherwise ask for review every day.
+            if evaluation.status == "data_quality_issue" or (evaluation.status == "not_evaluated" and not target.schedule_id):
                 reason = evaluation.reason or evaluation.source_note or _(
                     "The operational source did not produce a valid measurement."
                 )

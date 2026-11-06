@@ -70,6 +70,9 @@
                             <field name="unit" readonly="state == 'approved'"/>
                             <field name="source_type" readonly="state == 'approved'"/>
                             <field name="calculation_type" readonly="state == 'approved'"/>
+                            <field name="has_time_window" readonly="state == 'approved'"/>
+                            <field name="time_window_start" widget="float_time" readonly="state == 'approved'" invisible="not has_time_window"/>
+                            <field name="time_window_end" widget="float_time" readonly="state == 'approved'" invisible="not has_time_window"/>
                             <field name="source_product_id" readonly="state == 'approved'"
                                    invisible="calculation_type not in ['pos_sold_quantity', 'pos_recipe_consumption_estimate', 'purchase_ordered_quantity', 'purchase_received_quantity', 'inventory_recorded_waste_quantity', 'inventory_validated_waste_quantity', 'inventory_opening_stock_quantity', 'inventory_closing_stock_quantity', 'inventory_actual_consumption_quantity', 'inventory_transfer_in_quantity', 'inventory_transfer_out_quantity', 'inventory_adjustment_quantity', 'inventory_unexplained_variance_quantity', 'inventory_count_difference_quantity', 'inventory_recorded_waste_cost', 'pos_product_net_sales', 'purchase_average_unit_price', 'pos_average_unit_price', 'inventory_closing_stock_value', 'inventory_waste_recording_pct', 'inventory_ingredient_use_difference_quantity']"/>
                         </group>
@@ -250,6 +253,10 @@
                             <field name="source_type" readonly="1"/>
                             <field name="calculation_type" readonly="1"/>
                             <field name="individual_outcome" readonly="calculation_type != 'manual_value'"/>
+                            <field name="reporting_frequency"/>
+                            <field name="has_time_window" readonly="1"/>
+                            <field name="time_window_start" widget="float_time" readonly="1" invisible="not has_time_window"/>
+                            <field name="time_window_end" widget="float_time" readonly="1" invisible="not has_time_window"/>
                             <field name="source_product_id" readonly="1"
                                    invisible="calculation_type not in ['pos_sold_quantity', 'pos_recipe_consumption_estimate', 'purchase_ordered_quantity', 'purchase_received_quantity', 'inventory_recorded_waste_quantity', 'inventory_validated_waste_quantity', 'inventory_opening_stock_quantity', 'inventory_closing_stock_quantity', 'inventory_actual_consumption_quantity', 'inventory_transfer_in_quantity', 'inventory_transfer_out_quantity', 'inventory_adjustment_quantity', 'inventory_unexplained_variance_quantity', 'inventory_count_difference_quantity', 'inventory_recorded_waste_cost', 'pos_product_net_sales', 'purchase_average_unit_price', 'pos_average_unit_price', 'inventory_closing_stock_value', 'inventory_waste_recording_pct', 'inventory_ingredient_use_difference_quantity']"/>
                         </group>
