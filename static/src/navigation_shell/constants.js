@@ -18,6 +18,13 @@ export const NAVIGATION_ITEMS = [
 // Reports and Configuration open Odoo's own screens. Standard POS, purchase, stock and
 // accounting analyses are not branch-restricted by this module, so they are offered
 // to Head Office only; strategic records carry their own branch record rules.
+// Settings groups the configuration links; each group has its own colour (see .o_sm_cfg_group.is-<key>).
+export const CONFIG_GROUPS = [
+    { key: "strategy", label: "Strategy", description: "Plans, objectives and how they line up." },
+    { key: "kpi", label: "KPIs", description: "What is measured, the targets and the recorded results." },
+    { key: "operations", label: "Operations", description: "Branches, recipes and stock levels the figures come from." },
+    { key: "access", label: "Access", description: "Who can use the app and for which branch." },
+];
 export const SECTION_LINKS = {
     reports: [
         { xmlid: "point_of_sale.action_report_pos_order_all", label: "POS Sales Analysis", description: "Sales, margin and quantities by product, branch and period.", roles: ["head_office"] },
@@ -28,17 +35,17 @@ export const SECTION_LINKS = {
         { xmlid: "strategic_management.action_strategic_kpi_exceptions", label: "KPI Exceptions", description: "Targets that could not be evaluated, with reasons.", roles: ["head_office", "branch_manager"] },
     ],
     configuration: [
-        { xmlid: "strategic_management.action_strategic_plan", label: "Strategic Plans", description: "Plan periods that group objectives.", roles: ["head_office"] },
-        { xmlid: "strategic_management.action_strategic_objective", label: "Objectives", description: "Company and branch objectives, owners and deadlines.", roles: ["head_office", "branch_manager"] },
-        { xmlid: "strategic_management.action_strategic_okr", label: "OKR Objectives", description: "Key results linked to objectives.", roles: ["head_office", "branch_manager"] },
-        { xmlid: "strategic_management.action_strategic_kpi_definition", label: "KPI Definitions", description: "What is measured and from which Odoo source.", roles: ["head_office"] },
-        { xmlid: "strategic_management.action_strategic_kpi_target", label: "KPI Targets", description: "Approved targets per period, branch or employee.", roles: ["head_office", "branch_manager", "employee"] },
-        { xmlid: "strategic_management.action_strategic_kpi_evaluation", label: "KPI Evaluations", description: "Recorded KPI results and their evidence.", roles: ["head_office", "branch_manager", "employee"] },
-        { xmlid: "strategic_management.action_strategic_hoshin_xmatrix_workspace", label: "Hoshin X-Matrix", description: "Strategy alignment matrix.", roles: ["head_office"] },
-        { xmlid: "stock.action_warehouse_form", label: "Branches (Warehouses)", description: "Branch details and Planned Staff for coverage.", roles: ["head_office"] },
-        { xmlid: "mrp.mrp_bom_form_action", label: "Recipes (BoMs)", description: "Set recipes to Kit so POS sales consume ingredients.", roles: ["head_office"] },
-        { xmlid: "stock.action_orderpoint", label: "Reorder Rules", description: "Minimum stock levels behind low-stock alerts.", roles: ["head_office"] },
-        { xmlid: "base.action_res_users", label: "Users & Branch Assignment", description: "Roles and each user's branch (administrators).", roles: ["head_office"] },
+        { xmlid: "strategic_management.action_strategic_plan", group: "strategy", icon: "M4 5h16M4 12h10M4 19h7M17 15l3 3-3 3", label: "Strategic Plans", description: "Plan periods that group objectives.", roles: ["head_office"] },
+        { xmlid: "strategic_management.action_strategic_objective", group: "strategy", icon: "M12 3a9 9 0 1 0 9 9M12 7a5 5 0 1 0 5 5M12 11a1 1 0 1 0 1 1M21 3l-9 9", label: "Objectives", description: "Company and branch objectives, owners and deadlines.", roles: ["head_office", "branch_manager"] },
+        { xmlid: "strategic_management.action_strategic_okr", group: "strategy", icon: "M5 4v16M5 5h11l-2 4 2 4H5", label: "OKR Objectives", description: "Key results linked to objectives.", roles: ["head_office", "branch_manager"] },
+        { xmlid: "strategic_management.action_strategic_kpi_definition", group: "kpi", icon: "M5 20V10M10 20V4M15 20v-7M20 20v-4", label: "KPI Definitions", description: "What is measured and from which Odoo source.", roles: ["head_office"] },
+        { xmlid: "strategic_management.action_strategic_kpi_target", group: "kpi", icon: "M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18ZM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8Z", label: "KPI Targets", description: "Approved targets per period, branch or employee.", roles: ["head_office", "branch_manager", "employee"] },
+        { xmlid: "strategic_management.action_strategic_kpi_evaluation", group: "kpi", icon: "M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9", label: "KPI Evaluations", description: "Recorded KPI results and their evidence.", roles: ["head_office", "branch_manager", "employee"] },
+        { xmlid: "strategic_management.action_strategic_hoshin_xmatrix_workspace", group: "strategy", icon: "M4 4h16v16H4zM4 4l16 16M20 4 4 20", label: "Hoshin X-Matrix", description: "Strategy alignment matrix.", roles: ["head_office"] },
+        { xmlid: "stock.action_warehouse_form", group: "operations", icon: "M3 21V9l9-6 9 6v12M9 21v-6h6v6", label: "Branches (Warehouses)", description: "Branch details and Planned Staff for coverage.", roles: ["head_office"] },
+        { xmlid: "mrp.mrp_bom_form_action", group: "operations", icon: "M6 3h12M8 3v5l-4 9a3 3 0 0 0 3 4h10a3 3 0 0 0 3-4l-4-9V3M7 14h10", label: "Recipes (BoMs)", description: "Set recipes to Kit so POS sales consume ingredients.", roles: ["head_office"] },
+        { xmlid: "stock.action_orderpoint", group: "operations", icon: "M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5", label: "Reorder Rules", description: "Minimum stock levels behind low-stock alerts.", roles: ["head_office"] },
+        { xmlid: "base.action_res_users", group: "access", icon: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM19 8v6M22 11h-6", label: "Users & Branch Assignment", description: "Roles and each user's branch (administrators).", roles: ["head_office"] },
     ],
 };
 

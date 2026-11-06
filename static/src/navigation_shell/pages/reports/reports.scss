@@ -59,3 +59,40 @@
 @media (max-width: 900px) {
     .o_sm_navigation_shell .o_sm_reports .o_sm_report_sections { grid-template-columns: minmax(0, 1fr); }
 }
+
+// Settings: configuration links grouped by purpose, one colour per group.
+.o_sm_navigation_shell .o_sm_cfg { display: flex; flex-direction: column; gap: 1.4rem; }
+.o_sm_navigation_shell .o_sm_cfg_group {
+    --cfg-ink: #5b47c9; --cfg-soft: #efecfd; --cfg-line: #d9d2fb;
+    &.is-kpi { --cfg-ink: #1f6fd1; --cfg-soft: #e7f1fd; --cfg-line: #c8ddf8; }
+    &.is-operations { --cfg-ink: #1e8a55; --cfg-soft: #e5f6ec; --cfg-line: #c4e9d3; }
+    &.is-access { --cfg-ink: #b5650d; --cfg-soft: #fdf1e2; --cfg-line: #f5d9b5; }
+}
+.o_sm_navigation_shell .o_sm_cfg_group_head {
+    display: flex; align-items: baseline; gap: .75rem; margin-bottom: .65rem; padding-left: .7rem; border-left: 3px solid var(--cfg-ink);
+    h2 { margin: 0; color: #1d2340; font-size: 1rem; font-weight: 650; }
+    p { margin: 0; color: #6b7189; font-size: .82rem; }
+}
+.o_sm_navigation_shell .o_sm_cfg_grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: .8rem; }
+.o_sm_navigation_shell .o_sm_cfg_card {
+    display: flex; align-items: center; gap: .85rem; min-height: 5.2rem; padding: .95rem 1rem; border: 1px solid #e8e9f1; border-radius: .8rem;
+    background: #fff; color: #1d2340; text-align: left; box-shadow: 0 1px 2px rgba(16, 24, 40, .04); cursor: pointer;
+    transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    &:hover { border-color: var(--cfg-line); box-shadow: 0 6px 18px rgba(16, 24, 40, .08); transform: translateY(-2px); }
+    &:hover .o_sm_cfg_arrow { color: var(--cfg-ink); transform: translateX(2px); }
+    &:focus-visible { outline: 2px solid var(--cfg-ink); outline-offset: 2px; }
+}
+.o_sm_navigation_shell .o_sm_cfg_icon {
+    display: inline-flex; flex: 0 0 2.6rem; align-items: center; justify-content: center; width: 2.6rem; height: 2.6rem; border-radius: .7rem;
+    background: var(--cfg-soft); color: var(--cfg-ink);
+    svg { width: 1.3rem; height: 1.3rem; }
+}
+.o_sm_navigation_shell .o_sm_cfg_text {
+    display: flex; flex: 1 1 auto; flex-direction: column; gap: .2rem; min-width: 0;
+    strong { font-size: .93rem; font-weight: 650; }
+    small { color: #6b7189; font-size: .8rem; line-height: 1.35; }
+}
+.o_sm_navigation_shell .o_sm_cfg_arrow { flex: 0 0 auto; color: #b3b7c8; font-size: 1.05rem; transition: color .12s ease, transform .12s ease; }
+@media (max-width: 620px) {
+    .o_sm_navigation_shell .o_sm_cfg_group_head { flex-direction: column; gap: .15rem; }
+}
