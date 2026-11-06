@@ -33,7 +33,7 @@
         <section class="o_sm_ops o_sm_reports" aria-label="Branch reports">
             <article class="o_sm_br_panel">
                 <div class="o_sm_br_panel_heading">
-                    <div><h2>Branch reports</h2><p t-if="rp and rp.role === 'branch_manager'">Prepare a report for a period, add a short comment and send it to Head Office.</p><p t-else="">Reports submitted by the branches, with their saved figures.</p></div>
+                    <span class="o_sm_rep_icon is-reports" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6ZM14 3v5h5M9 12h6M9 16h6"/></svg></span><div><h2>Branch reports</h2><p t-if="rp and rp.role === 'branch_manager'">Prepare a report for a period, add a short comment and send it to Head Office.</p><p t-else="">Reports submitted by the branches, with their saved figures.</p></div>
                     <div t-if="rp and rp.role === 'branch_manager'" class="o_sm_reports_new">
                         <label class="o_sm_pur_filter"><span>From</span><input type="date" t-att-value="this.state.dateStart" t-att-max="this.state.todayDate" t-on-change="this.onStartDateChanged" aria-label="Report start date"/></label>
                         <label class="o_sm_pur_filter"><span>To</span><input type="date" t-att-value="this.state.dateEnd" t-att-max="this.state.todayDate" t-on-change="this.onEndDateChanged" aria-label="Report end date"/></label>
@@ -56,7 +56,7 @@
             </article>
 
             <article t-if="rp and rp.role === 'head_office'" class="o_sm_br_panel">
-                <div class="o_sm_br_panel_heading"><div><h2>Open blockers</h2><p>Blockers reported on objectives that still wait for Head Office's follow-up (its To-Dos)</p></div></div>
+                <div class="o_sm_br_panel_heading"><span class="o_sm_rep_icon is-blockers" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg></span><div><h2>Open blockers</h2><p>Blockers reported on objectives that still wait for Head Office's follow-up (its To-Dos)</p></div></div>
                 <t t-set="ob" t-value="this.state.openBlockers"/>
                 <table t-if="ob and ob.length" class="o_sm_task_table"><thead><tr><th>Problem</th><th>Branch</th><th>Objective</th><th>Reported</th><th>Follow up by</th></tr></thead><tbody>
                     <tr t-foreach="ob" t-as="row" t-key="row.objective_id + row.problem"><td><strong t-esc="row.problem"/></td><td t-esc="row.branch or '—'"/>

@@ -80,3 +80,21 @@
 @media (max-width: 620px) {
     .o_sm_navigation_shell .o_sm_cfg_group_head { flex-direction: column; gap: .15rem; }
 }
+
+// Reports page: Head Office's two panels side by side, an icon in each heading, softer empty states.
+.o_sm_navigation_shell .o_sm_reports:has(> article + article) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: start; }
+.o_sm_navigation_shell .o_sm_reports .o_sm_br_panel_heading { justify-content: flex-start; gap: .75rem;
+    // the title block sits beside its icon and wraps its own text instead of dropping below
+    > .o_sm_rep_icon + div { flex: 1 1 14rem; min-width: 0; }
+    .o_sm_reports_new { margin-left: auto; }
+}
+.o_sm_navigation_shell .o_sm_rep_icon {
+    display: inline-flex; flex: 0 0 2.4rem; align-items: center; justify-content: center; width: 2.4rem; height: 2.4rem; border-radius: .65rem;
+    background: #efecfd; color: #5b47c9;
+    svg { width: 1.2rem; height: 1.2rem; }
+    &.is-blockers { background: #fdf1e2; color: #b5650d; }
+}
+.o_sm_navigation_shell .o_sm_reports .o_sm_br_empty { margin: .4rem 0 0; padding: 1rem; border: 1px dashed #e3e5ee; border-radius: .6rem; background: #fafafd; color: #6b7189; text-align: center; }
+@media (max-width: 900px) {
+    .o_sm_navigation_shell .o_sm_reports:has(> article + article) { grid-template-columns: minmax(0, 1fr); }
+}
