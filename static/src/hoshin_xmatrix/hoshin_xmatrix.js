@@ -2,6 +2,7 @@
 
 import { Component, onWillStart, proxy } from "@odoo/owl";
 import { registry } from "@web/core/registry";
+import { BackButton } from "@strategic_management/navigation_shell/back_button";
 import { useService } from "@web/core/utils/hooks";
 
 const PERSPECTIVE_LABELS = {
@@ -30,6 +31,7 @@ const LINK_LABELS = {
 };
 
 export class StrategicHoshinXMatrix extends Component {
+    static components = { BackButton };
     static template = "strategic_management.HoshinXMatrix";
 
     setup() {

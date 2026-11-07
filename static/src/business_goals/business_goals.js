@@ -6,6 +6,7 @@
  */
 import { Component, onWillStart, proxy, useProps } from "@odoo/owl";
 import { registry } from "@web/core/registry";
+import { BackButton } from "@strategic_management/navigation_shell/back_button";
 import { useService } from "@web/core/utils/hooks";
 import { standardActionServiceProps } from "@web/webclient/actions/action_plugin";
 
@@ -41,6 +42,7 @@ const formatDate = (iso) => {
 };
 
 export class BusinessGoalsAction extends Component {
+    static components = { BackButton };
     static template = "strategic_management.BusinessGoalsAction";
     // Odoo 20 (OWL 3) passes client-action props only when declared; the action's context can open one objective.
     props = useProps({ ...standardActionServiceProps });

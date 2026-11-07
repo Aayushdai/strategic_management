@@ -2,6 +2,7 @@
 <templates xml:space="preserve">
     <t t-name="strategic_management.HeadOfficeDashboard" owl="1">
         <div class="o_spm_head_office_dashboard">
+            <BackButton/>
             <header class="o_spm_dashboard_header">
                 <div class="o_spm_dashboard_intro">
                     <div class="o_spm_dashboard_eyebrow">STRATEGIC PERFORMANCE / EXECUTIVE OVERVIEW</div>

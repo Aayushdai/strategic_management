@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="strategic_management.BackButton">
+        <button t-if="this.previous" type="button" class="o_sm_back" t-att-title="'Back to ' + (this.previous.name || 'the previous screen')" t-on-click="() => this.back()">
+            <span aria-hidden="true">←</span> Back
+        </button>
+    </t>
+</templates>

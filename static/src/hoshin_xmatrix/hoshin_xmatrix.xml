@@ -2,9 +2,10 @@
 <templates xml:space="preserve">
     <t t-name="strategic_management.HoshinXMatrix" owl="1">
         <div t-att-class="this.state.showRelationshipMap ? 'o_hoshin_xmatrix_action is-relationship-map' : 'o_hoshin_xmatrix_action'">
+            <BackButton/>
             <div class="o_hoshin_xmatrix_header">
                 <div>
-                    <div class="o_hoshin_eyebrow">STRATEGIC MANAGEMENT / PHASE 7</div>
+                    <div class="o_hoshin_eyebrow">STRATEGIC MANAGEMENT</div>
                     <h1>Hoshin Kanri X-Matrix</h1>
                     <p>Translate breakthrough intent into annual objectives, improvement initiatives, accountable owners, and measurable targets.</p>
                 </div>

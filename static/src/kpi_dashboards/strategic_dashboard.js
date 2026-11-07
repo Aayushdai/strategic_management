@@ -2,6 +2,7 @@
 
 import { Component, onWillStart, proxy } from "@odoo/owl";
 import { registry } from "@web/core/registry";
+import { BackButton } from "@strategic_management/navigation_shell/back_button";
 import { useService } from "@web/core/utils/hooks";
 
 const PERSPECTIVE_LABELS = {
@@ -12,6 +13,7 @@ const PERSPECTIVE_LABELS = {
 };
 
 export class StrategicHeadOfficeDashboard extends Component {
+    static components = { BackButton };
     static template = "strategic_management.HeadOfficeDashboard";
 
     setup() {

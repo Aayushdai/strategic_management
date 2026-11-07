@@ -2,6 +2,7 @@
 <templates xml:space="preserve">
     <t t-name="strategic_management.BranchDashboard" owl="1">
         <div class="o_spm_branch_dashboard">
+            <BackButton/>
             <header class="o_spm_branch_header">
                 <div>
                     <div class="o_spm_branch_eyebrow">STRATEGIC PERFORMANCE / BRANCH VIEW</div>

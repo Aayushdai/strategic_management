@@ -2,6 +2,7 @@
 <templates xml:space="preserve">
     <t t-name="strategic_management.EmployeeDashboard" owl="1">
         <main class="o_spm_employee_dashboard">
+            <BackButton/>
             <header class="o_spm_employee_header">
                 <div>
                     <div class="o_spm_employee_eyebrow">STRATEGIC PERFORMANCE / PERSONAL VIEW</div>

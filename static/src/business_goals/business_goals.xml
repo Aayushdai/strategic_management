@@ -3,6 +3,7 @@
     <t t-name="strategic_management.BusinessGoalsAction" owl="1">
         <div class="o_sm_business_goals">
             <aside class="o_sm_bg_sidebar">
+                <BackButton/>
                 <div class="o_sm_bg_brand"><span class="o_sm_bg_brand_icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg></span><span>Business Overview</span></div>
                 <nav aria-label="Business Overview navigation">
                     <a t-att-class="'o_sm_bg_nav' + (this.state.section === 'overview' ? ' active' : '')" href="#" t-on-click.prevent="() => this.openSection('overview')"><i class="oi" data-icon="show_chart"/> <span>Overview</span></a>

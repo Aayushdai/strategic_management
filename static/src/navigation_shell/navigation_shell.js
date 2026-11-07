@@ -4,10 +4,12 @@
 // helpers several pages share. Each page keeps its own functions in pages/<page>/<page>.js (imported below),
 // its template in pages/<page>/<page>.xml and its styles in pages/<page>/<page>.scss.
 
-import { Component, onMounted, onWillStart, onWillUnmount, proxy } from "@odoo/owl";
+import { Component, onMounted, onWillStart, onWillUnmount, proxy, useProps } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { user } from "@web/core/user";
 import { useService } from "@web/core/utils/hooks";
+import { useSetupAction } from "@web/search/action_hook";
+import { standardActionServiceProps } from "@web/webclient/actions/action_plugin";
 import { NAVIGATION_ITEMS, SIDEBAR_PRIMARY, SIDEBAR_MORE, HEAD_OFFICE_PEOPLE_TABS, HEAD_OFFICE_SIDEBAR_MORE, BRANCH_SIDEBAR, ADMIN_SIDEBAR, EMPLOYEE_SIDEBAR, BRANCH_SIDEBAR_MORE, PERIOD_PRESETS, PAGE_SIZE, DATA_CHANGED, LIVE_REFRESH_DEBOUNCE_MS, LIVE_REFRESH_POLL_MS } from "./constants";
 import { inboxPage } from "./pages/inbox/inbox";
 import { salesPage } from "./pages/sales/sales";
@@ -30,6 +32,10 @@ export class StrategicNavigationShell extends Component {
     static template = "strategic_management.NavigationShell";
 
     setup() {
+        this.props = useProps({ ...standardActionServiceProps });
+        // Odoo keeps this when another screen opens on top, and hands it back when the user returns ("← Back").
+        useSetupAction({ getLocalState: () => ({ section: this.state.activeSection }) });
+        const returnTo = this.props.state?.section;
         this.orm = useService("orm");
         this.notification = useService("notification");
         this.action = useService("action");
@@ -196,7 +202,12 @@ export class StrategicNavigationShell extends Component {
                 this.scheduleLiveRefresh();
             }
         };
-        onWillStart(() => this.loadStart());
+        onWillStart(async () => {
+            await this.loadStart();
+            if (returnTo && returnTo !== this.state.activeSection) {
+                await this.selectSection(returnTo);
+            }
+        });
         onMounted(() => {
             this.busService.subscribe(DATA_CHANGED, this.onDataChanged);
             if (!this.busService.isActive) {
