@@ -2,8 +2,6 @@ from . import kpi
 from . import strategy
 from . import res_users
 from . import hoshin
-from . import hoshin_review
-from . import hoshin_countermeasure
 from . import kpi_measurement
 from . import kpi_source_adapter
 from . import kpi_receipt_refresh
@@ -36,3 +34,6 @@ from . import department_access
 from . import staffing
 from . import admin_console
 from . import kpi_work_request
+# Extend strategic.performance.dashboard, so they load after it.
+from . import hoshin_review
+from . import hoshin_countermeasure
