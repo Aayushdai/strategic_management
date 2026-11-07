@@ -39,6 +39,18 @@ class TestHoshinReview(StrategyFixture):
         self.assertNotIn("target", apr, "no result in April: shown as no data, never as zero")
         self.assertEqual(row["red_streak"], 2)
 
+        # The X-Matrix of the plan covering the year: the B>M link is a primary dot in the bottom-right corner.
+        self.env["strategic.plan"].sudo().search([("id", "!=", plan.id)]).write({"active": False})
+        matrix = self.env["strategic.performance.dashboard"].with_user(self.head_user).get_hoshin_review(2026)["xmatrix"]
+        b_index = [item["id"] for item in matrix["items"]["B"]].index(breakthrough.id)
+        m_index = [item["id"] for item in matrix["items"]["M"]].index(kpi.id)
+        self.assertEqual(matrix["links"][f"BM:{b_index}:{m_index}"], 1)
+        self.assertIn("target 100", matrix["items"]["M"][m_index]["name"])
+        self.assertEqual(matrix["items"]["M"][m_index]["tone"], "bad", "coloured by its latest month (March, missed)")
+        self.assertTrue(matrix["items"]["B"][b_index]["linked"])
+        self.assertFalse(self.env["strategic.performance.dashboard"].with_user(self.head_user).get_hoshin_review(2030)["xmatrix"],
+                         "no plan covers 2030")
+
         for user in (self.branch_user_a, self.emp_user):
             with self.assertRaises(AccessError):
                 self.env["strategic.performance.dashboard"].with_user(user).get_hoshin_review(2026)

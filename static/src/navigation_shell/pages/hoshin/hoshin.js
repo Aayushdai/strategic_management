@@ -42,6 +42,47 @@ export const hoshinPage = {
         return this.action.doAction("strategic_management.action_strategic_hoshin_xmatrix_workspace");
     },
 
+    // The X-Matrix laid out on a CSS grid, as in the X-Matrix builder: initiatives on top, breakthrough objectives
+    // below, annual objectives left, metrics and owners right, and the links in the four corners.
+    hoshinMatrix() {
+        const x = this.state.hoshin?.xmatrix;
+        if (!x) return null;
+        const it = x.items, n = (q) => it[q].length;
+        const nA = n("A"), nI = n("I"), nM = n("M"), nB = n("B");
+        const colMid = nA + 1, colM = nA + 2, colO = nA + 2 + nM, rowMid = nI + 1, rowB = nI + 2;
+        const at = (row, col) => `grid-row: ${row}; grid-column: ${col};`;
+        const cells = [];
+        const corner = (set, rows, cols, row0, col0) => {
+            it[rows].forEach((r, i) => it[cols].forEach((c, j) => {
+                const link = x.links[`${set}:${i}:${j}`];
+                cells.push({ key: `${set}:${i}:${j}`, cls: "o_sm_xm_cell", style: at(row0 + i, col0 + j),
+                    dot: link === 1 ? "is-primary" : link === 2 ? "is-supporting" : "",
+                    title: `${rows}${i + 1} ${r.name} · ${cols}${j + 1} ${c.name}${link ? (link === 1 ? " · primary" : " · supporting") : ""}` });
+            }));
+        };
+        corner("IA", "I", "A", 1, 1);
+        corner("IM", "I", "M", 1, colM);
+        corner("IO", "I", "O", 1, colO);
+        corner("BA", "B", "A", rowB, 1);
+        corner("BM", "B", "M", rowB, colM);
+        const band = (q, i, style, vertical) => {
+            const item = it[q][i];
+            cells.push({ key: `${q}${i}`, style, label: `${q}${i + 1}: ${item.name}`, title: item.name,
+                cls: `o_sm_xm_band${vertical ? " is-vertical" : ""}${item.linked ? "" : " is-unlinked"}${item.tone ? " is-" + item.tone : ""}` });
+        };
+        it.I.forEach((_, i) => band("I", i, at(1 + i, colMid)));
+        it.B.forEach((_, i) => band("B", i, at(rowB + i, colMid)));
+        it.A.forEach((_, i) => band("A", i, at(rowMid, 1 + i), true));
+        it.M.forEach((_, i) => band("M", i, at(rowMid, colM + i), true));
+        it.O.forEach((_, i) => band("O", i, at(rowMid, colO + i), true));
+        const track = (count, size) => (count ? `repeat(${count}, ${size}) ` : "");
+        return {
+            plan: x.plan, findings: x.findings, cells, centre: at(rowMid, colMid),
+            grid: `grid-template-columns: ${track(nA, "2.4rem")}minmax(18rem, 1fr) ${track(nM + n("O"), "2.4rem")}; `
+                + `grid-template-rows: ${track(nI, "2.6rem")}19rem ${track(nB, "2.6rem")};`,
+        };
+    },
+
     hoshinNumber(value) {
         if (value === false || value === undefined || value === null) return "—";
         return Number(value).toLocaleString(undefined, { maximumFractionDigits: Math.abs(value) < 100 ? 1 : 0 });

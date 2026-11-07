@@ -37,7 +37,76 @@ class StrategicPerformanceDashboardHoshinReview(models.AbstractModel):
         breakthroughs = self.env["strategic.objective"].sudo().search_count([
             ("company_id", "=", company.id), ("hoshin_level", "=", "breakthrough"), ("state", "in", ("draft", "pending_approval", "active"))])
         return {"year": year, "months": list(_MONTHS), "rows": rows, "breakthrough_count": breakthroughs,
-                "years": list(range(today.year - 2, today.year + 2))}
+                "years": list(range(today.year - 2, today.year + 2)), "xmatrix": self._hoshin_xmatrix(company, year, rows)}
+
+    @api.model
+    def _hoshin_xmatrix(self, company, year, rows):
+        """The X-Matrix of the plan covering the year: five item lists and the corner links between them.
+
+        Links are keyed like the X-Matrix builder: "IA:<initiative>:<annual>", "BA", "IM", "BM", "IO";
+        1 is a primary link (dot), 2 a supporting one (ring). Read only: links are edited in the X-Matrix workspace.
+        """
+        plan = self.env["strategic.plan"].sudo().search([
+            ("company_id", "=", company.id), ("date_start", "<=", date(year, 12, 31)), ("date_end", ">=", date(year, 1, 1))],
+            order="date_start desc, id desc", limit=1)
+        if not plan:
+            return False
+        Objective = self.env["strategic.objective"].sudo()
+        live = ("draft", "pending_approval", "active", "completed")
+        objectives = {level: Objective.search([("plan_id", "=", plan.id), ("scope", "=", "organization"),
+                                               ("hoshin_level", "=", level), ("state", "in", live)], order="deadline, name")
+                      for level in ("breakthrough", "annual")}
+        initiatives = self.env["strategic.initiative"].sudo().search(
+            [("plan_id", "=", plan.id), ("state", "in", ("draft", "active", "completed"))], order="date_start, name")
+        alignments = self.env["strategic.xmatrix.alignment"].sudo().search([
+            ("state", "=", "active"), "|", "|", ("breakthrough_objective_id.plan_id", "=", plan.id),
+            ("annual_objective_id.plan_id", "=", plan.id), ("initiative_id.plan_id", "=", plan.id)])
+        metric_links = alignments.filtered(lambda alignment: alignment.link_type in ("I>M", "B>M"))
+        kpis = metric_links.kpi_id.sorted("name")
+        owners = alignments.filtered(lambda alignment: alignment.link_type == "I>O").owner_id | initiatives.owner_id
+        tone = {row["kpi_id"]: next((cell["tone"] for cell in reversed(row["cells"]) if "target" in cell), "none") for row in rows}
+        records = {"B": objectives["breakthrough"], "A": objectives["annual"], "I": initiatives, "M": kpis, "O": owners.sorted("name")}
+        index = {code: {record.id: i for i, record in enumerate(recs)} for code, recs in records.items()}
+        ends = {"B>A": ("BA", "B", "breakthrough_objective_id", "A", "annual_objective_id"),
+                "I>A": ("IA", "I", "initiative_id", "A", "annual_objective_id"),
+                "I>M": ("IM", "I", "initiative_id", "M", "kpi_id"),
+                "B>M": ("BM", "B", "breakthrough_objective_id", "M", "kpi_id"),
+                "I>O": ("IO", "I", "initiative_id", "O", "owner_id")}
+        links = {}
+        for alignment in alignments:
+            corner, row_code, row_field, col_code, col_field = ends[alignment.link_type]
+            r, c = index[row_code].get(alignment[row_field].id), index[col_code].get(alignment[col_field].id)
+            if r is not None and c is not None:
+                key = f"{corner}:{r}:{c}"
+                links[key] = 1 if alignment.relationship_type == "primary" or links.get(key) == 1 else 2
+
+        def metric_label(kpi):
+            target = metric_links.filtered(lambda alignment: alignment.kpi_id == kpi)[:1].target_id
+            return f"{kpi.name} (target {target.target_value:g}{(' ' + kpi.unit) if kpi.unit else ''})" if target else kpi.name
+
+        items = {code: [{"id": record.id, "name": metric_label(record) if code == "M" else record.name,
+                         "tone": tone.get(record.id, "none") if code == "M" else False} for record in recs]
+                 for code, recs in records.items()}
+        used, owned = set(), set()
+        for key in links:
+            corner, r, c = key.split(":")
+            if corner == "IO":  # an owner alone does not connect an initiative to the strategy
+                used.add("O" + c)
+                owned.add(int(r))
+            else:
+                used.update({corner[0] + r, corner[1] + c})
+        names = {"B": "Breakthrough objectives", "A": "Annual objectives", "I": "Improvement initiatives", "M": "Metrics", "O": "Owners"}
+        findings = []
+        for code, entries in items.items():
+            if len(entries) > 5:
+                findings.append(f"{names[code]}: {len(entries)} items. Three to five keeps it a strategy, not a to-do list.")
+            for i, entry in enumerate(entries):
+                entry["linked"] = code + str(i) in used and (code != "I" or i in owned)
+                if code + str(i) not in used:
+                    findings.append(f"{code}{i + 1} “{entry['name']}” is not connected to anything.")
+                elif code == "I" and i not in owned:
+                    findings.append(f"I{i + 1} “{entry['name']}” has no owner.")
+        return {"plan": plan.name, "items": items, "links": links, "findings": findings}
 
     @api.model
     def _hoshin_rows(self, company, year, today):

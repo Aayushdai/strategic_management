@@ -23,6 +23,32 @@
             <p t-elif="!hr" class="o_sm_hs_notice">Loading…</p>
             <t t-else="">
                 <p t-if="hr.breakthrough_count > 3" class="o_sm_hs_notice is-warn">There are <t t-esc="hr.breakthrough_count"/> breakthrough objectives. Hoshin works best with one to three: keep the vital few.</p>
+                <t t-set="xm" t-value="this.hoshinMatrix()"/>
+                <section class="o_sm_xm_card" aria-labelledby="o_sm_xm_title">
+                    <header class="o_sm_xm_head">
+                        <div><h2 id="o_sm_xm_title">X-Matrix</h2>
+                            <small t-if="xm"><t t-esc="xm.plan"/> · links are edited in the X-Matrix workspace</small></div>
+                        <button type="button" class="o_sm_hs_btn" t-on-click="() => this.openXMatrix()">Edit links</button>
+                    </header>
+                    <p t-if="!xm" class="o_sm_hs_notice">No strategic plan covers <t t-esc="hr.year"/>. Create one in the X-Matrix workspace.</p>
+                    <t t-else="">
+                        <div class="o_sm_xm_scroll"><div class="o_sm_xm_grid" t-att-style="xm.grid">
+                            <div t-foreach="xm.cells" t-as="cell" t-key="cell.key" t-att-class="cell.cls" t-att-style="cell.style" t-att-title="cell.title">
+                                <span t-if="cell.label" t-esc="cell.label"/>
+                                <i t-if="cell.dot" t-att-class="cell.dot"/>
+                            </div>
+                            <div class="o_sm_xm_centre" t-att-style="xm.centre">
+                                <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="0" x2="100" y2="100"/><line x1="100" y1="0" x2="0" y2="100"/></svg>
+                                <b class="is-top">Improvement initiatives</b><b class="is-bottom">Breakthrough objectives</b>
+                                <b class="is-left">Annual objectives</b><b class="is-right">Metrics &amp; targets</b>
+                            </div>
+                        </div></div>
+                        <p class="o_sm_hs_legend"><i class="o_sm_xm_key is-primary"/>Primary <i class="o_sm_xm_key is-supporting"/>Supporting <em>Red = not connected. Metric colour = its latest month.</em></p>
+                        <ul t-if="xm.findings.length" class="o_sm_xm_findings"><li t-foreach="xm.findings" t-as="f" t-key="f_index" t-esc="f"/></ul>
+                        <p t-else="" class="o_sm_xm_ok">No gaps found: every item is connected.</p>
+                    </t>
+                </section>
+                <h2 class="o_sm_hs_section">Monthly review</h2>
                 <div t-if="!hr.rows.length" class="o_sm_hs_empty">
                     <strong>No Hoshin metrics yet</strong>
                     <span>In the X-Matrix, link a KPI to a breakthrough objective or an initiative. It then appears here every month.</span>
