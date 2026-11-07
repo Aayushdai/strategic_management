@@ -14,19 +14,19 @@ class TestHoshinReview(StrategyFixture):
     def _month_result(self, kpi, start, end, actual):
         target = self.env["strategic.kpi.target"].with_user(self.head_user).create({
             "kpi_id": kpi.id, "date_start": start, "date_end": end, "scope": "organization", "target_value": 100.0, "state": "approved"})
-        return self.env["strategic.kpi.evaluation"].with_user(self.head_user).create({"target_id": target.id, "actual_value": actual, "has_actual_value": True})
+        # As the daily KPI job records results (system-generated; a manual KPI's user entries go through measurements).
+        return self.env["strategic.kpi.evaluation"].sudo().create({"target_id": target.id, "actual_value": actual, "has_actual_value": True})
 
     def test_bowling_chart_rows_months_and_red_streak(self):
         plan = self._mk_plan()
         breakthrough = self._mk_org_obj(plan)
         breakthrough.write({"name": "HR Breakthrough", "hoshin_level": "breakthrough"})
         kpi = self._mk_kpi("HR-REVIEW-METRIC")
-        year_target = self.env["strategic.kpi.target"].with_user(self.head_user).create({
-            "kpi_id": kpi.id, "date_start": "2026-01-01", "date_end": "2026-12-31", "scope": "organization", "target_value": 100.0, "state": "approved"})
+        # Monthly targets; the X-Matrix link uses January's (targets of one KPI must not overlap).
+        january = self._month_result(kpi, "2026-01-01", "2026-01-31", 120.0)
         self.env["strategic.xmatrix.alignment"].with_user(self.head_user).create({
             "link_type": "B>M", "relationship_type": "primary", "breakthrough_objective_id": breakthrough.id,
-            "kpi_id": kpi.id, "target_id": year_target.id, "effective_date": "2026-01-01"})
-        self._month_result(kpi, "2026-01-01", "2026-01-31", 120.0)
+            "kpi_id": kpi.id, "target_id": january.target_id.id, "effective_date": "2026-01-01"})
         self._month_result(kpi, "2026-02-01", "2026-02-28", 60.0)
         self._month_result(kpi, "2026-03-01", "2026-03-31", 50.0)
 
