@@ -55,3 +55,4 @@ from . import test_admin_console
 from . import test_kpi_work_request
 from . import test_workflow_gaps
 from . import test_admin_proposals
+from . import test_hoshin_review

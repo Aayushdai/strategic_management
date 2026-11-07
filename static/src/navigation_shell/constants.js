@@ -59,6 +59,7 @@ export const SECTION_LINKS = {
 // design does not list stay one click away under "More", so no existing page becomes unreachable.
 export const SIDEBAR_PRIMARY = [
     { id: "overview", label: "Inbox" },
+    { id: "hoshin", label: "Hoshin" },
     { id: "sales_finance", label: "Sales" },
     { id: "purchasing", label: "Purchasing" },
     { id: "inventory_waste", label: "Inventory" },

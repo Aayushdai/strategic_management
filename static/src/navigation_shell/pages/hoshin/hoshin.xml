@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Hoshin: the monthly review (bowling chart) of the metrics the X-Matrix links. Called from strategic_management.NavigationShell. -->
+<templates xml:space="preserve">
+    <t t-name="strategic_management.HoshinPage">
+        <div class="o_sm_hoshin">
+            <t t-set="hr" t-value="this.state.hoshin"/>
+            <header class="o_sm_hs_header">
+                <div>
+                    <span class="o_sm_hs_kicker">Hoshin Kanri</span>
+                    <h1>Hoshin review</h1>
+                    <p>The few metrics behind the breakthrough objectives, month by month: green on target, amber close, red missed.</p>
+                </div>
+                <div class="o_sm_hs_actions">
+                    <label t-if="hr" class="o_sm_hs_select"><span>Year</span>
+                        <select t-on-change="(ev) => this.onHoshinYear(ev)">
+                            <option t-foreach="hr.years" t-as="y" t-key="y" t-att-value="y" t-att-selected="y === hr.year" t-esc="y"/>
+                        </select>
+                    </label>
+                    <button type="button" class="o_sm_hs_btn" t-on-click="() => this.openXMatrix()">Open X-Matrix →</button>
+                </div>
+            </header>
+            <p t-if="this.state.hoshinError" class="o_sm_hs_notice is-error" role="alert" t-esc="this.state.hoshinError"/>
+            <p t-elif="!hr" class="o_sm_hs_notice">Loading…</p>
+            <t t-else="">
+                <p t-if="hr.breakthrough_count > 3" class="o_sm_hs_notice is-warn">There are <t t-esc="hr.breakthrough_count"/> breakthrough objectives. Hoshin works best with one to three: keep the vital few.</p>
+                <div t-if="!hr.rows.length" class="o_sm_hs_empty">
+                    <strong>No Hoshin metrics yet</strong>
+                    <span>In the X-Matrix, link a KPI to a breakthrough objective or an initiative. It then appears here every month.</span>
+                    <button type="button" class="o_sm_hs_btn is-primary" t-on-click="() => this.openXMatrix()">Open X-Matrix</button>
+                </div>
+                <div t-else="" class="o_sm_hs_table_wrap"><table class="o_sm_hs_table">
+                    <thead><tr><th class="is-metric">Metric</th><th t-foreach="hr.months" t-as="m" t-key="m" t-esc="m"/></tr></thead>
+                    <tbody><tr t-foreach="hr.rows" t-as="row" t-key="row.kpi_id">
+                        <th class="is-metric">
+                            <strong t-esc="row.name"/>
+                            <small t-if="row.annual.length">For: <t t-esc="row.annual.join(', ')"/></small>
+                            <small t-elif="row.breakthrough.length">For: <t t-esc="row.breakthrough.join(', ')"/></small>
+                            <small t-if="row.owners.length">Owner: <t t-esc="row.owners.join(', ')"/></small>
+                            <span t-if="row.red_streak >= 2" class="o_sm_hs_flag">Off target <t t-esc="row.red_streak"/> months</span>
+                        </th>
+                        <td t-foreach="row.cells" t-as="cell" t-key="cell.month" t-att-class="'is-' + cell.tone" t-att-title="this.hoshinCellTitle(row, cell)">
+                            <t t-if="cell.tone !== 'future' and cell.target !== undefined">
+                                <strong t-esc="this.hoshinNumber(cell.actual)"/><small>/ <t t-esc="this.hoshinNumber(cell.target)"/></small>
+                            </t>
+                        </td>
+                    </tr></tbody>
+                </table></div>
+                <p class="o_sm_hs_legend"><span class="is-good"/>On target <span class="is-warn"/>Close <span class="is-bad"/>Missed <span class="is-none"/>No valid result</p>
+            </t>
+        </div>
+    </t>
+</templates>
