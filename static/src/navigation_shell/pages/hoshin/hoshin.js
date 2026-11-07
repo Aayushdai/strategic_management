@@ -18,6 +18,26 @@ export const hoshinPage = {
         return this.loadHoshinReview(Number(event.target.value));
     },
 
+    openCountermeasure(row) {
+        const c = row.countermeasure;
+        this.state.hoshinCountermeasure = { row, id: c.id, cause: c.cause, action: c.action, due_date: c.due_date, error: "", saving: false };
+    },
+
+    async saveCountermeasure(done) {
+        const form = this.state.hoshinCountermeasure;
+        if (form.saving) return;
+        form.saving = true;
+        try {
+            await this.orm.call("strategic.hoshin.countermeasure", "save_countermeasure", [form.id, { cause: form.cause, action: form.action, due_date: form.due_date }, done]);
+            this.notification.add(done ? "Countermeasure closed." : "Countermeasure saved.", { type: "success" });
+            this.state.hoshinCountermeasure = null;
+            await this.loadHoshinReview();
+        } catch (error) {
+            form.saving = false;
+            form.error = error.data?.message || error.message || "The countermeasure could not be saved.";
+        }
+    },
+
     openXMatrix() {
         return this.action.doAction("strategic_management.action_strategic_hoshin_xmatrix_workspace");
     },

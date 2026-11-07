@@ -156,6 +156,7 @@ export class StrategicNavigationShell extends Component {
             pages: {},
             // Hoshin review (pages/hoshin).
             hoshin: null,
+            hoshinCountermeasure: null,
             hoshinError: "",
             // KPI/OKR work requests (pages/kpi_requests): Head Office's card on the Inbox and the Admin's list.
             workRequests: null,

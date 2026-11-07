@@ -1,6 +1,9 @@
 """Hoshin monthly review (bowling chart): X-Matrix metrics, actual against target per month, red streaks."""
 
-from odoo.exceptions import AccessError
+from unittest.mock import patch
+
+from odoo import fields
+from odoo.exceptions import AccessError, ValidationError
 from odoo.tests.common import tagged
 
 from .test_strategy import StrategyFixture
@@ -39,3 +42,24 @@ class TestHoshinReview(StrategyFixture):
         for user in (self.branch_user_a, self.emp_user):
             with self.assertRaises(AccessError):
                 self.env["strategic.performance.dashboard"].with_user(user).get_hoshin_review(2026)
+
+        # Step 3: two red months open one countermeasure with a To-Do; it closes only with a cause and an action.
+        Countermeasure = self.env["strategic.hoshin.countermeasure"]
+        today = fields.Date.from_string("2026-04-15")
+        rows = self.env["strategic.performance.dashboard"].sudo()._hoshin_rows(self.env.company, 2026, today)
+        self.assertEqual(next(r for r in rows if r["kpi_id"] == kpi.id)["red_streak"], 2)
+        with patch.object(fields.Date, "context_today", return_value=today):
+            Countermeasure._open_for_red_metrics()
+            Countermeasure._open_for_red_metrics()
+        record = Countermeasure.search([("kpi_id", "=", kpi.id)])
+        self.assertEqual((len(record), record.state, record.red_months), (1, "open", 2), "one per metric, however often the job runs")
+        self.assertTrue(record.activity_ids.filtered(lambda activity: activity.user_id == record.owner_id))
+        with self.assertRaises(ValidationError):
+            Countermeasure.with_user(self.head_user).save_countermeasure(record.id, {"cause": "", "action": ""}, True)
+        if record.owner_id != self.branch_user_a:
+            with self.assertRaises(AccessError):
+                Countermeasure.with_user(self.branch_user_a).save_countermeasure(record.id, {"cause": "x", "action": "y"}, False)
+        row = Countermeasure.with_user(self.head_user).save_countermeasure(record.id, {"cause": "Late milk deliveries", "action": "Second supplier", "due_date": "2026-05-31"}, True)
+        self.assertEqual((row["state"], record.activity_ids), ("done", self.env["mail.activity"]))
+        data = self.env["strategic.performance.dashboard"].with_user(self.head_user).get_hoshin_review(2026)
+        self.assertEqual(next(r for r in data["rows"] if r["kpi_id"] == kpi.id)["countermeasure"]["state"], "done")

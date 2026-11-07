@@ -48,3 +48,18 @@
     .o_sm_navigation_shell .o_sm_hoshin { padding: 1rem;
         .o_sm_hs_header { flex-direction: column; } }
 }
+
+// Countermeasures: the button on a red row and its dialog.
+.o_sm_navigation_shell .o_sm_hoshin {
+    .o_sm_hs_cm { display: block; margin-top: .35rem; padding: .15rem .5rem; border: 1px solid #f3c6c2; border-radius: .4rem; background: #fff; color: #a92c23; font: inherit; font-size: .72rem; font-weight: 600; text-align: left; cursor: pointer;
+        &.is-done { border-color: #c4e9d3; color: #15683f; } }
+    .o_sm_hs_overlay { position: fixed; inset: 0; z-index: 1050; display: flex; align-items: center; justify-content: center; padding: 1rem; background: rgba(20, 22, 40, .42); }
+    .o_sm_hs_dialog { display: flex; flex-direction: column; gap: .8rem; width: 30rem; max-width: 100%; max-height: calc(100vh - 2rem); overflow: auto; padding: 1.1rem 1.25rem; border-radius: 1rem; background: #fff; box-shadow: 0 24px 60px rgba(16, 24, 40, .25);
+        > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+            h2 { margin: .15rem 0 .1rem; font-size: 1.1rem; font-weight: 700; } small { color: var(--hs-muted); font-size: .8rem; } }
+        label { display: flex; flex-direction: column; gap: .3rem; font-size: .84rem; font-weight: 600; }
+        textarea, input { width: 100%; padding: .5rem .65rem; border: 1px solid #dfe2ea; border-radius: .5rem; color: var(--hs-ink); font: inherit; font-weight: 400;
+            &:focus { border-color: var(--hs-purple); outline: none; } }
+        > footer { display: flex; justify-content: flex-end; gap: .5rem; } }
+    .o_sm_hs_close { padding: 0 .25rem; border: 0; background: none; color: var(--hs-muted); font-size: 1.4rem; line-height: 1; cursor: pointer; }
+}

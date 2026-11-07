@@ -37,6 +37,8 @@
                             <small t-elif="row.breakthrough.length">For: <t t-esc="row.breakthrough.join(', ')"/></small>
                             <small t-if="row.owners.length">Owner: <t t-esc="row.owners.join(', ')"/></small>
                             <span t-if="row.red_streak >= 2" class="o_sm_hs_flag">Off target <t t-esc="row.red_streak"/> months</span>
+                            <button t-if="row.countermeasure" type="button" t-att-class="'o_sm_hs_cm is-' + row.countermeasure.state" t-on-click="() => this.openCountermeasure(row)">
+                                Countermeasure: <t t-esc="row.countermeasure.state === 'done' ? 'done' : 'open'"/> · <t t-esc="row.countermeasure.owner"/></button>
                         </th>
                         <td t-foreach="row.cells" t-as="cell" t-key="cell.month" t-att-class="'is-' + cell.tone" t-att-title="this.hoshinCellTitle(row, cell)">
                             <t t-if="cell.tone !== 'future' and cell.target !== undefined">
@@ -45,6 +47,22 @@
                         </td>
                     </tr></tbody>
                 </table></div>
+                <t t-set="cm" t-value="this.state.hoshinCountermeasure"/>
+                <div t-if="cm" class="o_sm_hs_overlay" t-on-click="() => { this.state.hoshinCountermeasure = null; }">
+                    <form class="o_sm_hs_dialog" role="dialog" aria-modal="true" aria-labelledby="o_sm_hs_cm_title" t-on-click.stop="() => {}" t-on-submit.prevent="() => this.saveCountermeasure(false)">
+                        <header><div><span class="o_sm_hs_kicker">Countermeasure</span><h2 id="o_sm_hs_cm_title" t-esc="cm.row.name"/>
+                            <small>Off target <t t-esc="cm.row.countermeasure.red_months"/> months · Owner <t t-esc="cm.row.countermeasure.owner"/></small></div>
+                            <button type="button" class="o_sm_hs_close" aria-label="Close" t-on-click="() => { this.state.hoshinCountermeasure = null; }">×</button></header>
+                        <label>Why is it off target?<textarea rows="3" t-att-value="cm.cause" t-on-input="(ev) => { cm.cause = ev.target.value; }"/></label>
+                        <label>Countermeasure: what will be done, by whom?<textarea rows="3" t-att-value="cm.action" t-on-input="(ev) => { cm.action = ev.target.value; }"/></label>
+                        <label>Due date<input type="date" t-att-value="cm.due_date" t-on-change="(ev) => { cm.due_date = ev.target.value; }"/></label>
+                        <p t-if="cm.error" class="o_sm_hs_notice is-error" role="alert" t-esc="cm.error"/>
+                        <footer>
+                            <button type="submit" class="o_sm_hs_btn" t-att-disabled="cm.saving">Save</button>
+                            <button type="button" class="o_sm_hs_btn is-primary" t-att-disabled="cm.saving" t-on-click="() => this.saveCountermeasure(true)">Mark done</button>
+                        </footer>
+                    </form>
+                </div>
                 <p class="o_sm_hs_legend"><span class="is-good"/>On target <span class="is-warn"/>Close <span class="is-bad"/>Missed <span class="is-none"/>No valid result</p>
             </t>
         </div>

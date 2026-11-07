@@ -45,6 +45,7 @@
         "views/branch_report_views.xml",
         "views/stock_picking_views.xml",
         "views/admin_audit_views.xml",
+        "views/hoshin_countermeasure_views.xml",
     ],
     "assets": {
         "web.assets_backend": [

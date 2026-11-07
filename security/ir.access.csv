@@ -101,3 +101,5 @@ access_strategic_kpi_work_proposal_kr_admin,KPI/OKR Proposal Key Result - assign
 access_strategic_kpi_work_history_head_office,KPI/OKR Request History - Head Office,strategic.kpi.work.history,strategic_management.group_strategic_head_office_manager,r,
 access_strategic_kpi_work_history_admin,KPI/OKR Request History - assigned Admin,strategic.kpi.work.history,strategic_management.group_strategic_admin,r,"[('request_id.admin_user_id', '=', user.id)]"
 access_strategic_kpi_schedule_head_office,KPI Reporting Schedule - Head Office,strategic.kpi.reporting.schedule,strategic_management.group_strategic_head_office_manager,r,
+access_strategic_hoshin_countermeasure_head_office,Hoshin Countermeasure - Head Office,strategic.hoshin.countermeasure,strategic_management.group_strategic_head_office_manager,rw,
+access_strategic_hoshin_countermeasure_owner,Hoshin Countermeasure - its owner,strategic.hoshin.countermeasure,base.group_user,rw,"[('owner_id', '=', user.id)]"

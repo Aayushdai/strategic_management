@@ -3,6 +3,7 @@ from . import strategy
 from . import res_users
 from . import hoshin
 from . import hoshin_review
+from . import hoshin_countermeasure
 from . import kpi_measurement
 from . import kpi_source_adapter
 from . import kpi_receipt_refresh
