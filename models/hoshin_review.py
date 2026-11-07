@@ -24,10 +24,7 @@ class StrategicPerformanceDashboardHoshinReview(models.AbstractModel):
         if self._strategic_role() != "head_office":
             raise AccessError("The Hoshin review is for Head Office.")
         today = fields.Date.context_today(self)
-        if year in (False, None, ""):
-            year = today.year
-        if not isinstance(year, int) or isinstance(year, bool) or not 2000 <= year <= 2100:
-            raise ValidationError("Choose a valid year.")
+        year = self._hoshin_year(year, today)
         company = self.env.company
         rows = self._hoshin_rows(company, year, today)
         Countermeasure = self.env["strategic.hoshin.countermeasure"].sudo()
@@ -40,15 +37,28 @@ class StrategicPerformanceDashboardHoshinReview(models.AbstractModel):
                 "years": list(range(today.year - 2, today.year + 2)), "xmatrix": self._hoshin_xmatrix(company, year, rows)}
 
     @api.model
+    def _hoshin_plan(self, company, year):
+        """The strategic plan covering the year (the latest to start, if several do)."""
+        return self.env["strategic.plan"].sudo().search([
+            ("company_id", "=", company.id), ("date_start", "<=", date(year, 12, 31)), ("date_end", ">=", date(year, 1, 1))],
+            order="date_start desc, id desc", limit=1)
+
+    @api.model
+    def _hoshin_year(self, year, today):
+        if year in (False, None, ""):
+            return today.year
+        if not isinstance(year, int) or isinstance(year, bool) or not 2000 <= year <= 2100:
+            raise ValidationError("Choose a valid year.")
+        return year
+
+    @api.model
     def _hoshin_xmatrix(self, company, year, rows):
         """The X-Matrix of the plan covering the year: five item lists and the corner links between them.
 
         Links are keyed like the X-Matrix builder: "IA:<initiative>:<annual>", "BA", "IM", "BM", "IO";
         1 is a primary link (dot), 2 a supporting one (ring). Read only: links are edited in the X-Matrix workspace.
         """
-        plan = self.env["strategic.plan"].sudo().search([
-            ("company_id", "=", company.id), ("date_start", "<=", date(year, 12, 31)), ("date_end", ">=", date(year, 1, 1))],
-            order="date_start desc, id desc", limit=1)
+        plan = self._hoshin_plan(company, year)
         if not plan:
             return False
         Objective = self.env["strategic.objective"].sudo()

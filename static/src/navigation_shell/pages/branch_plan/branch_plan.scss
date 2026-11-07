@@ -1,0 +1,34 @@
+// Our Plan (Branch Manager). Reuses the Hoshin page styles (.o_sm_hoshin); its own parts are scoped to .o_sm_bp.
+
+.o_sm_navigation_shell .o_sm_workspace:has(> .o_sm_bp) { padding: 0; background: #f6f6fb; }
+.o_sm_navigation_shell .o_sm_bp {
+    .o_sm_bp_card { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 1.2rem; padding: 1.1rem 1.2rem; border: 1px solid var(--hs-line); border-radius: .9rem; background: #fff;
+        > header { display: flex; flex-direction: column; gap: .35rem; padding-right: 1.2rem; border-right: 1px solid var(--hs-line);
+            h2 { margin: 0; font-size: 1.05rem; font-weight: 700; } small { color: var(--hs-muted); font-size: .8rem; } } }
+    .o_sm_bp_label { color: var(--hs-purple); font-size: .7rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+    .o_sm_bp_chips { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .2rem; }
+    .o_sm_bp_chip { padding: .2rem .55rem; border-radius: 999px; background: #f0eefc; font-size: .76rem; font-weight: 600;
+        small { color: var(--hs-muted); font-weight: 400; } }
+    .o_sm_bp_branch { display: flex; flex-direction: column; gap: .6rem; min-width: 0; }
+    .o_sm_bp_obj { display: flex; flex-direction: column; gap: .3rem; padding: .7rem .8rem; border: 1px solid var(--hs-line); border-radius: .7rem;
+        > small { color: var(--hs-muted); font-size: .78rem; } }
+    .o_sm_bp_obj_head { display: flex; align-items: flex-start; justify-content: space-between; gap: .6rem; }
+    .o_sm_bp_obj_name { padding: 0; border: 0; background: none; color: var(--hs-ink); font: inherit; font-size: .92rem; font-weight: 700; text-align: left; cursor: pointer;
+        &:hover { color: var(--hs-purple); text-decoration: underline; } }
+    .o_sm_bp_pill { flex: none; padding: .12rem .55rem; border-radius: 999px; background: #f0f1f6; color: #4a5068; font-size: .72rem; font-weight: 700;
+        &.is-good { background: #e5f6ec; color: #15683f; }
+        &.is-warn { background: #fdf1e2; color: #8a4b07; }
+        &.is-bad { background: #fdeceb; color: #a92c23; } }
+    .o_sm_bp_none { margin: 0; color: var(--hs-muted); font-size: .84rem; }
+    .o_sm_bp_link { padding: 0; border: 0; background: none; color: var(--hs-purple); font: inherit; font-weight: 600; cursor: pointer; }
+    .o_sm_bp_tasks { display: flex; flex-direction: column; gap: .3rem; margin: 0; padding: 0; list-style: none;
+        li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .1rem .6rem; padding: .4rem .55rem; border-radius: .5rem; background: #f8f8fc; font-size: .83rem;
+            small { grid-column: 1; color: var(--hs-muted); font-size: .74rem; }
+            em { grid-row: 1 / span 2; grid-column: 2; color: #4a5068; font-size: .72rem; font-style: normal; font-weight: 700;
+                &.is-done { color: #15683f; } }
+            &.is-overdue em { color: #a92c23; } } }
+}
+@media (max-width: 800px) {
+    .o_sm_navigation_shell .o_sm_bp .o_sm_bp_card { grid-template-columns: 1fr;
+        > header { padding: 0 0 .9rem; border-right: 0; border-bottom: 1px solid var(--hs-line); } }
+}

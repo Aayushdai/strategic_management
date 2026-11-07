@@ -24,10 +24,10 @@
 
             <div class="o_hoshin_plan_bar">
                 <label for="o_hoshin_plan_select">Strategic plan</label>
-                <select id="o_hoshin_plan_select" class="form-select" t-att-value="this.state.selectedPlanId ? this.state.selectedPlanId : ''" t-on-change="this.onPlanChanged" t-att-disabled="this.state.loading || !this.state.plans.length">
+                <select id="o_hoshin_plan_select" class="form-select" t-on-change="this.onPlanChanged" t-att-disabled="this.state.loading || !this.state.plans.length">
                     <option value="">Select a plan…</option>
                     <t t-foreach="this.state.plans" t-as="plan" t-key="plan.id">
-                        <option t-att-value="plan.id"><t t-esc="plan.name"/> (<t t-esc="plan.date_start"/> – <t t-esc="plan.date_end"/>)</option>
+                        <option t-att-value="plan.id" t-att-selected="plan.id == this.state.selectedPlanId"><t t-esc="plan.name"/> (<t t-esc="plan.date_start"/> – <t t-esc="plan.date_end"/>)</option>
                     </t>
                 </select>
                 <div t-if="this.state.selectedPlan" class="o_hoshin_plan_meta">

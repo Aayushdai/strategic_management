@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Our Plan: the company's annual objectives and the branch's part in each. Called from strategic_management.NavigationShell. -->
+<templates xml:space="preserve">
+    <t t-name="strategic_management.BranchPlanPage">
+        <div class="o_sm_hoshin o_sm_bp">
+            <t t-set="bp" t-value="this.state.branchPlan"/>
+            <header class="o_sm_hs_header">
+                <div>
+                    <span class="o_sm_hs_kicker">Hoshin Kanri · <t t-esc="bp ? bp.branch : 'Your branch'"/></span>
+                    <h1>Our plan</h1>
+                    <p>What the company is aiming for this year, and what your branch does towards each aim.</p>
+                </div>
+                <div class="o_sm_hs_actions">
+                    <label t-if="bp" class="o_sm_hs_select"><span>Year</span>
+                        <select t-on-change="(ev) => this.onBranchPlanYear(ev)">
+                            <option t-foreach="bp.years" t-as="y" t-key="y" t-att-value="y" t-att-selected="y === bp.year" t-esc="y"/>
+                        </select>
+                    </label>
+                    <button type="button" class="o_sm_hs_btn is-primary" t-on-click="() => this.proposeBranchObjective()">Propose objective</button>
+                </div>
+            </header>
+            <p t-if="this.state.branchPlanError" class="o_sm_hs_notice is-error" role="alert" t-esc="this.state.branchPlanError"/>
+            <p t-elif="!bp" class="o_sm_hs_notice">Loading…</p>
+            <div t-elif="!bp.annuals.length" class="o_sm_hs_empty">
+                <strong>No company objectives for <t t-esc="bp.year"/> yet</strong>
+                <span>When Head Office sets this year's annual objectives, they appear here with your branch's part in each.</span>
+            </div>
+            <t t-else="">
+                <p t-if="bp.uncovered" class="o_sm_hs_notice is-warn"><t t-esc="bp.uncovered"/> of <t t-esc="bp.annuals.length"/> company objectives have no objective for your branch yet. Propose one to show how your branch will help.</p>
+                <article t-foreach="bp.annuals" t-as="annual" t-key="annual.id" class="o_sm_bp_card">
+                    <header>
+                        <span class="o_sm_bp_label">Company objective · <t t-esc="bp.year"/></span>
+                        <h2 t-esc="annual.name"/>
+                        <small t-if="annual.breakthrough.length">Towards: <t t-esc="annual.breakthrough.join(', ')"/></small>
+                        <div t-if="annual.initiatives.length" class="o_sm_bp_chips">
+                            <span t-foreach="annual.initiatives" t-as="ini" t-key="ini_index" class="o_sm_bp_chip"><t t-esc="ini.name"/><small t-if="ini.owner"> · <t t-esc="ini.owner"/></small></span>
+                        </div>
+                    </header>
+                    <div class="o_sm_bp_branch">
+                        <span class="o_sm_bp_label">Our branch</span>
+                        <p t-if="!annual.branch_objectives.length" class="o_sm_bp_none">No branch objective under this yet.
+                            <button type="button" class="o_sm_bp_link" t-on-click="() => this.proposeBranchObjective()">Propose one →</button></p>
+                        <div t-foreach="annual.branch_objectives" t-as="obj" t-key="obj.id" class="o_sm_bp_obj">
+                            <div class="o_sm_bp_obj_head">
+                                <button type="button" class="o_sm_bp_obj_name" t-on-click="() => this.openBranchObjective(obj.id)" t-esc="obj.name"/>
+                                <span t-att-class="'o_sm_bp_pill is-' + obj.tone" t-esc="obj.state === 'active' and obj.status ? obj.status : obj.state_label"/>
+                            </div>
+                            <small>Due <t t-esc="obj.deadline"/></small>
+                            <t t-call="strategic_management.BranchPlanTasks" tasks="obj.tasks"/>
+                        </div>
+                        <t t-if="annual.tasks.length">
+                            <span class="o_sm_bp_label">Tasks on the company objective</span>
+                            <t t-call="strategic_management.BranchPlanTasks" tasks="annual.tasks"/>
+                        </t>
+                    </div>
+                </article>
+            </t>
+        </div>
+    </t>
+    <t t-name="strategic_management.BranchPlanTasks">
+        <p t-if="!tasks.length" class="o_sm_bp_none">No tasks yet.</p>
+        <ul t-else="" class="o_sm_bp_tasks">
+            <li t-foreach="tasks" t-as="task" t-key="task.id" t-att-class="task.overdue ? 'is-overdue' : ''">
+                <span t-esc="task.name"/><small><t t-esc="task.assignee"/> · due <t t-esc="task.deadline"/></small>
+                <em t-att-class="'is-' + task.state" t-esc="task.overdue ? 'Overdue' : task.state_label"/>
+            </li>
+        </ul>
+    </t>
+</templates>

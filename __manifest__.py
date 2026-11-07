@@ -69,6 +69,7 @@
             "strategic_management/static/src/navigation_shell/pages/employee_home/employee_home.scss",
             "strategic_management/static/src/navigation_shell/pages/admin/admin.scss",
             "strategic_management/static/src/navigation_shell/pages/hoshin/hoshin.scss",
+            "strategic_management/static/src/navigation_shell/pages/branch_plan/branch_plan.scss",
             # Other screens, one folder each.
             "strategic_management/static/src/hoshin_xmatrix/hoshin_xmatrix.js",
             "strategic_management/static/src/hoshin_xmatrix/hoshin_xmatrix.xml",

@@ -37,3 +37,4 @@ from . import kpi_work_request
 # Extend strategic.performance.dashboard, so they load after it.
 from . import hoshin_review
 from . import hoshin_countermeasure
+from . import hoshin_cascade

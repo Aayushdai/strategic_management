@@ -76,6 +76,7 @@ export const HEAD_OFFICE_SIDEBAR_MORE = [...SIDEBAR_MORE, { id: "employee_manage
 // Objectives stay reachable from the dashboard's objective cards and links; notifications from the header bell.
 export const BRANCH_SIDEBAR = [
     { id: "bm_dashboard", label: "Dashboard" },
+    { id: "branch_plan", label: "Our Plan" },
     { id: "sales_finance", label: "Sales" },
     { id: "purchasing", label: "Purchasing" },
     { id: "inventory_waste", label: "Inventory" },
