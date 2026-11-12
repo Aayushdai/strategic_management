@@ -511,7 +511,10 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         if ids is not None:
             domain = [("id", "in", list(ids))]  # an empty list opens an empty list, never everything
         # Nothing to show, nothing to click: Odoo fills an empty list with made-up sample rows.
-        count = self.env[model].search_count(domain)
+        try:
+            count = self.env[model].search_count(domain)
+        except AccessError:  # the filter reaches a model this user cannot read (POS order lines): no link, the section stays
+            return False
         if not count:
             return False
         return {"model": model, "domain": domain, "name": name, "count": count}
