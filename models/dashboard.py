@@ -14,6 +14,13 @@ from odoo.exceptions import AccessError, ValidationError
 
 
 _HEAD_OFFICE_GROUP = "strategic_management.group_strategic_head_office_manager"
+# KPI evaluation fields read by the Head Office and Branch dashboards (the Employee dashboard reads no branch).
+_EVALUATION_FIELDS = [
+    "name", "target_id", "kpi_id", "date_start", "date_end", "scope",
+    "warehouse_id", "user_id", "status", "attainment_status", "attainment",
+    "actual_value", "has_actual_value", "target_value", "unit", "reason",
+    "source_note", "evaluated_at",
+]
 _ATTAINMENT_LABELS = {
     "not_evaluated": "Not Evaluated",
     "data_quality_issue": "Data Quality Issue",
@@ -61,18 +68,7 @@ class StrategicPerformanceDashboard(models.AbstractModel):
 
         Evaluation = self.env["strategic.kpi.evaluation"]
         raw_evaluations = Evaluation.search_read(
-            [
-                ("company_id", "=", company_id),
-                ("superseded_by_id", "=", False),
-                ("date_start", "<=", end_text),
-                ("date_end", ">=", start_text),
-            ],
-            [
-                "name", "target_id", "kpi_id", "date_start", "date_end", "scope",
-                "warehouse_id", "user_id", "status", "attainment_status", "attainment",
-                "actual_value", "has_actual_value", "target_value", "unit", "reason",
-                "source_note", "evaluated_at",
-            ],
+            self._current_evaluations_domain(company_id, start_text, end_text), _EVALUATION_FIELDS,
             order="evaluated_at desc, id desc",
             limit=5000,
         )
@@ -185,18 +181,8 @@ class StrategicPerformanceDashboard(models.AbstractModel):
         end_text = fields.Date.to_string(period_end)
 
         Evaluation = self.env["strategic.kpi.evaluation"]
-        base_domain = [
-            ("company_id", "=", company_id),
-            ("superseded_by_id", "=", False),
-            ("date_start", "<=", end_text),
-            ("date_end", ">=", start_text),
-        ]
-        evaluation_fields = [
-            "name", "target_id", "kpi_id", "date_start", "date_end", "scope",
-            "warehouse_id", "user_id", "status", "attainment_status", "attainment",
-            "actual_value", "has_actual_value", "target_value", "unit", "reason",
-            "source_note", "evaluated_at",
-        ]
+        base_domain = self._current_evaluations_domain(company_id, start_text, end_text)
+        evaluation_fields = _EVALUATION_FIELDS
         branch_rows = Evaluation.search_read(
             base_domain + [("scope", "=", "branch"), ("warehouse_id", "=", warehouse.id)],
             evaluation_fields, order="evaluated_at desc, id desc", limit=3000,
@@ -318,14 +304,10 @@ class StrategicPerformanceDashboard(models.AbstractModel):
 
         Evaluation = self.env["strategic.kpi.evaluation"]
         raw_evaluations = Evaluation.search_read(
-            [
-                ("company_id", "=", self.env.company.id),
+            self._current_evaluations_domain(self.env.company.id, start_text, end_text) + [
                 ("scope", "=", "user"),
                 ("kpi_id.individual_outcome", "=", True),
                 ("user_id", "=", user.id),
-                ("superseded_by_id", "=", False),
-                ("date_start", "<=", end_text),
-                ("date_end", ">=", start_text),
             ],
             [
                 "name", "target_id", "kpi_id", "date_start", "date_end", "scope",
@@ -473,6 +455,16 @@ class StrategicPerformanceDashboard(models.AbstractModel):
                 "Only employees can access the personal KPI dashboard."
             )
         return user
+
+    @api.model
+    def _current_evaluations_domain(self, company_id, start_text, end_text):
+        """The company's current (not superseded) KPI evaluations whose period overlaps the selected one."""
+        return [
+            ("company_id", "=", company_id),
+            ("superseded_by_id", "=", False),
+            ("date_start", "<=", end_text),
+            ("date_end", ">=", start_text),
+        ]
 
     @api.model
     def _require_head_office(self):

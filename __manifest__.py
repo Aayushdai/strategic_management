@@ -67,6 +67,7 @@
             "strategic_management/static/src/navigation_shell/pages/admin/admin.scss",
             # Other screens, one folder each.
             # Original KPI dashboards, kept for the hidden Strategy & KPIs menu.
+            "strategic_management/static/src/kpi_dashboards/dashboard_helpers.js",
             "strategic_management/static/src/kpi_dashboards/strategic_dashboard.js",
             "strategic_management/static/src/kpi_dashboards/strategic_dashboard.xml",
             "strategic_management/static/src/kpi_dashboards/strategic_dashboard.scss",
