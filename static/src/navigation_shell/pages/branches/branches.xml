@@ -197,7 +197,7 @@
             <t t-elif="this.state.opsTab === 'inventory'">
                 <section class="o_sm_ops_cards">
                     <article t-att-class="(sec.drill and sec.drill.low_stock) ? 'is-drill' : ''" t-att-role="(sec.drill and sec.drill.low_stock) ? 'button' : false" t-att-tabindex="(sec.drill and sec.drill.low_stock) ? 0 : false" t-on-click="() => this.openDrill(sec.drill and sec.drill.low_stock)" t-on-keydown="(ev) => this.onDrillKey(ev, sec.drill and sec.drill.low_stock)"><small>Below minimum stock</small><strong t-esc="sec.low_stock_count === false ? 'Not configured' : this.formatOpsCount(sec.low_stock_count)"/><span>Current stock vs the branch's reorder rules</span></article>
-                    <article t-att-class="(sec.drill and sec.drill.expiring) ? 'is-drill' : ''" t-att-role="(sec.drill and sec.drill.expiring) ? 'button' : false" t-att-tabindex="(sec.drill and sec.drill.expiring) ? 0 : false" t-on-click="() => this.openDrill(sec.drill and sec.drill.expiring)" t-on-keydown="(ev) => this.onDrillKey(ev, sec.drill and sec.drill.expiring)"><small>Expiring within 7 days</small><strong t-esc="sec.expiry_tracking_available ? this.formatOpsCount(sec.expiring_count) : 'Not tracked'"/><span>Lots with an expiry date, current stock</span></article>
+                    <article t-att-class="(sec.drill and sec.drill.expiring) ? 'is-drill' : ''" t-att-role="(sec.drill and sec.drill.expiring) ? 'button' : false" t-att-tabindex="(sec.drill and sec.drill.expiring) ? 0 : false" t-on-click="() => this.openDrill(sec.drill and sec.drill.expiring)" t-on-keydown="(ev) => this.onDrillKey(ev, sec.drill and sec.drill.expiring)"><small>Expiring soon</small><strong t-esc="sec.expiry_tracking_available ? this.formatOpsCount(sec.expiring_count) : 'Not tracked'"/><span>Lots with an expiry date, current stock</span></article>
                     <article t-att-class="(sec.drill and sec.drill.waste) ? 'is-drill' : ''" t-att-role="(sec.drill and sec.drill.waste) ? 'button' : false" t-att-tabindex="(sec.drill and sec.drill.waste) ? 0 : false" t-on-click="() => this.openDrill(sec.drill and sec.drill.waste)" t-on-keydown="(ev) => this.onDrillKey(ev, sec.drill and sec.drill.waste)"><small>Recorded waste</small><strong t-esc="this.formatOpsMoney(sec.waste_cost, sec)"/><span><t t-if="sec.waste_by_reason.length"><t t-foreach="sec.waste_by_reason" t-as="reason" t-key="reason.reason"><t t-if="reason_index"> · </t><t t-esc="reason.reason"/> <t t-esc="this.formatOpsMoney(reason.cost, sec)"/></t></t><t t-else="">Spoilage/Expiry and Damaged Goods in the period</t></span></article>
                     <article t-att-class="(sec.drill and sec.drill.receipts) ? 'is-drill' : ''" t-att-role="(sec.drill and sec.drill.receipts) ? 'button' : false" t-att-tabindex="(sec.drill and sec.drill.receipts) ? 0 : false" t-on-click="() => this.openDrill(sec.drill and sec.drill.receipts)" t-on-keydown="(ev) => this.onDrillKey(ev, sec.drill and sec.drill.receipts)"><small>Receipts completed</small><strong t-esc="this.formatOpsCount(sec.receipts_done)"/><span>Supplier receipts validated in the period</span></article>
                 </section>
@@ -220,12 +220,12 @@
                     </article>
                 </section>
                 <article t-if="sec.expiry_tracking_available" class="o_sm_br_panel">
-                    <div class="o_sm_br_panel_heading"><div><h2>Expiring stock</h2><p>Lots on hand expiring within seven days or already expired</p></div></div>
+                    <div class="o_sm_br_panel_heading"><div><h2>Expiring stock</h2><p>Lots on hand expiring soon or already expired</p></div></div>
                     <table t-if="sec.expiring.length" class="o_sm_task_table o_sm_ops_table"><thead><tr><th>Product</th><th>Quantity</th><th>Expiry</th></tr></thead><tbody>
                         <tr t-foreach="sec.expiring" t-as="row" t-key="row_index"><td><strong t-esc="row.product"/></td><td t-esc="this.formatInventoryQuantity(row.quantity, row.unit)"/>
                             <td><t t-esc="this.formatPurchaseDate(row.expiry_date)"/><span t-if="row.days_left &lt; 0" class="o_sm_task_overdue">Expired</span></td></tr>
                     </tbody></table>
-                    <p t-else="" class="o_sm_br_empty">No tracked lots expire within seven days.</p>
+                    <p t-else="" class="o_sm_br_empty">No tracked lots expire soon.</p>
                 </article>
                 <t t-if="this.departmentCode">
                     <article class="o_sm_br_panel">

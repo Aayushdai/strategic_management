@@ -19,7 +19,7 @@ from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
 
-DUE_SOON_DAYS = 3
+DUE_SOON_DAYS = 3  # default of Settings > Objective due-soon reminders (res.company.sm_due_soon_days)
 # Opened only in the first days of the month, so a deploy mid-month does not open last month's reports late.
 REPORT_WINDOW_DAYS = 7
 _GROUP_BRANCH = "strategic_management.group_strategic_branch_manager"
@@ -55,6 +55,8 @@ class StrategicPeriodReports(models.AbstractModel):
         manager_group = self.env.ref(_GROUP_BRANCH)
         opened = 0
         for branch in self.env["stock.warehouse"].sudo().search([]):
+            if not branch.company_id.sm_monthly_reports:  # Settings: monthly branch reports off
+                continue
             managers = self.env["res.users"].sudo().search([
                 ("active", "=", True), ("share", "=", False), ("strategic_branch_warehouse_id", "=", branch.id),
                 ("group_ids", "in", manager_group.ids)])
@@ -64,7 +66,7 @@ class StrategicPeriodReports(models.AbstractModel):
             Notify._create_deduplicated_activity(
                 report, _REPORT_TODO + report.name,
                 "%s has ended. The report is ready: add your comment and submit it to Head Office." % start.strftime("%B %Y"),
-                recipients=managers, company=branch.company_id, date_deadline=today + timedelta(days=REPORT_WINDOW_DAYS - 1))
+                recipients=managers, company=branch.company_id, date_deadline=today + timedelta(days=branch.company_id.sm_report_submit_days - 1))
             opened += 1
         return opened
 
@@ -75,8 +77,10 @@ class StrategicPeriodReports(models.AbstractModel):
         Notify = self.env["strategic.kpi.target"].sudo()
         done = 0
         for objective in Objective.search([("state", "=", "active"), ("deadline", ">=", today),
-                                           ("deadline", "<=", today + timedelta(days=DUE_SOON_DAYS))]):
-            if objective.due_soon_sent_for == objective.deadline or not objective.owner_id:
+                                           ("deadline", "<=", today + timedelta(days=60))]):
+            settings = objective.company_id
+            if (not settings.sm_due_soon_reminders or objective.deadline > today + timedelta(days=settings.sm_due_soon_days)
+                    or objective.due_soon_sent_for == objective.deadline or not objective.owner_id):
                 continue
             Notify._create_deduplicated_activity(
                 objective, _DUE_SOON_TODO + objective.name, "Due on %s." % objective.deadline,
@@ -85,7 +89,7 @@ class StrategicPeriodReports(models.AbstractModel):
             done += 1
         statuses = dict(Objective._fields["scoring_status"].selection)
         for objective in Objective.search([("state", "=", "active"), ("deadline", "<", today)]):
-            if objective.due_result_sent_for == objective.deadline:
+            if objective.due_result_sent_for == objective.deadline or not objective.company_id.sm_due_result_notes:
                 continue
             result = statuses.get(objective.scoring_status, "Not Evaluated")
             if objective.scoring_status not in ("not_evaluated", "data_quality_issue"):

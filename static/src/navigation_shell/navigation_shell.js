@@ -22,6 +22,7 @@ import { tasksPage } from "./pages/tasks/tasks";
 import { reportsPage } from "./pages/reports/reports";
 import { appDependenciesPage } from "./pages/app_dependencies/app_dependencies";
 import { branchManagerPage } from "./pages/branch_manager/branch_manager";
+import { settingsPage } from "./pages/settings/settings";
 import { employeeHomePage } from "./pages/employee_home/employee_home";
 import { adminPage } from "./pages/admin/admin";
 import { kpiRequestsPage } from "./pages/kpi_requests/kpi_requests";
@@ -108,6 +109,10 @@ export class StrategicNavigationShell extends Component {
             myPerformanceStart: this.asDateInput(new Date(new Date().getFullYear(), new Date().getMonth() - 5, 1)),
             myPerformanceEnd: this.asDateInput(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)),
             drillChoice: null,
+            // Settings tab (pages/settings), Head Office.
+            settings: null,
+            settingsTab: "settings",
+            settingsError: "",
             staffingWork: [],
             employeeWorkspace: null,
             employeeWorkspaceError: "",
@@ -218,11 +223,13 @@ export class StrategicNavigationShell extends Component {
     }
 
     scheduleLiveRefresh() {
+        if (this.state.navContext?.live_refresh === false) return; // Settings: live page refresh off
         clearTimeout(this.liveRefreshTimer);
         this.liveRefreshTimer = setTimeout(() => this.refreshActiveSectionSilently(), LIVE_REFRESH_DEBOUNCE_MS);
     }
 
     refreshActiveSectionSilently() {
+        if (this.state.navContext?.live_refresh === false) return;
         // Hidden sections load on demand when opened, so only the visible live section is refreshed.
         if (this.state.navContext?.role === "employee") this.loadEmployeeContext();
         const loaders = {
@@ -378,6 +385,9 @@ export class StrategicNavigationShell extends Component {
             this.loadWorkRequests();
             return this.loadObjectiveRequests();
         }
+        if (sectionId === "configuration" && this.state.navContext?.role === "head_office" && this.state.settingsTab === "settings") {
+            this.loadSettings();
+        }
         if (sectionId === "bm_dashboard" && this.isBranchManager) {
             return this.loadBranchObjectives();
         }
@@ -499,7 +509,9 @@ export class StrategicNavigationShell extends Component {
     }
 
     get sidebarPrimary() {
-        if (this.isBranchManager) return BRANCH_SIDEBAR;
+        if (this.isBranchManager) {
+            return this.state.navContext?.can_propose === false ? BRANCH_SIDEBAR.filter((item) => item.id !== "propose_objective") : BRANCH_SIDEBAR;
+        }
         if (this.isAdminRole) return ADMIN_SIDEBAR;
         return this.state.navContext?.role === "employee" ? EMPLOYEE_SIDEBAR : SIDEBAR_PRIMARY;
     }
@@ -641,7 +653,7 @@ export class StrategicNavigationShell extends Component {
 }
 
 // Add every page's functions to the component. A name defined twice would silently replace the other, so it is refused.
-for (const page of [inboxPage, salesPage, purchasingPage, inventoryPage, branchesPage, peoplePage, employeesPage, tasksPage, reportsPage, appDependenciesPage, branchManagerPage, employeeHomePage, adminPage, kpiRequestsPage]) {
+for (const page of [inboxPage, salesPage, purchasingPage, inventoryPage, branchesPage, peoplePage, employeesPage, tasksPage, reportsPage, appDependenciesPage, branchManagerPage, employeeHomePage, adminPage, kpiRequestsPage, settingsPage]) {
     for (const [name, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(page))) {
         if (name in StrategicNavigationShell.prototype) {
             throw new Error(`Strategic Management: "${name}" is defined twice in the navigation shell.`);

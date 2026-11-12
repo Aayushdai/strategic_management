@@ -39,4 +39,5 @@ from . import admin_console
 from . import kpi_work_request
 from . import period_reports
 from . import achievement_report
+from . import settings
 # Extend strategic.performance.dashboard, so they load after it.

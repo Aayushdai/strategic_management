@@ -56,7 +56,7 @@ class StrategicAdminAudit(models.Model):
     action = fields.Selection([
         ("role", "Role changed"), ("branch", "Branch changed"), ("departments", "Departments changed"),
         ("activate", "User activated"), ("deactivate", "User deactivated"), ("create_user", "User created"),
-        ("reset_link", "Password reset link sent"), ("branch_setup", "Branch setup changed"),
+        ("reset_link", "Password reset link sent"), ("branch_setup", "Branch setup changed"), ("settings", "Setting changed"),
     ], required=True, readonly=True)
     target_user_id = fields.Many2one("res.users", "User", readonly=True)
     warehouse_id = fields.Many2one("stock.warehouse", "Branch", readonly=True)

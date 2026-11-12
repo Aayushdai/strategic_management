@@ -147,7 +147,7 @@ class StrategicPerformanceDashboardBranchObjectives(models.AbstractModel):
         branch = self._branch_manager_branch()
         goals = self.env["strategic.goal.setup"].get_goals()
         today = fields.Date.context_today(self)
-        soon = today + timedelta(days=_DUE_SOON_DAYS)
+        soon = today + timedelta(days=self.env.company.sm_due_soon_days or _DUE_SOON_DAYS)
         relevant = [goal for goal in goals if goal["scope_kind"] == "organization" or goal["warehouse_id"] == branch.id]
         attention = []
         for goal in relevant:

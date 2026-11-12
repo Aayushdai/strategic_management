@@ -552,6 +552,8 @@ class StrategicGoalSetup(models.Model):
             "scope": scope,
             "business_area": area,
         }
+        if not self._is_head_office() and not self.env.company.sm_bm_can_propose:
+            raise UserError("Head Office has turned off objective proposals from Branch Managers.")
         if scope == "branch":
             # Existing objective rule: a branch objective is aligned under a company objective of the same plan.
             if self._is_head_office():

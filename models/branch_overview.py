@@ -190,7 +190,9 @@ class StrategicPerformanceDashboardBranches(models.AbstractModel):
         problem instead of falling back to another role's navigation; data methods keep refusing as before.
         """
         role = self._strategic_role_name()
-        context = {"role": role, "branch": False, "branch_error": False}
+        company = self.env.company
+        context = {"role": role, "branch": False, "branch_error": False,
+                   "can_propose": company.sm_bm_can_propose, "live_refresh": company.sm_live_refresh}
         if role == "branch_manager":
             # sudo only to validate the user's own assignment; a branch in another company may not be readable.
             warehouse = self.env.user.sudo().strategic_branch_warehouse_id
@@ -431,7 +433,7 @@ class StrategicPerformanceDashboardBranches(models.AbstractModel):
                     picking.name, picking.partner_id.display_name or "Unknown supplier",
                     fields.Date.to_string(picking.scheduled_date.date()), days_late,
                 ),
-                "severity": "critical" if days_late > _LATE_DELIVERY_CRITICAL_DAYS else "warning",
+                "severity": "critical" if days_late > (self.env.company.sm_late_critical_days or _LATE_DELIVERY_CRITICAL_DAYS) else "warning",
                 "responsible": picking.user_id.name or ", ".join(managers.get(warehouse.id, [])) or "Unassigned",
                 "deadline": fields.Date.to_string(picking.scheduled_date.date()),
                 "action_status": self._action_status(picking.activity_ids, today),

@@ -507,7 +507,7 @@ class StrategicKpiEvaluation(models.Model):
 
     @api.model
     def _attainment_status(self, attainment):
-        if attainment < 80.0:
+        if attainment < (self.env.company.sm_almost_met_pct or 80.0):  # Settings: "Almost met" starts at
             return "not_achieved"
         if attainment < 100.0:
             return "almost_met"

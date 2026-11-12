@@ -56,3 +56,4 @@ from . import test_workflow_gaps
 from . import test_admin_proposals
 from . import test_period_reports
 from . import test_achievement_reports
+from . import test_settings

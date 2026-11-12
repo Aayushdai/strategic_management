@@ -24,7 +24,7 @@ _EDITABLE_STATES = ("draft", "changes_requested")
 _SUMMARY = [
     ("Sales (period)", "sales", [("Net sales", "net_sales"), ("Completed orders", "orders"), ("Average order value", "average_order_value")]),
     ("Inventory", "inventory", [("Recorded waste (period)", "waste_cost"), ("Receipts completed (period)", "receipts_done"),
-                                ("Below minimum stock (when taken)", "low_stock_count"), ("Expiring within 7 days (when taken)", "expiring_count")]),
+                                ("Below minimum stock (when taken)", "low_stock_count"), ("Expiring soon (when taken)", "expiring_count")]),
     ("Purchasing", "purchasing", [("Confirmed purchases (period)", "confirmed_value"), ("Open deliveries (when taken)", "awaiting_count"),
                                   ("Overdue deliveries (when taken)", "overdue_count")]),
     ("Employee tasks (when taken)", "tasks", [("Open", "open"), ("Overdue", "overdue"), ("Awaiting review", "review")]),

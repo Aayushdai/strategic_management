@@ -73,7 +73,7 @@ class StrategicPerformanceDashboardBranchOperations(models.AbstractModel):
         if not data.get("available"):
             return {"available": False, "messages": data.get("messages") or ["Inventory could not be read with your access rights."]}
         summary = data["summary"]
-        expiring = [row for row in data.get("expiring_stock") or [] if row.get("days_left", 99) <= 7]
+        expiring = [row for row in data.get("expiring_stock") or [] if row.get("days_left", 99) <= (self.env.company.sm_expiring_days or 7)]
         receipts = self._operations_receipts_done(start, end, branch)
         return {
             "available": True,

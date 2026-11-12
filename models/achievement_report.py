@@ -138,7 +138,7 @@ class StrategicObjectiveAchievement(models.Model):
     def action_complete(self):
         result = super().action_complete()
         Report = self.env["strategic.achievement.report"].sudo()
-        for objective in self.filtered(lambda objective: objective.state == "completed"):
+        for objective in self.filtered(lambda objective: objective.state == "completed" and objective.company_id.sm_achievement_reports):
             Report._create_for(objective)
         return result
 

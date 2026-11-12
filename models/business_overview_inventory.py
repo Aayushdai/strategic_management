@@ -303,7 +303,8 @@ class StrategicPerformanceDashboardInventoryOverview(models.AbstractModel):
                     "drill": self._overview_drill("stock.quant", None, "Stock of lot %s" % (info.get("lot_name") or ""), ids=lot_quant_ids.get(key, [])),
                 })
         expiring_stock.sort(key=lambda item: (item["expiry_date"], item["product"]))
-        expiring_soon_count = sum(1 for item in expiring_stock if 0 <= item["days_left"] <= 7) if expiry_available else False
+        expiring_window = self.env.company.sm_expiring_days or 7  # Settings: expiring stock window
+        expiring_soon_count = sum(1 for item in expiring_stock if 0 <= item["days_left"] <= expiring_window) if expiry_available else False
 
         stock_discrepancies = []
         for (pid, wid), delta in discrepancy_delta.items():
@@ -484,7 +485,7 @@ class StrategicPerformanceDashboardInventoryOverview(models.AbstractModel):
         for item in low_stock_all:
             attention.append({"kind": "stock", "severity": "high" if item["status"] == "critical" else "medium", "title": item["status_label"], "detail": "%s - %s - %s %s available" % (item["branch_name"], item["name"], item["available_quantity"], item["unit"]), "date": "", "res_model": "product.product", "res_id": item["product_id"]})
         for item in expiring_stock:
-            if item["days_left"] <= 7:
+            if item["days_left"] <= expiring_window:
                 attention.append({"kind": "expiry", "severity": "high" if item["days_left"] < 0 else "medium", "title": item["status"], "detail": "%s - %s - %s %s" % (item["branch"], item["product"], item["quantity"], item["unit"]), "date": item["expiry_date"], "res_model": "stock.lot", "res_id": item["lot_id"]})
         for item in stock_discrepancies:
             attention.append({"kind": "variance", "severity": "review", "title": "Unreconciled stock count", "detail": "%s - %s - variance %s %s" % (item["branch"], item["product"], item["variance"], item["unit"]), "date": "", "res_model": "product.product", "res_id": item["product_id"]})
@@ -518,7 +519,7 @@ class StrategicPerformanceDashboardInventoryOverview(models.AbstractModel):
             "currency": currency_data,
             "drill": {
                 "low_stock": self._overview_drill("stock.warehouse.orderpoint", None, "Products below their minimum stock", ids=[item["orderpoint_id"] for item in low_stock_all]),
-                "expiring": self._overview_drill("stock.quant", None, "Stock expiring within 7 days", ids=[qid for item in expiring_stock if 0 <= item["days_left"] <= 7 for qid in item["quant_ids"]]) if expiry_available else False,
+                "expiring": self._overview_drill("stock.quant", None, "Stock expiring within %s days" % expiring_window, ids=[qid for item in expiring_stock if 0 <= item["days_left"] <= expiring_window for qid in item["quant_ids"]]) if expiry_available else False,
                 "waste": self._overview_drill("stock.move", self._overview_waste_domain(start, end, selected_warehouse), "Recorded waste") if waste_cost is not False else False,
                 "issues": self._overview_drill("stock.quant", None, "Counted stock that differs from the system", ids=discrepancy_quant_ids),
             },
