@@ -47,7 +47,6 @@ export const SECTION_LINKS = {
         { xmlid: "strategic_management.action_strategic_kpi_definition", group: "kpi", icon: "M5 20V10M10 20V4M15 20v-7M20 20v-4", label: "KPI Definitions", description: "What is measured and from which Odoo source.", roles: ["head_office"] },
         { xmlid: "strategic_management.action_strategic_kpi_target", group: "kpi", icon: "M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18ZM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8Z", label: "KPI Targets", description: "Approved targets per period, branch or employee.", roles: ["head_office", "branch_manager", "employee"] },
         { xmlid: "strategic_management.action_strategic_kpi_evaluation", group: "kpi", icon: "M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9", label: "KPI Evaluations", description: "Recorded KPI results and their evidence.", roles: ["head_office", "branch_manager", "employee"] },
-        { xmlid: "strategic_management.action_strategic_hoshin_xmatrix_workspace", group: "strategy", icon: "M4 4h16v16H4zM4 4l16 16M20 4 4 20", label: "Hoshin X-Matrix", description: "Strategy alignment matrix.", roles: ["head_office"] },
         { xmlid: "stock.action_warehouse_form", group: "operations", icon: "M3 21V9l9-6 9 6v12M9 21v-6h6v6", label: "Branches (Warehouses)", description: "Branch details and Planned Staff for coverage.", roles: ["head_office"] },
         { xmlid: "mrp.mrp_bom_form_action", group: "operations", icon: "M6 3h12M8 3v5l-4 9a3 3 0 0 0 3 4h10a3 3 0 0 0 3-4l-4-9V3M7 14h10", label: "Recipes (BoMs)", description: "Set recipes to Kit so POS sales consume ingredients.", roles: ["head_office"] },
         { xmlid: "stock.action_orderpoint", group: "operations", icon: "M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5", label: "Reorder Rules", description: "Minimum stock levels behind low-stock alerts.", roles: ["head_office"] },
@@ -59,7 +58,6 @@ export const SECTION_LINKS = {
 // design does not list stay one click away under "More", so no existing page becomes unreachable.
 export const SIDEBAR_PRIMARY = [
     { id: "overview", label: "Inbox" },
-    { id: "hoshin", label: "Hoshin" },
     { id: "sales_finance", label: "Sales" },
     { id: "purchasing", label: "Purchasing" },
     { id: "inventory_waste", label: "Inventory" },
@@ -76,7 +74,6 @@ export const HEAD_OFFICE_SIDEBAR_MORE = [...SIDEBAR_MORE, { id: "employee_manage
 // Objectives stay reachable from the dashboard's objective cards and links; notifications from the header bell.
 export const BRANCH_SIDEBAR = [
     { id: "bm_dashboard", label: "Dashboard" },
-    { id: "branch_plan", label: "Our Plan" },
     { id: "sales_finance", label: "Sales" },
     { id: "purchasing", label: "Purchasing" },
     { id: "inventory_waste", label: "Inventory" },

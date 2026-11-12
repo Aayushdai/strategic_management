@@ -958,18 +958,6 @@ class StrategicKpiTarget(models.Model):
                     "The selected baseline KPI unit and performance direction must match the target-period KPI definition version."
                 )
 
-    def write(self, vals):
-        if vals.get("state") == "archived":
-            active_links = self.env["strategic.xmatrix.alignment"].sudo().search_count([
-                ("target_id", "in", self.ids),
-                ("state", "=", "active"),
-            ])
-            if active_links:
-                raise ValidationError(
-                    "Revise or supersede every active X-Matrix alignment that uses this KPI target before archiving it."
-                )
-        return super().write(vals)
-
     def action_approve(self):
         for target in self:
             target._check_target_scope_and_dates()

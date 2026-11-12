@@ -25,8 +25,6 @@ import { branchManagerPage } from "./pages/branch_manager/branch_manager";
 import { employeeHomePage } from "./pages/employee_home/employee_home";
 import { adminPage } from "./pages/admin/admin";
 import { kpiRequestsPage } from "./pages/kpi_requests/kpi_requests";
-import { hoshinPage } from "./pages/hoshin/hoshin";
-import { branchPlanPage } from "./pages/branch_plan/branch_plan";
 
 export class StrategicNavigationShell extends Component {
     static template = "strategic_management.NavigationShell";
@@ -161,13 +159,6 @@ export class StrategicNavigationShell extends Component {
             rejectReason: "",
             deciding: false,
             pages: {},
-            // Hoshin review (pages/hoshin).
-            hoshin: null,
-            hoshinCountermeasure: null,
-            hoshinError: "",
-            // Our Plan, Branch Manager (pages/branch_plan).
-            branchPlan: null,
-            branchPlanError: "",
             // KPI/OKR work requests (pages/kpi_requests): Head Office's card on the Inbox and the Admin's list.
             workRequests: null,
             workRequestsError: "",
@@ -248,8 +239,6 @@ export class StrategicNavigationShell extends Component {
             people: "loadPeople",
             tasks_issues: "loadTasksIssues",
             app_dependencies: "loadAppDependencies",
-            hoshin: "loadHoshinReview",
-            branch_plan: "loadBranchPlan",
         };
         if (this.state.activeSection.startsWith("admin_")) {
             if (document.visibilityState !== "hidden") this.loadAdminSection({ silent: true });
@@ -382,16 +371,10 @@ export class StrategicNavigationShell extends Component {
         if (["sales_finance", "inventory_waste", "purchasing"].includes(sectionId)) {
             this.loadAreaGoals(sectionId);
         }
-        if (sectionId === "hoshin") {
-            return this.loadHoshinReview();
-        }
         if (sectionId === "overview") {
             this.loadPendingStaffing();
             this.loadWorkRequests();
             return this.loadObjectiveRequests();
-        }
-        if (sectionId === "branch_plan" && this.isBranchManager) {
-            return this.loadBranchPlan();
         }
         if (sectionId === "bm_dashboard" && this.isBranchManager) {
             return this.loadBranchObjectives();
@@ -656,7 +639,7 @@ export class StrategicNavigationShell extends Component {
 }
 
 // Add every page's functions to the component. A name defined twice would silently replace the other, so it is refused.
-for (const page of [inboxPage, salesPage, purchasingPage, inventoryPage, branchesPage, peoplePage, employeesPage, tasksPage, reportsPage, appDependenciesPage, branchManagerPage, employeeHomePage, adminPage, kpiRequestsPage, hoshinPage, branchPlanPage]) {
+for (const page of [inboxPage, salesPage, purchasingPage, inventoryPage, branchesPage, peoplePage, employeesPage, tasksPage, reportsPage, appDependenciesPage, branchManagerPage, employeeHomePage, adminPage, kpiRequestsPage]) {
     for (const [name, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(page))) {
         if (name in StrategicNavigationShell.prototype) {
             throw new Error(`Strategic Management: "${name}" is defined twice in the navigation shell.`);

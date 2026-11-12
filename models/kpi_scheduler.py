@@ -171,12 +171,6 @@ class StrategicKpiScheduledJobs(models.Model):
             processed,
             notified,
         )
-        # New results may leave a Hoshin metric off target two months running: open its countermeasure.
-        try:
-            with self.env.cr.savepoint():
-                self.env["strategic.hoshin.countermeasure"].sudo()._open_for_red_metrics()
-        except Exception:
-            _logger.exception("Could not open Hoshin countermeasures")
         return {"evaluations_processed": processed, "activities_created": notified}
 
     @api.model

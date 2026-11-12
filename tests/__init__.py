@@ -1,6 +1,5 @@
 from . import test_kpi_engine
 from . import test_strategy
-from . import test_hoshin
 from . import test_objective_completion_readiness
 from . import test_kpi_measurement
 from . import test_kpi_pos_source_adapter
@@ -55,5 +54,3 @@ from . import test_admin_console
 from . import test_kpi_work_request
 from . import test_workflow_gaps
 from . import test_admin_proposals
-from . import test_hoshin_review
-from . import test_hoshin_cascade

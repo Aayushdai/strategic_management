@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-// "← <previous screen>" for the module's own full-page screens (Business Goals, X-Matrix, dashboards), which have no
+// "← <previous screen>" for the module's own full-page screens (Business Goals, dashboards), which have no
 // Odoo breadcrumb bar. Uses Odoo's own history, so it returns to whatever screen opened this one; hidden when this
 // screen was opened first (nothing to go back to).
 

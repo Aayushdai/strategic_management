@@ -43,7 +43,6 @@ A function name defined twice stops the screen with an error naming it, so nothi
 
 - `static/src/business_goals/`: Business Goals (goal list, setup drawer). Server: goal_setup.py, goal_setup_monitoring.py,
   goal_setup_payload.py, goal_templates.py.
-- `static/src/hoshin_xmatrix/`: the Hoshin X-Matrix. Server: hoshin.py.
 - `static/src/kpi_dashboards/`: the original KPI dashboards behind the hidden Strategy & KPIs menu. Server: dashboard.py.
 
 ### Server side

@@ -1,6 +1,6 @@
 {
     "name": "Strategic Performance Management",
-    "version": "20.0.1.10.0",
+    "version": "20.0.1.11.0",
     "category": "Productivity",
     "summary": "Strategic objectives, OKRs, KPIs, and performance management",
     # Set so Odoo does not render README.md (Markdown) as the app description; README.md is the developer map.
@@ -35,17 +35,14 @@
         "views/employee_dashboard_views.xml",
         "views/strategy_views.xml",
         "views/menus.xml",
-        "views/hoshin_views.xml",
         "views/kpi_measurement_views.xml",
         "data/strategic_kpi_scheduled_actions.xml",
-        "views/hoshin_matrix_views.xml",
         "views/business_goals_action.xml",
         "views/inventory_control_views.xml",
         "views/branch_task_views.xml",
         "views/branch_report_views.xml",
         "views/stock_picking_views.xml",
         "views/admin_audit_views.xml",
-        "views/hoshin_countermeasure_views.xml",
     ],
     "assets": {
         "web.assets_backend": [
@@ -68,12 +65,7 @@
             "strategic_management/static/src/navigation_shell/pages/branch_manager/branch_manager.scss",
             "strategic_management/static/src/navigation_shell/pages/employee_home/employee_home.scss",
             "strategic_management/static/src/navigation_shell/pages/admin/admin.scss",
-            "strategic_management/static/src/navigation_shell/pages/hoshin/hoshin.scss",
-            "strategic_management/static/src/navigation_shell/pages/branch_plan/branch_plan.scss",
             # Other screens, one folder each.
-            "strategic_management/static/src/hoshin_xmatrix/hoshin_xmatrix.js",
-            "strategic_management/static/src/hoshin_xmatrix/hoshin_xmatrix.xml",
-            "strategic_management/static/src/hoshin_xmatrix/hoshin_xmatrix.scss",
             # Original KPI dashboards, kept for the hidden Strategy & KPIs menu.
             "strategic_management/static/src/kpi_dashboards/strategic_dashboard.js",
             "strategic_management/static/src/kpi_dashboards/strategic_dashboard.xml",

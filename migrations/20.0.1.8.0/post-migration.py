@@ -18,9 +18,6 @@ def migrate(cr, version):
     targets = env["strategic.kpi.target"].with_context(active_test=False).search([
         ("scope", "=", "user"), ("kpi_id.individual_outcome", "=", False), ("state", "!=", "archived")])
     for target in targets:
-        if env["strategic.xmatrix.alignment"].search_count([("target_id", "=", target.id), ("state", "=", "active")], limit=1):
-            _logger.warning("KPI target %s stays as it is: an active X-Matrix alignment uses it. Head Office must revise it.", target.id)
-            continue
         target.state = "archived"
         target.message_post(body=NOTE % target.kpi_id.display_name, subtype_xmlid="mail.mt_note")
         _logger.info("KPI ownership correction archived target %s (%s, %s).", target.id, target.kpi_id.code, target.user_id.login)
