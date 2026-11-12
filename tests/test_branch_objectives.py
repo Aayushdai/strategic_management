@@ -128,7 +128,8 @@ class TestBranchObjectives(TransactionCase):
         item = next(i for i in self.Dashboard.with_user(self.manager1).get_branch_objective_summary()["attention"]
                     if i["objective_id"] == late.id)
         self.assertEqual(item["reasons"][0], "Deadline passed")
-        soon = self._branch_goal(self.manager1, self.branch1, "Soon plan", deadline=fields.Date.today() + timedelta(days=5))
+        # "Due soon" follows Settings (objective due-soon reminders, 3 days by default).
+        soon = self._branch_goal(self.manager1, self.branch1, "Soon plan", deadline=fields.Date.today() + timedelta(days=2))
         item = next(i for i in self.Dashboard.with_user(self.manager1).get_branch_objective_summary()["attention"]
                     if i["objective_id"] == soon.id)
         self.assertTrue(item["reasons"][0].startswith("Due "))

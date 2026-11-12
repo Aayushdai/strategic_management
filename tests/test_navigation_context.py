@@ -32,10 +32,11 @@ class TestNavigationContext(TransactionCase):
         return self.Dashboard.with_user(user).get_navigation_context()
 
     def test_roles_and_branch_assignment(self):
-        self.assertEqual(self._context(self.head), {"role": "head_office", "branch": False, "branch_error": False})
+        switches = {"can_propose": True, "live_refresh": True}  # Settings switches the app follows; no business data
+        self.assertEqual(self._context(self.head), {"role": "head_office", "branch": False, "branch_error": False, **switches})
         self.assertEqual(self._context(self.manager),
-                         {"role": "branch_manager", "branch": {"id": self.branch.id, "name": self.branch.display_name}, "branch_error": False})
-        self.assertEqual(self._context(self.employee), {"role": "employee", "branch": False, "branch_error": False},
+                         {"role": "branch_manager", "branch": {"id": self.branch.id, "name": self.branch.display_name}, "branch_error": False, **switches})
+        self.assertEqual(self._context(self.employee), {"role": "employee", "branch": False, "branch_error": False, **switches},
                          "an employee's branch field is not exposed as manager context")
 
     def test_missing_or_foreign_branch_keeps_the_role_and_reports_the_existing_error(self):
