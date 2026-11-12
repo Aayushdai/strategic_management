@@ -297,3 +297,8 @@
         .o_sm_iw_attention_row .o_sm_iw_item_action { grid-column: 2; justify-self: start; }
     }
 }
+
+// Rows that open their records (the server sends a drill only where there are some).
+.o_sm_navigation_shell .o_sm_iw_stock_row.is-drill, .o_sm_navigation_shell .o_sm_iw_waste_bar.is-drill,
+.o_sm_navigation_shell .o_sm_iw_table tr.is-drill { border-radius: .4rem; cursor: pointer;
+    &:hover, &:focus-visible { background: #f4f2fd; outline: none; } }

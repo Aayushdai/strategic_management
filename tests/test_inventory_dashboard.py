@@ -63,6 +63,12 @@ class TestInventoryDashboard(TransactionCase):
         if "value" in self.env["stock.move"]._fields:
             self.assertAlmostEqual(data["summary"]["waste_cost"], 1.0)
             self.assertEqual([(row["product"], row["cost"]) for row in data["waste_by_product"]], [("Test Milk", 1.0)])
+            # The waste bar and the branch's comparison row open the recorded waste behind them.
+            self.assertEqual(data["waste_by_product"][0]["drill"]["domain"], [("id", "in", scrap.ids)])
+            branch = next(row for row in data["branch_comparison"] if row["warehouse_id"] == self.warehouse.id)
+            drills = branch["drill"] if isinstance(branch["drill"], list) else [branch["drill"]]
+            waste = next(drill for drill in drills if drill["model"] == "stock.move")
+            self.assertEqual(self.env["stock.move"].search(waste["domain"]), scrap)
 
     def test_inventory_configuration_changes_queue_live_refresh(self):
         def queued_areas():

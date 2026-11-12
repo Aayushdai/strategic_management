@@ -136,6 +136,7 @@ class StrategicPerformanceDashboardInventoryOverview(models.AbstractModel):
         discrepancy_delta = defaultdict(float)
         lot_quant_ids = defaultdict(list)
         discrepancy_quant_ids = []
+        discrepancy_quant_ids_by_warehouse = defaultdict(list)  # for each branch's drill
         for row in quant_rows:
             product_ref = row.get("product_id")
             location_ref = row.get("location_id")
@@ -163,6 +164,7 @@ class StrategicPerformanceDashboardInventoryOverview(models.AbstractModel):
                 if abs(delta) > 0.000001:
                     discrepancy_delta[(product_id_row, warehouse_ref)] += delta
                     discrepancy_quant_ids.append(row["id"])
+                    discrepancy_quant_ids_by_warehouse[warehouse_ref].append(row["id"])
             lot_ref = row.get("lot_id")
             expiry_value = row.get("expiration_date") if "expiration_date" in quant_fields else False
             if lot_ref:
@@ -233,6 +235,7 @@ class StrategicPerformanceDashboardInventoryOverview(models.AbstractModel):
                     "unit": meta.get("uom") or "", "status": "critical" if forecast <= 0 else "low",
                     "status_label": "Reorder" if forecast <= 0 else "Low stock",
                     "stock_percent": round(max(0.0, min(100.0, (available / minimum * 100.0) if minimum else 0.0)), 1),
+                    "drill": self._overview_drill("stock.warehouse.orderpoint", None, "Minimum stock rule: %s" % (meta.get("name") or product_ref[1]), ids=[row["id"]]),
                 })
         low_stock_all.sort(key=lambda item: (item["forecast_quantity"] / item["minimum_quantity"] if item["minimum_quantity"] else 0, item["name"]))
         low_stock_count = len(low_stock_all) if orderpoint_rows is not False and orderpoint_rows else (0 if orderpoint_rows is not False and orderpoint_rows is not None and len(orderpoint_rows) else False)
@@ -297,6 +300,7 @@ class StrategicPerformanceDashboardInventoryOverview(models.AbstractModel):
                     "warehouse_id": wid, "expiry_date": fields.Date.to_string(expiry_date),
                     "days_left": days_left, "quantity": round(quantity, 4), "unit": product.get("uom") or "",
                     "value_at_cost": round(cost, 2), "status": status,
+                    "drill": self._overview_drill("stock.quant", None, "Stock of lot %s" % (info.get("lot_name") or ""), ids=lot_quant_ids.get(key, [])),
                 })
         expiring_stock.sort(key=lambda item: (item["expiry_date"], item["product"]))
         expiring_soon_count = sum(1 for item in expiring_stock if 0 <= item["days_left"] <= 7) if expiry_available else False
@@ -368,6 +372,9 @@ class StrategicPerformanceDashboardInventoryOverview(models.AbstractModel):
                     waste_by_product = [dict(product_id=pid, cost=round(values["cost"], 2), quantity=round(values["quantity"], 4), product=values["product"], category=values["category"], unit=values["unit"])
                                          for pid, values in waste_by_product_map.items() if values["cost"] > 0]
                     waste_by_product.sort(key=lambda item: item["cost"], reverse=True)
+                    for item in waste_by_product:
+                        item["drill"] = self._overview_drill("stock.move", None, "Recorded waste: %s" % item["product"],
+                                                             ids=scrap_moves.filtered(lambda move, pid=item["product_id"]: move.product_id.id == pid).ids)
 
         # Reconstruct period movement from actual completed stock moves and current quants.
         movement = False
@@ -464,6 +471,13 @@ class StrategicPerformanceDashboardInventoryOverview(models.AbstractModel):
                 "low_stock_count": low_stock_by_warehouse.get(warehouse.id, 0) if orderpoint_rows is not False and orderpoint_rows else False,
                 "waste_cost": branch_waste,
                 "variance_count": discrepancy_rows_by_warehouse.get(warehouse.id, 0) if discrepancy_count is not False else False,
+                "drill": self._overview_drills(
+                    self._overview_drill("stock.warehouse.orderpoint", None, "Low stock at %s" % warehouse.display_name,
+                                         ids=[item["orderpoint_id"] for item in low_stock_all if item["warehouse_id"] == warehouse.id]),
+                    self._overview_drill("stock.move", self._overview_waste_domain(start, end, warehouse), "Recorded waste at %s" % warehouse.display_name)
+                    if branch_waste else False,
+                    self._overview_drill("stock.quant", None, "Count differences at %s" % warehouse.display_name,
+                                         ids=discrepancy_quant_ids_by_warehouse.get(warehouse.id, []))),
             })
 
         attention = []

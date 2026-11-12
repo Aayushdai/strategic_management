@@ -211,3 +211,10 @@
         .o_sm_pur_goals_strip .o_sm_pur_link { margin-left: 0; }
     }
 }
+
+// Chart rows and trend points that open their records (the server sends a drill only where there are some).
+.o_sm_navigation_shell .o_sm_pur_line_chart .o_sm_pur_point_hit { fill: transparent; stroke: none; cursor: pointer;
+    &:hover, &:focus-visible { fill: rgba(111, 91, 211, .15); outline: none; } }
+.o_sm_navigation_shell .o_sm_pur_category_legend > div.is-drill, .o_sm_navigation_shell .o_sm_pur_supplier_row.is-drill,
+.o_sm_navigation_shell .o_sm_pur_item.is-drill, .o_sm_navigation_shell .o_sm_pur_table tr.is-drill { border-radius: .4rem; cursor: pointer;
+    &:hover, &:focus-visible { background: #f4f2fd; outline: none; } }

@@ -259,10 +259,12 @@ class StrategicPerformanceDashboardPurchasingOverview(models.AbstractModel):
         previous_confirmed = previous_orders.filtered(lambda order: order.state in ("purchase", "done"))
         current_by_month = defaultdict(float)
         previous_by_month = defaultdict(float)
+        month_order_ids = defaultdict(list)  # the orders behind each trend month, for its drill
         for order in confirmed:
             dt = order_date(order)
             if dt:
                 key = dt.strftime("%Y-%m")
+                month_order_ids[key].append(order.id)
                 current_by_month[key] += to_company_currency(order.amount_untaxed, order.currency_id if "currency_id" in order._fields else company_currency, order.date_order)
         for order in previous_confirmed:
             dt = order_date(order)
@@ -277,9 +279,13 @@ class StrategicPerformanceDashboardPurchasingOverview(models.AbstractModel):
                 "label": month_start.strftime("%b"),
                 "current": round(current_by_month.get(key, 0.0), 2),
                 "previous": round(previous_by_month.get(prior_month.strftime("%Y-%m"), 0.0), 2),
+                "drill": self._overview_drill("purchase.order", None, "Purchase orders, %s" % month_start.strftime("%b %Y"), ids=month_order_ids[key])
+                if month_order_ids[key] else False,
             })
 
         categories = defaultdict(float)
+        category_line_ids = defaultdict(list)  # the purchase lines behind each category and product, for their drills
+        product_line_ids = defaultdict(list)
         product_totals = defaultdict(float)
         product_labels = {}
         product_units = {}
@@ -295,6 +301,8 @@ class StrategicPerformanceDashboardPurchasingOverview(models.AbstractModel):
                 product = line.product_id
                 category = product.categ_id.display_name if product and product.categ_id else "Uncategorized"
                 categories[category] += line_amount
+                category_line_ids[category].append(line.id)
+                product_line_ids[product.id].append(line.id)
                 product_totals[product.id] += line_amount
                 product_labels[product.id] = product.display_name
                 uom = getattr(line, "product_uom", False)
@@ -313,8 +321,11 @@ class StrategicPerformanceDashboardPurchasingOverview(models.AbstractModel):
         category_total = sum(row["value"] for row in category_rows)
         for row in category_rows:
             row["share"] = round((row["value"] / category_total) * 100.0, 1) if category_total else 0.0
+            names = [name for name, _value in sorted_categories[5:]] if row["name"] == "Other" and len(sorted_categories) > 5 else [row["name"]]
+            row["drill"] = self._overview_drill("purchase.order.line", None, "Purchases in %s" % row["name"],
+                                                ids=[line_id for name in names for line_id in category_line_ids[name]])
 
-        supplier_stats = defaultdict(lambda: {"name": "", "eligible": 0, "on_time": 0})
+        supplier_stats = defaultdict(lambda: {"name": "", "eligible": 0, "on_time": 0, "order_ids": []})
         on_time_eligible = PurchaseOrder.browse()
         orders_attention = []
         for order in orders:
@@ -334,6 +345,7 @@ class StrategicPerformanceDashboardPurchasingOverview(models.AbstractModel):
                 stats = supplier_stats[partner.id if partner else 0]
                 stats["name"] = supplier_name
                 stats["eligible"] += 1
+                stats["order_ids"].append(order.id)
                 on_time_eligible |= order
                 if max(actual_dates) <= max(expected_dates):
                     stats["on_time"] += 1
@@ -395,6 +407,7 @@ class StrategicPerformanceDashboardPurchasingOverview(models.AbstractModel):
                     "orders": stats["eligible"],
                     "on_time": stats["on_time"],
                     "rate": round(stats["on_time"] * 100.0 / stats["eligible"], 1),
+                    "drill": self._overview_drill("purchase.order", None, "Completed orders from %s" % stats["name"], ids=stats["order_ids"]),
                 })
         supplier_performance.sort(key=lambda row: (row["orders"], row["rate"]), reverse=True)
         supplier_performance = supplier_performance[:_LIST_LIMIT]
@@ -424,6 +437,8 @@ class StrategicPerformanceDashboardPurchasingOverview(models.AbstractModel):
                 "unit": product_units.get(product_id, ""),
                 "monthly_prices": monthly_prices,
                 "trend": trend_label,
+                "drill": self._overview_drill("purchase.order.line", None, "Purchases of %s" % product_labels.get(product_id, "product"),
+                                              ids=product_line_ids[product_id]),
             })
 
         recent_orders = []

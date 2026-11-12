@@ -331,6 +331,15 @@ class TestPurchaseDashboardAcceptance(TransactionCase):
         self.assertEqual(after["purchase_order_count"], before["purchase_order_count"] + 1)
         # Purchasing spend is reported excluding tax, like the line-based delivery values.
         self.assertAlmostEqual(after["purchase_order_value"] - before["purchase_order_value"], order.amount_untaxed, places=2)
+        # The charts open the records they count: the month's orders, and the lines by category and by ingredient.
+        def ids(drill):
+            return drill["domain"][0][2] if drill else []
+        month = fields.Date.context_today(self.env.user).strftime("%Y-%m")  # counted when confirmed (today), not at its deadline
+        self.assertIn(order.id, ids(next(row for row in after["expenditure_trend"] if row["key"] == month)["drill"]))
+        category_lines = [line_id for row in after["purchase_categories"] for line_id in ids(row["drill"])]
+        self.assertTrue(set(order.order_line.ids) <= set(category_lines))
+        product_rows = [row for row in after["ingredient_price_trend"] if row["product_id"] in order.order_line.product_id.ids]
+        self.assertTrue(product_rows and set(ids(product_rows[0]["drill"])) & set(order.order_line.ids))
 
         if self.WarehouseB != self.WarehouseA:
             branch_b = self._purchasing_overview(self.WarehouseB)
