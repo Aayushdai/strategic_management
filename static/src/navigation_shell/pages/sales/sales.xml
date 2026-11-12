@@ -100,6 +100,9 @@
         <circle t-att-cx="this.salesTrendX(point_index, this.state.data.sales_trend.length)"
                 t-att-cy="this.salesTrendY(point.sales)" r="3.5"
                 class="o_sm_sf_sales_point"/>
+        <circle t-if="point.drill" class="o_sm_sf_point_hit" r="10"
+                t-att-cx="this.salesTrendX(point_index, this.state.data.sales_trend.length)" t-att-cy="this.salesTrendY(point.sales)"
+                t-att-aria-label="point.label + ': open its sales'" t-att-role="point.drill ? 'button' : false" t-att-tabindex="point.drill ? 0 : false" t-on-click="() => this.openDrill(point.drill)" t-on-keydown="(ev) => this.onDrillKey(ev, point.drill)"><title t-esc="point.label + ': ' + this.formatCurrency(point.sales) + ', click to open'"/></circle>
         <text t-if="point_index === 0 || point_index === this.state.data.sales_trend.length - 1 || (point_index % this.trendLabelStep() === 0 and this.state.data.sales_trend.length - 1 - point_index >= this.trendLabelStep() / 2)" t-att-x="this.salesTrendX(point_index, this.state.data.sales_trend.length)" y="181" text-anchor="middle"><t t-esc="point.label"/></text>
     </t>
 </svg>
@@ -108,7 +111,7 @@
                 <div class="o_sm_sf_panel_heading"><h2>Sales by Branch</h2><select class="o_sm_sf_select_static o_sm_sf_select_control" t-att-value="this.state.branchMetric" t-on-change="this.onBranchMetricChanged" aria-label="Branch comparison metric"><option value="sales">Sales Amount</option><option value="orders">Order Count</option><option value="average_order_value">Average Order Value</option></select></div>
                 <div class="o_sm_sf_branch_rows">
     <t t-foreach="this.state.data.branch_sales || []" t-as="branch" t-key="branch.branch_id || branch.name">
-        <div class="o_sm_sf_branch_row">
+        <div t-att-class="'o_sm_sf_branch_row' + (branch.drill ? ' is-drill' : '')" t-att-role="branch.drill ? 'button' : false" t-att-tabindex="branch.drill ? 0 : false" t-on-click="() => this.openDrill(branch.drill)" t-on-keydown="(ev) => this.onDrillKey(ev, branch.drill)">
             <span><t t-esc="branch.name"/></span>
             <div class="o_sm_sf_track">
                 <i t-att-style="'width:' + this.branchBarWidth(branch) + '%'"/>
@@ -128,7 +131,7 @@
                 <div class="o_sm_sf_panel_heading"><h2>Best-Selling Products</h2><select class="o_sm_sf_select_static o_sm_sf_select_control" t-att-value="this.state.topProductLimit" t-on-change="this.onTopProductLimitChanged" aria-label="Number of top-selling products"><option value="5">Top 5</option><option value="10">Top 10</option></select></div>
                 <div class="o_sm_sf_table_wrap"><table class="o_sm_sf_table"><thead><tr><th>#</th><th>Product</th><th>Category</th><th>Quantity Sold</th><th>Revenue</th></tr></thead><tbody>
     <t t-foreach="this.state.data.top_products || []" t-as="product" t-key="product.product_id">
-        <tr>
+        <tr t-att-class="product.drill ? 'is-drill' : ''" t-att-role="product.drill ? 'button' : false" t-att-tabindex="product.drill ? 0 : false" t-on-click="() => this.openDrill(product.drill)" t-on-keydown="(ev) => this.onDrillKey(ev, product.drill)">
             <td><t t-esc="product_index + 1"/></td>
             <td><span class="o_sm_sf_product_icon">●</span><t t-esc="product.name"/></td>
             <td><t t-esc="product.category || 'Not available'"/></td>
@@ -153,7 +156,7 @@
         <div class="o_sm_sf_donut_legend">
             <t t-if="(this.state.data.sales_by_category || []).length">
                 <t t-foreach="this.state.data.sales_by_category || []" t-as="category" t-key="category.category_id || category.name">
-                    <div>
+                    <div t-att-class="category.drill ? 'is-drill' : ''" t-att-role="category.drill ? 'button' : false" t-att-tabindex="category.drill ? 0 : false" t-on-click="() => this.openDrill(category.drill)" t-on-keydown="(ev) => this.onDrillKey(ev, category.drill)">
                         <i t-att-style="'background:' + this.categoryColor(category_index)"/>
                         <span><t t-esc="category.name"/></span>
                         <b><t t-esc="this.formatNumber(category.percentage)"/>%</b>

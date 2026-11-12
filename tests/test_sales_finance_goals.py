@@ -130,6 +130,25 @@ class TestSalesFinanceGoals(TransactionCase):
         self.assertAlmostEqual(Dashboard.get_business_overview_data(WEEK[0], WEEK[1], self.b1.id)["sales"], 9.0)
         self.assertAlmostEqual(Dashboard.get_business_overview_data(WEEK[0], WEEK[1], False)["sales"], 29.0)
 
+    def test_chart_rows_open_the_records_behind_them(self):
+        """Sales page: a trend point, branch, product or category opens exactly the records it shows."""
+        self._week_of_sales()
+        data = self.env["strategic.performance.dashboard"].with_user(self.head).get_business_overview_data(WEEK[0], WEEK[1], False, "day")
+
+        def records(drill, model):
+            drill = next(d for d in (drill if isinstance(drill, list) else [drill]) if d["model"] == model)
+            return self.env[model].with_user(self.head).search(drill["domain"])
+
+        trend = {row["month_key"]: row for row in data["sales_trend"]}
+        self.assertEqual(records(trend["2001-01-09"]["drill"], "pos.order").mapped("lines.product_id"), self.latte)
+        self.assertFalse(trend["2001-01-11"]["drill"], "a day without sales opens nothing")
+        branch = next(row for row in data["branch_sales"] if row["branch_id"] == self.b1.id)
+        self.assertEqual(len(records(branch["drill"], "pos.order")), 3, "two sales and the refund; the draft and next week's order are not in it")
+        latte = next(row for row in data["top_products"] if row["product_id"] == self.latte.id)
+        self.assertEqual(set(records(latte["drill"], "pos.order.line").mapped("qty")), {2.0, -1.0})
+        category = data["sales_by_category"][0]
+        self.assertEqual(len(records(category["drill"], "pos.order.line")), 4, "every line sold in the period, in that category")
+
     def test_no_orders_or_no_linked_pos_is_not_zero_sales(self):
         setup = self._goal("net_sales", 10.0, period=QUIET)
         _goal, evaluation = self._final(setup)

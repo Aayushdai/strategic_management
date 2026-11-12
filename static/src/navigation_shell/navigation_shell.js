@@ -32,8 +32,10 @@ export class StrategicNavigationShell extends Component {
     setup() {
         this.props = useProps({ ...standardActionServiceProps });
         // Odoo keeps this when another screen opens on top, and hands it back when the user returns ("← Back").
-        useSetupAction({ getLocalState: () => ({ section: this.state.activeSection }) });
-        const returnTo = this.props.state?.section;
+        useSetupAction({ getLocalState: () => ({ section: this.state.activeSection, dateStart: this.state.dateStart,
+                                                 dateEnd: this.state.dateEnd, trendGranularity: this.state.trendGranularity }) });
+        const returned = this.props.state || {};
+        const returnTo = returned.section;
         this.orm = useService("orm");
         this.notification = useService("notification");
         this.action = useService("action");
@@ -45,12 +47,12 @@ export class StrategicNavigationShell extends Component {
         this.state = proxy({
             activeSection: "overview",
             error: "",
-            dateStart: monthStart,
-            dateEnd: todayInput,
+            dateStart: returned.dateStart || monthStart,
+            dateEnd: returned.dateEnd || todayInput,
             todayDate: todayInput,
             periodPreset: "this_month",
             warehouseId: "all",
-            trendGranularity: "day",
+            trendGranularity: returned.trendGranularity || "day",
             branchMetric: "sales",
             topProductLimit: 5,
             data: null,

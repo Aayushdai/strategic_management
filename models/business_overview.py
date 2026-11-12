@@ -171,6 +171,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         # Customer invoices count as sales too. POS-generated invoices are left out: their POS order is already counted.
         invoice_branch = False if (is_head_office and not selected_warehouse) else (selected_warehouse.ids if selected_warehouse else scope_warehouse_ids)
         invoices = self._overview_safe(lambda: self._overview_invoices(start, end, invoice_branch))
+        invoice_keys = {}  # invoice id -> its branch key in branch_sales_map, for the branch drills
         if invoices:
             sales_total = sales_total or 0.0
             for invoice in invoices:
@@ -180,6 +181,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                 order_count += counted
                 warehouse = invoice.invoice_line_ids.sale_line_ids.order_id.warehouse_id[:1]
                 key = warehouse.id or ("invoice", 0)
+                invoice_keys[invoice.id] = key
                 branch_sales_map[key]["sales"] += amount
                 branch_sales_map[key]["orders"] += counted
                 branch_sales_map[key]["name"] = warehouse.display_name if warehouse else "Invoices without a branch"
@@ -330,6 +332,8 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                     positive_category_total = sum(max(0.0, item["sales"]) for item in category_sales_map.values())
                     sales_by_category = [
                         {
+                            "drill": self._overview_drill("pos.order.line", product_domain + [("product_id.categ_id", "=", item["category_id"])],
+                                                          "POS sales in %s" % item["name"]),
                             "category_id": item["category_id"],
                             "name": item["name"],
                             "sales": round(item["sales"], 2),
@@ -344,6 +348,7 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                 product = row.get("product_id")
                 if product:
                     top_products.append({
+                        "drill": self._overview_drill("pos.order.line", product_domain + [("product_id", "=", product[0])], "POS sales of %s" % product[1]),
                         "product_id": product[0],
                         "name": product[1],
                         "quantity": float(row.get("qty") or 0.0),
@@ -359,10 +364,15 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         waste_cost = self._overview_waste_cost(start, end, selected_warehouse)
         alerts = self._overview_alerts(end, selected_warehouse, waste_cost)
         tasks = self._overview_tasks(end, own_only=(not is_head_office or bool(selected_warehouse)))
-        branch_sales = sorted(
-            [dict(branch_id=key[0] if isinstance(key, tuple) else key, **values) for key, values in branch_sales_map.items()],
-            key=lambda row: row.get("sales", 0), reverse=True,
-        )[:8]
+        def branch_drill(key):
+            configs_of_key = [config for config, (branch, _name) in config_to_branch.items() if (branch or ("pos", config)) == key]
+            pos_domain = [leaf for leaf in order_domain if leaf[0] != "config_id"] + [("config_id", "in", configs_of_key)]
+            return self._overview_drills(
+                self._overview_drill("pos.order", pos_domain, "POS orders") if configs_of_key else False,
+                self._overview_drill("account.move", None, "Customer invoices", ids=[i for i, k in invoice_keys.items() if k == key]))
+
+        top_branches = sorted(branch_sales_map.items(), key=lambda item: item[1].get("sales", 0), reverse=True)[:8]
+        branch_sales = [dict(branch_id=key[0] if isinstance(key, tuple) else key, drill=branch_drill(key), **values) for key, values in top_branches]
         # Hide unrelated POS locations that could not be mapped to an authorized branch.
         if not is_head_office or selected_warehouse:
             authorized_ids = set(scope_warehouse_ids)
@@ -374,6 +384,8 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
 
         trend = list(trend_sales.values())
         trend.sort(key=lambda row: row["month_key"])
+        for row in trend:
+            row["drill"] = self._overview_period_drill(row, trend_granularity, start, end, order_domain, invoices) if row["sales"] else False
         branch_count = len(branch_sales)
         return {
             "role": "head_office" if is_head_office else "branch_manager",
@@ -485,6 +497,24 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
                 return Move.browse()
             domain.append(("invoice_line_ids.sale_line_ids.order_id.warehouse_id", "in", list(warehouse_ids)))
         return Move.search(domain, order="invoice_date, id")
+
+    @api.model
+    def _overview_period_drill(self, row, granularity, start, end, order_domain, invoices):
+        """The POS orders and invoices behind one point of the sales trend (its day, week or month, within the period)."""
+        first = fields.Date.to_date(row["month_key"] + ("-01" if granularity == "month" else ""))
+        if granularity == "week":
+            last = first + timedelta(days=6)
+        elif granularity == "month":
+            last = (first.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+        else:
+            last = first
+        first, last = max(first, start), min(last, end)
+        start_utc, end_utc = self._overview_utc_bounds(first, last)
+        domain = [leaf for leaf in order_domain if leaf[0] != "date_order"] + [
+            ("date_order", ">=", fields.Datetime.to_string(start_utc)), ("date_order", "<", fields.Datetime.to_string(end_utc))]
+        invoice_ids = [invoice.id for invoice in invoices or [] if first <= invoice.invoice_date <= last]
+        return self._overview_drills(self._overview_drill("pos.order", domain, "POS orders, %s" % row["label"]),
+                                     self._overview_drill("account.move", None, "Customer invoices, %s" % row["label"], ids=invoice_ids))
 
     @api.model
     def _overview_drills(self, *drills):
