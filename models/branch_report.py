@@ -12,6 +12,7 @@ from markupsafe import Markup
 
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.tools import format_amount
 
 _HEAD = "strategic_management.group_strategic_head_office_manager"
 _REVIEW_PREFIX = "Review branch report: "
@@ -28,6 +29,7 @@ _SUMMARY = [
                                   ("Overdue deliveries (when taken)", "overdue_count")]),
     ("Employee tasks (when taken)", "tasks", [("Open", "open"), ("Overdue", "overdue"), ("Awaiting review", "review")]),
 ]
+_MONEY = {"net_sales", "average_order_value", "waste_cost", "confirmed_value"}
 
 
 class StrategicBranchReport(models.Model):
@@ -75,7 +77,7 @@ class StrategicBranchReport(models.Model):
                     continue
                 parts.append(Markup("<table class='table table-sm'>%s</table>") % Markup("").join(
                     # "is" checks: a real 0 is a figure, only False/None mean the figure is missing.
-                    Markup("<tr><td>%s</td><td>%s</td></tr>") % (label, "Not available" if data.get(key) is False or data.get(key) is None else data.get(key))
+                    Markup("<tr><td>%s</td><td>%s</td></tr>") % (label, report._summary_value(key, data.get(key)))
                     for label, key in keys))
             objectives = snapshot.get("objectives") or {}
             parts.append(Markup("<h4>Objectives (when taken)</h4>"))
@@ -86,6 +88,11 @@ class StrategicBranchReport(models.Model):
             else:
                 parts.append(Markup("<p>Not available.</p>"))
             report.summary_html = Markup("").join(parts)
+
+    def _summary_value(self, key, value):
+        if value is False or value is None:
+            return "Not available"
+        return format_amount(self.env, value, self.company_id.currency_id) if key in _MONEY else value
 
     # ------------------------------------------------------------------ who may do what
     def _dashboard(self):

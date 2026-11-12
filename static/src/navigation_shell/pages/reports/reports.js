@@ -64,6 +64,13 @@ export const reportsPage = {
         this.state.reportNote = event.target.value;
     },
 
+    /** The submitted report as a printable page (Print, or Save as PDF, from the browser). */
+    printBranchReport(reportId) {
+        this.state.reportDetail = null;
+        return this.action.doAction("strategic_management.action_report_strategic_branch_report",
+                                    { additionalContext: { active_ids: [reportId], active_id: reportId, active_model: "strategic.branch.report" } });
+    },
+
     closeReport() {
         if (!this.state.reportBusy) this.state.reportDetail = null;
     },

@@ -41,6 +41,7 @@
         "views/inventory_control_views.xml",
         "views/branch_task_views.xml",
         "views/branch_report_views.xml",
+        "views/achievement_report_views.xml",
         "views/stock_picking_views.xml",
         "views/admin_audit_views.xml",
     ],

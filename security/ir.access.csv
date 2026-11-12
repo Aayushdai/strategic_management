@@ -96,3 +96,6 @@ access_strategic_kpi_work_proposal_kr_admin,KPI/OKR Proposal Key Result - assign
 access_strategic_kpi_work_history_head_office,KPI/OKR Request History - Head Office,strategic.kpi.work.history,strategic_management.group_strategic_head_office_manager,r,
 access_strategic_kpi_work_history_admin,KPI/OKR Request History - assigned Admin,strategic.kpi.work.history,strategic_management.group_strategic_admin,r,"[('request_id.admin_user_id', '=', user.id)]"
 access_strategic_kpi_schedule_head_office,KPI Reporting Schedule - Head Office,strategic.kpi.reporting.schedule,strategic_management.group_strategic_head_office_manager,r,
+access_strategic_achievement_report_head_office,Achievement Report - Head Office,strategic.achievement.report,strategic_management.group_strategic_head_office_manager,r,
+access_strategic_achievement_report_branch_manager,Achievement Report - Branch Manager,strategic.achievement.report,strategic_management.group_strategic_branch_manager,r,"['|', ('warehouse_id', '=', user.strategic_branch_warehouse_id.id), ('owner_id', '=', user.id)]"
+access_strategic_achievement_report_owner,Achievement Report - its owner,strategic.achievement.report,base.group_user,r,"[('owner_id', '=', user.id)]"

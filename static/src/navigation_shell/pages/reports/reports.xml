@@ -105,6 +105,7 @@
                             <button type="button" class="o_sm_req_btn is-reject" t-att-disabled="this.state.reportBusy" t-on-click="() => this.reviewReport('changes')">Request changes</button>
                             <button type="button" class="o_sm_req_btn is-approve" t-att-disabled="this.state.reportBusy" t-on-click="() => this.reviewReport('reviewed')">Mark reviewed</button>
                         </t>
+                        <button t-if="rd.submitted_at" type="button" class="o_sm_req_btn is-ghost" t-on-click="() => this.printBranchReport(rd.id)">Print</button>
                         <button type="button" class="o_sm_req_btn is-ghost" t-on-click="() => this.closeReport()">Close</button>
                     </footer>
                 </section>

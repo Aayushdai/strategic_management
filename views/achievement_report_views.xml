@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Achievement reports (models/achievement_report.py): read-only; opened from the Reports page. -->
+    <!-- Printable pages. They open in the browser (Print, or Save as PDF); with a PDF engine on the server,
+         report_type can become qweb-pdf to download them directly. -->
+    <record id="action_report_strategic_achievement" model="ir.actions.report">
+        <field name="name">Achievement report</field>
+        <field name="model">strategic.achievement.report</field>
+        <field name="report_type">qweb-html</field>
+        <field name="report_name">strategic_management.report_achievement_document</field>
+        <field name="print_report_name">'Achievement - %s' % object.objective_id.name</field>
+        <field name="binding_model_id" ref="model_strategic_achievement_report"/>
+    </record>
+
+    <record id="action_report_strategic_branch_report" model="ir.actions.report">
+        <field name="name">Branch report</field>
+        <field name="model">strategic.branch.report</field>
+        <field name="report_type">qweb-html</field>
+        <field name="report_name">strategic_management.report_branch_report_document</field>
+        <field name="print_report_name">'Branch report - %s' % object.name</field>
+        <field name="binding_model_id" ref="model_strategic_branch_report"/>
+    </record>
+
+    <record id="view_strategic_achievement_report_list" model="ir.ui.view">
+        <field name="name">strategic.achievement.report.list</field>
+        <field name="model">strategic.achievement.report</field>
+        <field name="arch" type="xml">
+            <list string="Achievement reports" create="false" delete="false" edit="false">
+                <field name="completed_at" string="Confirmed on" widget="date"/>
+                <field name="objective_id"/>
+                <field name="warehouse_id" optional="show"/>
+                <field name="owner_id"/>
+                <field name="result"/>
+                <field name="completed_by_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_strategic_achievement_report_form" model="ir.ui.view">
+        <field name="name">strategic.achievement.report.form</field>
+        <field name="model">strategic.achievement.report</field>
+        <field name="arch" type="xml">
+            <form string="Achievement report" create="false" delete="false" edit="false">
+                <header>
+                    <button name="%(action_report_strategic_achievement)d" type="action" string="Print" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <h1><field name="name" readonly="1"/></h1>
+                    <group>
+                        <group><field name="objective_id" readonly="1"/><field name="warehouse_id" readonly="1"/><field name="owner_id" readonly="1"/></group>
+                        <group><field name="result" readonly="1"/><field name="completed_by_id" readonly="1"/><field name="completed_at" readonly="1"/></group>
+                    </group>
+                    <field name="summary_html" readonly="1" nolabel="1"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_strategic_achievement_report" model="ir.actions.act_window">
+        <field name="name">Achievement reports</field>
+        <field name="res_model">strategic.achievement.report</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html"><p class="o_view_nocontent_smiling_face">No achievement reports yet</p>
+            <p>When Head Office completes an objective, what was achieved is saved here as a report.</p></field>
+    </record>
+
+    <template id="report_achievement_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>Achievement report</h2>
+                        <h3 t-out="doc.objective_id.name"/>
+                        <div t-out="doc.summary_html"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_branch_report_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>Branch report</h2>
+                        <h3><t t-out="doc.warehouse_id.display_name"/> · <t t-out="doc.date_start"/> – <t t-out="doc.date_end"/></h3>
+                        <p>Status: <t t-out="dict(doc._fields['state'].selection).get(doc.state)"/>
+                            <t t-if="doc.submitted_by_id"> · submitted by <t t-out="doc.submitted_by_id.name"/></t>
+                            <t t-if="doc.reviewed_by_id"> · reviewed by <t t-out="doc.reviewed_by_id.name"/></t></p>
+                        <div t-out="doc.summary_html"/>
+                        <t t-if="doc.comment"><h4>Manager's comment</h4><p t-out="doc.comment"/></t>
+                        <t t-if="doc.review_note"><h4>Head Office feedback</h4><p t-out="doc.review_note"/></t>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>
