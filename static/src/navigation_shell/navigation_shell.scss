@@ -523,3 +523,4 @@ Branch Performance's operations view (.o_sm_ops) reuses the same tables, tabs an
 .o_sm_back { display: inline-flex; align-items: center; gap: .35rem; align-self: flex-start; margin: 0 0 .6rem; padding: .3rem .7rem; border: 1px solid #dfe2ea; border-radius: .5rem; background: #fff; color: #3b4157; font: inherit; font-size: .84rem; font-weight: 600; cursor: pointer;
     &:hover { border-color: #c9c2f2; background: #faf9ff; color: #6f5bd3; }
     &:focus-visible { outline: 2px solid #6f5bd3; outline-offset: 2px; } }
+.o_control_panel .o_sm_back_cp { flex: none; margin: 0 .35rem 0 0; }
