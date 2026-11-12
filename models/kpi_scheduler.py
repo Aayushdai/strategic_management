@@ -171,6 +171,12 @@ class StrategicKpiScheduledJobs(models.Model):
             processed,
             notified,
         )
+        # After the results are in: open last month's branch reports and send objective due-date reminders.
+        try:
+            with self.env.cr.savepoint():
+                self.env["strategic.period.reports"]._run_daily()
+        except Exception:
+            _logger.exception("Could not open period-end reports or send objective due-date reminders")
         return {"evaluations_processed": processed, "activities_created": notified}
 
     @api.model
