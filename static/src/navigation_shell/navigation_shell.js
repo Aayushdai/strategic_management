@@ -471,7 +471,11 @@ export class StrategicNavigationShell extends Component {
     /** A summary card opens Odoo's own list of the records behind its number (the server decides which, and whether). */
     openDrill(drill) {
         const options = (Array.isArray(drill) ? drill : [drill]).filter(Boolean);
-        if (!options.length) return;
+        if (!options.length) {
+            // The server offers a list only when there are records behind the number (an empty list would show sample rows).
+            this.notification.add("Nothing to open: there are no records behind this number for the selected period.", { type: "info" });
+            return;
+        }
         if (options.length > 1) {
             this.state.drillChoice = options;
             return;
