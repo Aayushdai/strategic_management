@@ -52,7 +52,7 @@ class TestOverviewDashboard(TransactionCase):
         manager = self._extras(self.manager_a, self.branch_b)
         self.assertEqual([row["name"] for row in manager["branches"]["rows"]], [self.branch_a.display_name])
         self.assertFalse([item for item in manager["attention"] if item["branch"] == self.branch_b.display_name])
-        self.assertIs(manager["purchasing"], False, "Without Purchase rights the section is Not Available, not zero.")
+        self.assertIsInstance(manager["purchasing"], dict, "every Branch Manager reads their own branch's purchases (read-only)")
 
         employee = self._extras(self.employee)
         self.assertEqual(employee["role"], "employee")

@@ -99,10 +99,10 @@ class TestWorkflowGaps(TransactionCase):
             Task.with_user(self.head).set_employee_position(self.emp.id, "   ")
 
     # ------------------------------------------------------------------ Branch Manager without Purchase rights
-    def test_purchasing_without_purchase_rights_says_not_available(self):
+    def test_purchasing_without_purchase_rights_shows_own_branch(self):
+        # Decision 2026-11-13: every Branch Manager reads their own branch's purchases, read-only (ir.access.csv).
         self.assertFalse(self.manager1.has_group("purchase.group_purchase_user"))
         today = fields.Date.to_string(fields.Date.context_today(self.env.user))
         data = self.env["strategic.performance.dashboard"].with_user(self.manager1).with_company(self.company).get_purchasing_overview_data(today, today)
-        self.assertFalse(data["available"], "no Purchase rights, no purchasing figures")
-        self.assertIn("Purchase access", data["messages"][0])
+        self.assertTrue(data["available"], "own branch figures, without Purchase rights")
         self.assertEqual(data["selected_warehouse_id"], self.branch1.id)

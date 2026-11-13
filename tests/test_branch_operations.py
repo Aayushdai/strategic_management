@@ -276,8 +276,10 @@ class TestBranchOperations(TransactionCase):
         self.manager1.sudo().write({"group_ids": [(3, ref(xmlid).id) for xmlid in
                                                   ("stock.group_stock_user", "purchase.group_purchase_user", "point_of_sale.group_pos_user")]})
         ops = self._ops()
-        # Stock quants stay readable: Odoo itself grants every internal user read access to them.
-        for key, figure in (("sales", "net_sales"), ("purchasing", "confirmed_value")):
+        # Stock quants stay readable: Odoo itself grants every internal user read access to them. Purchasing too:
+        # every Branch Manager reads their own branch's purchase orders (ir.access.csv), with or without Purchase rights.
+        self.assertTrue(ops["purchasing"]["available"])
+        for key, figure in (("sales", "net_sales"),):
             self.assertFalse(ops[key]["available"], key)
             self.assertNotIn(figure, ops[key], "%s shows no figure rather than zero" % key)
             self.assertTrue(ops[key]["messages"], "%s says why" % key)
@@ -295,8 +297,11 @@ class TestBranchOperations(TransactionCase):
             Orderpoint.create({"product_id": self.coffee.id, "warehouse_id": branch.id, "location_id": branch.lot_stock_id.id,
                                "product_min_qty": 25.0, "product_max_qty": 40.0})
         self._receive(self.branch1, 21.0, "2001-03-05")
+        # Read-only, own branch only: the other branch's rule stays invisible and nothing is editable.
+        visible = Orderpoint.with_user(pos_only).search([("product_id", "=", self.coffee.id)])
+        self.assertEqual(visible.warehouse_id, self.branch1)
         with self.assertRaises(AccessError):
-            Orderpoint.with_user(pos_only).search_count([])
+            visible.with_user(pos_only).write({"product_min_qty": 1.0})
         data = self.Dashboard.with_user(pos_only).get_inventory_waste_data(*PERIOD)
         rows = [row for row in data["stock_health"] if row["product_id"] == self.coffee.id]
         self.assertEqual([(row["warehouse_id"], row["available_quantity"], row["minimum_quantity"], row["unit"], row["status_label"]) for row in rows],
