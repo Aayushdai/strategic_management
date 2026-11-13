@@ -532,7 +532,10 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         """
         if self.env.su or model not in self.env.registry.models:
             return False
-        if model in ("purchase.order", "purchase.order.line") and not self.env.user.has_group("strategic_management.group_strategic_head_office_manager"):
+        # Purchase lists: Head Office, and Branch Managers, whose read access is limited to their own branch (ir.access.csv).
+        if model in ("purchase.order", "purchase.order.line") and not (
+                self.env.user.has_group("strategic_management.group_strategic_head_office_manager")
+                or self.env.user.has_group("strategic_management.group_strategic_branch_manager")):
             return False
         try:
             self.env[model].check_access("read")

@@ -345,6 +345,21 @@ class TestPurchaseDashboardAcceptance(TransactionCase):
             branch_b = self._purchasing_overview(self.WarehouseB)
             self.assertNotIn(order.name, [row["name"] for row in branch_b["recent_orders"]])
 
+    def test_branch_manager_reads_and_drills_into_own_branch_purchases_only(self):
+        order = self._confirm_purchase_order(20.0)
+        Order = self.env["purchase.order"]
+        self.assertEqual(Order.with_user(self.BranchA).search([("id", "=", order.id)]), order, "own branch: readable")
+        self.assertEqual(order.order_line.with_user(self.BranchA).read(["product_qty"])[0]["product_qty"], 20.0)
+        if self.WarehouseB != self.WarehouseA:
+            self.assertFalse(Order.with_user(self.BranchB).search([("id", "=", order.id)]), "another branch: not visible")
+        with self.assertRaises(AccessError):
+            order.with_user(self.BranchA).write({"notes": "changed by a manager"})
+        today = fields.Date.context_today(self.env.user)
+        data = self.env["strategic.performance.dashboard"].with_user(self.BranchA).get_purchasing_overview_data(
+            fields.Date.to_string(today.replace(day=1)), fields.Date.to_string(today), False)
+        drill = data["drill"]["purchase_orders"]
+        self.assertIn(order, Order.with_user(self.BranchA).search(drill["domain"]), "the card opens the branch's orders")
+
     def _queued_dashboard_notifications(self):
         return [
             (channel, payload) for channel, notification_type, payload
