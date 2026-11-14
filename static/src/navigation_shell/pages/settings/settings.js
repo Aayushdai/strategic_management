@@ -16,7 +16,7 @@ export const settingsPage = {
     },
 
     applySettings(data) {
-        this.state.settings = { ...data, draft: { ...data.values }, profile: { ...data.company }, saving: false };
+        this.state.settings = { ...data, draft: { ...data.values }, profile: { ...data.company }, mail: { ...data.email.server, password: "" }, saving: false };
     },
 
     setSettingsTab(tab) {
@@ -54,6 +54,33 @@ export const settingsPage = {
         } catch (error) {
             s.saving = false;
             this.notification.add(error.data?.message || error.message || "Company details could not be saved.", { type: "danger" });
+        }
+    },
+
+    async saveMailServer() {
+        const s = this.state.settings;
+        if (!s || s.saving) return;
+        s.saving = true;
+        try {
+            this.applySettings(await this.orm.call("strategic.performance.dashboard", "save_mail_server", [s.mail]));
+            this.notification.add("Email server saved. Send a test email to check it.", { type: "success" });
+        } catch (error) {
+            s.saving = false;
+            this.notification.add(error.data?.message || error.message || "The email server could not be saved.", { type: "danger" });
+        }
+    },
+
+    async sendTestEmail() {
+        const s = this.state.settings;
+        if (!s || s.saving) return;
+        s.saving = true;
+        try {
+            const result = await this.orm.call("strategic.performance.dashboard", "send_test_email", []);
+            this.notification.add(`Test email sent to ${result.sent_to}. Check that inbox (and spam).`, { type: "success" });
+        } catch (error) {
+            this.notification.add(error.data?.message || error.message || "The test email could not be sent.", { type: "danger" });
+        } finally {
+            s.saving = false;
         }
     },
 

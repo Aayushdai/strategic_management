@@ -92,3 +92,42 @@ class TestSettings(StrategyFixture):
             Dashboard.save_company_profile({"name": "Cafe Chain", "tz": "Mars/Base"})
         data = Dashboard.save_company_profile({"name": "Cafe Chain", "city": "Kathmandu", "tz": "Asia/Kathmandu"})
         self.assertEqual((data["company"]["name"], data["company"]["city"], data["company"]["tz"]), ("Cafe Chain", "Kathmandu", "Asia/Kathmandu"))
+
+    def test_email_server_head_office_only_password_never_returned(self):
+        Dashboard = self.env["strategic.performance.dashboard"]
+        self.env["ir.mail_server"].sudo().search([]).active = False
+        for user in (self.branch_user_a, self.emp_user):
+            with self.assertRaises(AccessError):
+                Dashboard.with_user(user).save_mail_server({"host": "smtp.example.com", "port": 587})
+            with self.assertRaises(AccessError):
+                Dashboard.with_user(user).send_test_email()
+        head = Dashboard.with_user(self.head_user)
+        with self.assertRaises(UserError):
+            head.send_test_email()  # nothing saved yet
+        with self.assertRaises(UserError):
+            head.save_mail_server({"host": " ", "port": 587})
+        with self.assertRaises(UserError):
+            head.save_mail_server({"host": "smtp.example.com", "port": "abc"})
+        with self.assertRaises(UserError):
+            head.save_mail_server({"host": "smtp.example.com", "port": 587, "encryption": "rot13"})
+
+        data = head.save_mail_server({"host": "smtp.example.com", "port": "587", "encryption": "starttls",
+                                      "user": "cafe@example.com", "password": "app-secret"})
+        server = self.env["ir.mail_server"].sudo().search([("active", "=", True)])
+        self.assertEqual(len(server), 1)
+        self.assertEqual((server.smtp_host, server.smtp_port, server.smtp_pass, server.from_filter),
+                         ("smtp.example.com", 587, "app-secret", "cafe@example.com"))
+        self.assertTrue(data["email"]["configured"])
+        self.assertNotIn("app-secret", str(data), "the password never goes back to the browser")
+        self.assertTrue(data["email"]["server"]["has_password"])
+
+        head.save_mail_server({"host": "smtp.example.com", "port": 465, "encryption": "ssl", "user": "cafe@example.com", "password": ""})
+        self.assertEqual((server.smtp_port, server.smtp_pass), (465, "app-secret"), "a blank password keeps the saved one")
+        audit = self.env["strategic.admin.audit"].sudo().search([("action", "=", "settings")])
+        self.assertFalse(any("app-secret" in (line.detail or "") for line in audit))
+
+        self.head_user.email = False
+        with self.assertRaises(UserError):
+            head.send_test_email()
+        self.head_user.email = "head@example.com"
+        self.assertEqual(head.send_test_email(), {"sent_to": "head@example.com"})  # test mode: built and handed over, not sent

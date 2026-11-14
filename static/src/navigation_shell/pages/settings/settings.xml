@@ -69,9 +69,29 @@
             </section>
 
             <section class="o_sm_set_card" aria-labelledby="o_sm_set_email">
-                <header><h2 id="o_sm_set_email">Email</h2></header>
-                <p t-if="s.email.configured" class="o_sm_set_status is-ok">Outgoing mail server: <t t-esc="s.email.servers.join(', ')"/>. Notifications are also emailed when Odoo can send them<t t-if="!s.email.company_email">; set the company email above so mail has a sender</t>.</p>
-                <p t-else="" class="o_sm_set_status is-warn">Email isn't set up: notifications stay in the app. Ask your administrator to add an outgoing mail server in Odoo's general settings.</p>
+                <header><h2 id="o_sm_set_email">Email</h2><p>Notifications, reminders and report alerts are emailed through this server, as well as shown in the app.</p></header>
+                <p t-if="s.email.configured" class="o_sm_set_status is-ok">Email is set up: <t t-esc="s.email.servers.join(', ')"/>.</p>
+                <p t-else="" class="o_sm_set_status is-warn">Email isn't set up yet: notifications stay in the app until a server is saved below.</p>
+                <div class="o_sm_set_fields">
+                    <div class="o_sm_set_row">
+                        <label>Mail server<input type="text" placeholder="smtp.gmail.com" autocomplete="off" t-att-value="s.mail.host" t-on-input="(ev) => { s.mail.host = ev.target.value; }"/></label>
+                        <label>Port<input type="number" min="1" max="65535" t-att-value="s.mail.port" t-on-input="(ev) => { s.mail.port = ev.target.value; }"/></label>
+                        <label>Security<select t-on-change="(ev) => { s.mail.encryption = ev.target.value; }">
+                            <option value="starttls" t-att-selected="s.mail.encryption === 'starttls'">STARTTLS (port 587)</option>
+                            <option value="ssl" t-att-selected="s.mail.encryption === 'ssl'">SSL/TLS (port 465)</option>
+                            <option value="none" t-att-selected="s.mail.encryption === 'none'">None</option>
+                        </select></label>
+                    </div>
+                    <div class="o_sm_set_row">
+                        <label>Username (email address)<input type="email" autocomplete="off" t-att-value="s.mail.user" t-on-input="(ev) => { s.mail.user = ev.target.value; }"/></label>
+                        <label>Password<input type="password" autocomplete="new-password" t-att-placeholder="s.mail.has_password ? 'Saved (leave blank to keep it)' : 'App password'" t-att-value="s.mail.password" t-on-input="(ev) => { s.mail.password = ev.target.value; }"/></label>
+                    </div>
+                    <p class="o_sm_set_hint">Gmail: server smtp.gmail.com, port 587, STARTTLS, your Gmail address, and an App Password (Google Account → Security → 2-Step Verification → App passwords), not your normal password. Mail is sent from that address.</p>
+                    <div>
+                        <button type="button" class="o_sm_set_btn is-primary" t-att-disabled="s.saving" t-on-click="() => this.saveMailServer()">Save email server</button>
+                        <button type="button" class="o_sm_set_btn" t-att-disabled="s.saving or !s.email.configured" t-on-click="() => this.sendTestEmail()">Send test email to me</button>
+                    </div>
+                </div>
             </section>
 
             <footer class="o_sm_set_save">

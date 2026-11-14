@@ -9,6 +9,7 @@ from datetime import datetime, time, timedelta
 import pytz
 
 from odoo import api, fields, models
+from odoo.addons.base.models.ir_mail_server import MailDeliveryException
 from odoo.exceptions import AccessError, UserError
 
 # key: (kind, label, minimum, maximum). Booleans have no range.
@@ -28,6 +29,8 @@ SETTINGS = {
 }
 _HEAD = "strategic_management.group_strategic_head_office_manager"
 _CRON = "strategic_management.ir_cron_strategic_kpi_scheduled_jobs"
+_MAIL_SERVER_NAME = "Outgoing email (Settings)"
+_ENCRYPTIONS = {"none": "None", "starttls": "STARTTLS", "ssl": "SSL/TLS"}
 
 
 class ResCompanyStrategicSettings(models.Model):
@@ -60,6 +63,7 @@ class StrategicPerformanceDashboardSettings(models.AbstractModel):
         self._require_settings_access()
         company = self.env.company
         servers = self.env["ir.mail_server"].sudo().search([("active", "=", True)])
+        server = servers[:1]
         cron = self.env.ref(_CRON, raise_if_not_found=False)
         return {
             "values": {key: company[key] for key in SETTINGS},
@@ -70,7 +74,11 @@ class StrategicPerformanceDashboardSettings(models.AbstractModel):
             },
             "countries": [{"id": country.id, "name": country.name} for country in self.env["res.country"].sudo().search([], order="name")],
             "timezones": [tz for tz in pytz.common_timezones],
-            "email": {"configured": bool(servers), "servers": servers.mapped("name"), "company_email": company.email or ""},
+            "email": {"configured": bool(servers), "servers": servers.mapped("name"), "company_email": company.email or "",
+                      # The password never goes back to the browser; only whether one is saved.
+                      "server": {"host": server.smtp_host or "", "port": server.smtp_port or 587,
+                                 "encryption": server.smtp_encryption or "starttls", "user": server.smtp_user or "",
+                                 "has_password": bool(server.smtp_pass)}},
             "next_run": fields.Datetime.to_string(cron.sudo().nextcall) if cron else False,
         }
 
@@ -129,6 +137,64 @@ class StrategicPerformanceDashboardSettings(models.AbstractModel):
         if tz:
             self._reschedule_nightly_job(company)
         return self.get_strategic_settings()
+
+    @api.model
+    def save_mail_server(self, values):
+        """The outgoing mail server every notification and reminder is emailed through. A blank password keeps the saved one."""
+        self._require_settings_access()
+        values = values or {}
+        host = (values.get("host") or "").strip()
+        user = (values.get("user") or "").strip()
+        encryption = values.get("encryption") or "starttls"
+        try:
+            port = int(values.get("port"))
+        except (TypeError, ValueError):
+            raise UserError("Port: enter a number, such as 587.")
+        if not host:
+            raise UserError("Enter the mail server, such as smtp.gmail.com.")
+        if not 1 <= port <= 65535:
+            raise UserError("Port: enter a number from 1 to 65535.")
+        if encryption not in _ENCRYPTIONS:
+            raise UserError("Choose the security type from the list.")
+        Server = self.env["ir.mail_server"].sudo()
+        server = Server.search([("active", "=", True)], limit=1)
+        updates = {"smtp_host": host, "smtp_port": port, "smtp_encryption": encryption, "smtp_user": user or False,
+                   "smtp_authentication": "login"}
+        password = values.get("password") or ""
+        if password:
+            updates["smtp_pass"] = password
+        if user and "@" in user:
+            # Providers such as Gmail only send as the signed-in address, so mail goes out from it.
+            updates["from_filter"] = user
+        if server:
+            server.write(updates)
+        else:
+            Server.create({"name": _MAIL_SERVER_NAME, **updates})
+        self.env["strategic.admin.console"]._audit(
+            "settings", detail="Email server set: %s:%s (%s)%s" % (host, port, _ENCRYPTIONS[encryption], ", new password" if password else ""))
+        return self.get_strategic_settings()
+
+    @api.model
+    def send_test_email(self):
+        """Send a real email to the signed-in Head Office user through the saved server; a failure says why."""
+        self._require_settings_access()
+        server = self.env["ir.mail_server"].sudo().search([("active", "=", True)], limit=1)
+        if not server:
+            raise UserError("Save the email server first.")
+        to = self.env.user.email
+        if not to:
+            raise UserError("Your user has no email address to send the test to.")
+        sender = server.from_filter if server.from_filter and "@" in server.from_filter else (self.env.company.email or server.smtp_user)
+        mail = self.env["mail.mail"].sudo().create({
+            "subject": "Test email from %s" % self.env.company.name, "email_from": sender, "email_to": to,
+            "body_html": "<p>Email is working. Notifications, reminders and reports from Strategic Management will arrive here.</p>",
+            "mail_server_id": server.id, "auto_delete": True,
+        })
+        try:
+            mail.send(raise_exception=True)
+        except (MailDeliveryException, OSError) as error:  # carries the provider's reason (bad password, blocked port)
+            raise UserError("The test email could not be sent: %s" % error) from error
+        return {"sent_to": to}
 
     @api.model
     def _reschedule_nightly_job(self, company):

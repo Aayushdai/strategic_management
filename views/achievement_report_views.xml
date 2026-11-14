@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- Achievement reports (models/achievement_report.py): read-only; opened from the Reports page. -->
-    <!-- Printable pages. They open in the browser (Print, or Save as PDF); with a PDF engine on the server,
-         report_type can become qweb-pdf to download them directly. -->
+    <!-- PDF downloads (wkhtmltopdf, installed in the Docker image). Without it on a server, Odoo shows the
+         same page in the browser instead and says why. -->
     <record id="action_report_strategic_achievement" model="ir.actions.report">
         <field name="name">Achievement report</field>
         <field name="model">strategic.achievement.report</field>
-        <field name="report_type">qweb-html</field>
+        <field name="report_type">qweb-pdf</field>
         <field name="report_name">strategic_management.report_achievement_document</field>
         <field name="print_report_name">'Achievement - %s' % object.objective_id.name</field>
         <field name="binding_model_id" ref="model_strategic_achievement_report"/>
@@ -15,7 +15,7 @@
     <record id="action_report_strategic_branch_report" model="ir.actions.report">
         <field name="name">Branch report</field>
         <field name="model">strategic.branch.report</field>
-        <field name="report_type">qweb-html</field>
+        <field name="report_type">qweb-pdf</field>
         <field name="report_name">strategic_management.report_branch_report_document</field>
         <field name="print_report_name">'Branch report - %s' % object.name</field>
         <field name="binding_model_id" ref="model_strategic_branch_report"/>
