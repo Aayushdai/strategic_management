@@ -147,6 +147,7 @@ class StrategicPerformanceDashboardSettings(models.AbstractModel):
     @api.model
     def get_my_settings(self):
         """Branch Managers and Employees: their own account (Settings shows this instead of the data setup)."""
+        self._strategic_role()  # Admin stops here, as on every data method.
         user = self.env.user
         server = self.env["ir.mail_server"].sudo().search([("active", "=", True)], limit=1)
         return {
@@ -159,6 +160,7 @@ class StrategicPerformanceDashboardSettings(models.AbstractModel):
     @api.model
     def save_my_settings(self, values):
         """Only fields Odoo lets every user change on their own account; written as the user, not as superuser."""
+        self._strategic_role()
         values = values or {}
         email = (values.get("email") or "").strip()
         if email and not email_normalize(email):
