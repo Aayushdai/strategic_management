@@ -529,3 +529,27 @@ Branch Performance's operations view (.o_sm_ops) reuses the same tables, tabs an
     &:hover { border-color: #c9c2f2; background: #faf9ff; color: #6f5bd3; }
     &:focus-visible { outline: 2px solid #6f5bd3; outline-offset: 2px; } }
 .o_control_panel .o_sm_back_cp { flex: none; margin: 0 .35rem 0 0; }
+
+// Hide / show the sidebar: it slides down to a slim strip holding only its toggle, and the page widens.
+.o_sm_navigation_shell {
+    > .o_sm_sidebar { flex-basis: var(--sm-sidebar-width); transition: flex-basis .28s ease, padding .28s ease; }
+    .o_sm_navigation_items, .o_sm_brand_icon, .o_sm_brand_title { transition: opacity .16s ease; }
+    .o_sm_sidebar_toggle {
+        display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; width: 2rem; height: 2rem; margin-left: auto;
+        padding: 0; border: 0; border-radius: .5rem; background: rgba(255, 255, 255, .08); color: #fff; cursor: pointer;
+        svg { width: 1.1rem; height: 1.1rem; transition: transform .28s ease; }
+        &:hover { background: rgba(255, 255, 255, .18); }
+        &:focus-visible { outline: 2px solid #c9bdf5; outline-offset: 2px; }
+    }
+    &.is-sidebar-collapsed {
+        --sm-sidebar-width: 3.5rem;
+        > .o_sm_sidebar { padding-right: .5rem; padding-left: .5rem; }
+        .o_sm_sidebar_brand { justify-content: center; padding: 0; }
+        .o_sm_brand_icon, .o_sm_brand_title { display: none; }
+        .o_sm_navigation_items { visibility: hidden; opacity: 0; }
+        .o_sm_sidebar_toggle { margin-left: 0; svg { transform: rotate(180deg); } }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        > .o_sm_sidebar, .o_sm_navigation_items, .o_sm_sidebar_toggle svg { transition: none; }
+    }
+}

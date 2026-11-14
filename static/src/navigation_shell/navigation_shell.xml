@@ -1,13 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="strategic_management.NavigationShell" owl="1">
-        <div class="o_sm_navigation_shell">
+        <div t-att-class="'o_sm_navigation_shell' + (this.state.sidebarCollapsed ? ' is-sidebar-collapsed' : '')">
             <aside class="o_sm_sidebar" aria-label="Strategic Management navigation">
                 <div class="o_sm_sidebar_brand">
                     <span class="o_sm_brand_icon" aria-hidden="true"><svg class="o_sm_brand_svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 17.5 9 11.5l4 4 7.5-8"/><path d="M15 7.5h5.5V13"/></svg></span>
                     <span class="o_sm_brand_title"><span>Strategic</span> <span>Management</span></span>
+                    <button type="button" class="o_sm_sidebar_toggle" aria-controls="o_sm_sidebar_menu"
+                            t-att-aria-expanded="this.state.sidebarCollapsed ? 'false' : 'true'"
+                            t-att-aria-label="this.state.sidebarCollapsed ? 'Show menu' : 'Hide menu'"
+                            t-att-title="this.state.sidebarCollapsed ? 'Show menu' : 'Hide menu'"
+                            t-on-click="() => this.toggleSidebar()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg>
+                    </button>
                 </div>
-                <nav class="o_sm_navigation_items">
+                <nav id="o_sm_sidebar_menu" class="o_sm_navigation_items" t-att-inert="this.state.sidebarCollapsed ? '' : false">
                     <t t-foreach="this.sidebarPrimary" t-as="item" t-key="item.id">
                         <t t-call="strategic_management.NavigationButton"/>
                     </t>

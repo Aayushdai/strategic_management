@@ -27,6 +27,16 @@ import { employeeHomePage } from "./pages/employee_home/employee_home";
 import { adminPage } from "./pages/admin/admin";
 import { kpiRequestsPage } from "./pages/kpi_requests/kpi_requests";
 
+// Whether this viewer hid the sidebar, remembered in their browser only (a per-viewer convenience).
+const SIDEBAR_KEY = "strategic_management.sidebar_collapsed";
+function readSidebarCollapsed() {
+    try {
+        return window.localStorage.getItem(SIDEBAR_KEY) === "1";
+    } catch {
+        return false;
+    }
+}
+
 export class StrategicNavigationShell extends Component {
     static template = "strategic_management.NavigationShell";
 
@@ -156,6 +166,7 @@ export class StrategicNavigationShell extends Component {
             // Purchasing: compact previews; "See more" expands the existing full lists in place.
             purExpanded: {},
             purTab: "overview",
+            sidebarCollapsed: readSidebarCollapsed(),
             purHeroMetric: "spend",
             purchasingLoadedAt: null,
             // Inventory & Waste: compact previews; "See all" and the detail toggles expand the existing sections in place.
@@ -483,6 +494,15 @@ export class StrategicNavigationShell extends Component {
         const range = Math.max(...values) - low;
         if (!range) return "";
         return values.map((value, index) => `${((index * 100) / (values.length - 1)).toFixed(1)},${(22 - ((value - low) / range) * 20).toFixed(1)}`).join(" ");
+    }
+
+    toggleSidebar() {
+        this.state.sidebarCollapsed = !this.state.sidebarCollapsed;
+        try {
+            window.localStorage.setItem(SIDEBAR_KEY, this.state.sidebarCollapsed ? "1" : "0");
+        } catch {
+            // Private windows or blocked storage: the menu still toggles, it just is not remembered.
+        }
     }
 
     /** Headline chart in a 600 x 200 box: the running total of rows[key] (a line and the area under it) and, when the
