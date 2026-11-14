@@ -530,26 +530,39 @@ Branch Performance's operations view (.o_sm_ops) reuses the same tables, tabs an
     &:focus-visible { outline: 2px solid #6f5bd3; outline-offset: 2px; } }
 .o_control_panel .o_sm_back_cp { flex: none; margin: 0 .35rem 0 0; }
 
-// Hide / show the sidebar: it slides down to a slim strip holding only its toggle, and the page widens.
+// Hide / show the sidebar: a small round button on the sidebar's edge slides it down to a slim strip, and the
+// page widens. The button rides the edge, so it never takes space from the sidebar's title.
 .o_sm_navigation_shell {
-    > .o_sm_sidebar { flex-basis: var(--sm-sidebar-width); transition: flex-basis .28s ease, padding .28s ease; }
-    .o_sm_navigation_items, .o_sm_brand_icon, .o_sm_brand_title { transition: opacity .16s ease; }
-    .o_sm_sidebar_toggle {
-        display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; width: 2rem; height: 2rem; margin-left: auto;
-        padding: 0; border: 0; border-radius: .5rem; background: rgba(255, 255, 255, .08); color: #fff; cursor: pointer;
-        svg { width: 1.1rem; height: 1.1rem; transition: transform .28s ease; }
-        &:hover { background: rgba(255, 255, 255, .18); }
-        &:focus-visible { outline: 2px solid #c9bdf5; outline-offset: 2px; }
+    position: relative;
+    > .o_sm_sidebar {
+        flex-basis: var(--sm-sidebar-width); transition: flex-basis .28s ease, padding .28s ease;
+        // A thin, faint scrollbar that belongs to the purple sidebar instead of the browser's grey one.
+        scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .22) transparent;
+        &::-webkit-scrollbar { width: 6px; }
+        &::-webkit-scrollbar-track { background: transparent; }
+        &::-webkit-scrollbar-thumb { border-radius: 3px; background: rgba(255, 255, 255, .22); }
+        &::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, .38); }
+    }
+    .o_sm_navigation_items, .o_sm_brand_title { transition: opacity .16s ease; }
+    > .o_sm_sidebar_toggle {
+        position: absolute; z-index: 5; top: 1.6rem; left: calc(var(--sm-sidebar-width) - 13px);
+        display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0;
+        border: 1px solid #e3e8ee; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(16, 24, 40, .16);
+        color: #5546e8; cursor: pointer; transition: left .28s ease, background-color .12s ease, box-shadow .12s ease;
+        svg { width: 14px; height: 14px; transition: transform .28s ease; }
+        &:hover { background: #f6f8fa; box-shadow: 0 2px 6px rgba(16, 24, 40, .2); }
+        &:focus { outline: none; }
+        &:focus-visible { box-shadow: 0 0 0 3px rgba(99, 91, 255, .35); }
     }
     &.is-sidebar-collapsed {
         --sm-sidebar-width: 3.5rem;
-        > .o_sm_sidebar { padding-right: .5rem; padding-left: .5rem; }
+        > .o_sm_sidebar { padding-right: .5rem; padding-left: .5rem; overflow-y: hidden; }
         .o_sm_sidebar_brand { justify-content: center; padding: 0; }
-        .o_sm_brand_icon, .o_sm_brand_title { display: none; }
+        .o_sm_brand_title { display: none; }
         .o_sm_navigation_items { visibility: hidden; opacity: 0; }
-        .o_sm_sidebar_toggle { margin-left: 0; svg { transform: rotate(180deg); } }
+        > .o_sm_sidebar_toggle svg { transform: rotate(180deg); }
     }
     @media (prefers-reduced-motion: reduce) {
-        > .o_sm_sidebar, .o_sm_navigation_items, .o_sm_sidebar_toggle svg { transition: none; }
+        > .o_sm_sidebar, > .o_sm_sidebar_toggle, .o_sm_navigation_items, .o_sm_sidebar_toggle svg { transition: none; }
     }
 }
