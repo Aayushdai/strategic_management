@@ -21,6 +21,13 @@
                 <label class="o_sm_iw_filter"><span>Branch</span><select t-att-value="this.branchSelectValue" t-on-change="this.onWarehouseChanged" aria-label="Inventory branch filter"><option t-if="!this.isBranchManager" value="all">All Branches</option><t t-foreach="(iv &amp;&amp; iv.branch_options) || []" t-as="branch" t-key="branch.id"><option t-att-value="branch.id"><t t-esc="branch.name"/></option></t></select></label>
             </div>
         </header>
+        <t t-set="invAlert" t-value="this.inventoryAlert"/>
+        <div t-if="invAlert" class="o_sm_calm">
+            <section t-att-class="'o_sm_c_alert' + (invAlert.serious ? '' : ' is-warn')" aria-label="Needs attention">
+                <strong><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><t t-esc="invAlert.headline"/></strong>
+                <span t-esc="invAlert.detail"/>
+            </section>
+        </div>
         <t t-if="ix.goals"><t t-call="strategic_management.AreaGoals" areaKey="'inventory_waste'"/></t>
 
         <div t-if="this.state.inventoryLoading" class="o_sm_iw_panel_note">Loading live stock, expiry and waste data…</div>

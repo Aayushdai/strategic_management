@@ -32,6 +32,36 @@
     </label>
 </div>
 </header>
+        <div class="o_sm_calm">
+            <t t-set="salesAlert" t-value="this.salesAlert"/>
+            <section t-if="salesAlert" class="o_sm_c_alert is-warn" aria-label="Needs attention">
+                <strong><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><t t-esc="salesAlert.headline"/></strong>
+                <span t-esc="salesAlert.detail"/>
+            </section>
+            <t t-set="hero" t-value="this.salesHero"/>
+            <section t-if="hero" class="o_sm_c_panel o_sm_c_hero" aria-labelledby="o_sm_c_sales_title">
+                <div class="o_sm_c_hero_side">
+                    <h2 id="o_sm_c_sales_title">Total sales (excl. tax)</h2>
+                    <p class="o_sm_c_hero_value" t-esc="hero.value"/>
+                    <p class="o_sm_c_compare"><span t-if="hero.changeText" class="o_sm_c_change" t-esc="hero.changeText"/><t t-esc="hero.compare"/></p>
+                    <dl class="o_sm_c_facts">
+                        <dt>Orders</dt><dd><t t-esc="this.formatNumber(this.state.data.order_count)"/><t t-if="hero.previousOrders !== false"> <span class="o_sm_c_compare">(<t t-esc="hero.previousOrders"/> before)</span></t></dd>
+                        <dt>Average order</dt><dd t-esc="this.formatCurrency(this.averageOrderValue())"/>
+                        <t t-if="this.state.data.top_products and this.state.data.top_products.length"><dt>Best seller</dt><dd t-att-title="this.state.data.top_products[0].name" t-esc="this.state.data.top_products[0].name"/></t>
+                    </dl>
+                </div>
+                <div class="o_sm_c_hero_chart">
+                    <div class="o_sm_c_legend"><span><i/>This period, running total</span><span t-if="hero.ref"><i class="is-ref"/>Previous period total</span></div>
+                    <svg viewBox="0 0 600 200" preserveAspectRatio="none" role="img" t-att-aria-label="hero.label">
+                        <path class="o_sm_c_grid" d="M0 199.5H600M0 133H600M0 66H600"/>
+                        <path t-if="hero.ref" class="o_sm_c_ref" t-att-d="hero.ref"/>
+                        <path t-if="hero.area" class="o_sm_c_area" t-att-d="hero.area"/>
+                        <path t-if="hero.line" class="o_sm_c_line" t-att-d="hero.line"/>
+                    </svg>
+                    <div class="o_sm_c_axis"><t t-foreach="hero.axis" t-as="tick" t-key="tick_index"><span t-esc="tick"/></t></div>
+                </div>
+            </section>
+        </div>
         <t t-call="strategic_management.AreaGoals" areaKey="'sales_finance'"/>
 
         <section class="o_sm_sf_summary o_sm_ledger" aria-label="Sales summary preview">

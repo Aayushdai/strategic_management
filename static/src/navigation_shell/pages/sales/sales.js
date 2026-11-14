@@ -151,4 +151,42 @@ export const salesPage = {
     salesHourAxisLabel(fraction) {
         return this.formatNumber(this.salesHourMax() * fraction);
     },
+
+    /** Headline: sales over the period as a running total, against the same-length previous period. */
+    get salesHero() {
+        const data = this.state.data;
+        if (!data || data.role === "employee" || data.sales === false || data.sales === undefined) return null;
+        const previous = data.previous_period ? data.previous_period.sales : false;
+        const chart = this.runningChart(data.sales_trend, "sales", data.sales, previous);
+        const rows = data.sales_trend || [];
+        let compare = "";
+        if (chart.change !== null) {
+            compare = `vs ${this.formatCurrency(previous)} previous period`;
+        } else if (previous === 0) {
+            compare = "No sales in the previous period";
+        }
+        const middle = rows[Math.floor((rows.length - 1) / 2)];
+        return {
+            ...chart,
+            value: this.formatCurrency(data.sales),
+            changeText: this.formatChange(chart.change),
+            compare,
+            axis: rows.length ? [rows[0].label, middle && middle.label, rows[rows.length - 1].label].filter(Boolean) : [],
+            previousOrders: data.previous_period ? data.previous_period.orders : false,
+            label: `Running sales over the period: ${this.formatCurrency(data.sales)}${compare ? ", " + compare : ""}`,
+        };
+    },
+
+    /** What needs attention first on Sales: a drop against the previous period, else goals below target. */
+    get salesAlert() {
+        const hero = this.salesHero;
+        if (hero && hero.change !== null && hero.change <= -10) {
+            return { headline: `Sales are down ${Math.abs(hero.change).toFixed(0)}% on the previous period`, detail: `${hero.value} ${hero.compare}.` };
+        }
+        const missed = (this.state.areaGoals.sales_finance || []).filter((goal) => goal.tone === "bad");
+        if (missed.length) {
+            return { headline: `${missed.length} sales goal${missed.length === 1 ? " is" : "s are"} below target`, detail: missed.map((goal) => goal.title).slice(0, 3).join(", ") };
+        }
+        return null;
+    },
 };

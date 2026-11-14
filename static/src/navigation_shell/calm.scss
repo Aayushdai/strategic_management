@@ -53,6 +53,7 @@ $c-bad: #df1b41;
     .o_sm_c_alert { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 12px 16px; border: 1px solid #f5c2c7; border-radius: 8px; background: #fff5f6; color: $c-body;
         > strong { display: inline-flex; align-items: center; gap: 8px; color: #b3093c; font-weight: 600; }
         > .o_sm_c_link { margin-left: auto; font-weight: 600; }
+        &.is-warn { border-color: #f7d48b; background: #fffaeb; > strong { color: #93370d; } }
     }
 
     // ---------------------------------------------------------------- panels

@@ -37,6 +37,17 @@ class TestOverviewDashboard(TransactionCase):
             warehouse.id if warehouse else False,
         )
 
+    def test_previous_period_is_measured_like_the_headline(self):
+        Dashboard = self.env["strategic.performance.dashboard"].with_user(self.head)
+        self.assertIs(Dashboard.get_business_overview_data("2026-10-15", "2026-10-31", False, "day")["previous_period"], False,
+                      "sales unknown without POS access: nothing to compare")
+        self.head.sudo().group_ids = [(4, self.env.ref("point_of_sale.group_pos_user").id)]
+        data = Dashboard.get_business_overview_data("2026-10-15", "2026-10-31", False, "day")
+        previous = data["previous_period"]
+        self.assertEqual((previous["start"], previous["end"]), ("2026-09-28", "2026-10-14"), "same length, just before")
+        direct = Dashboard.get_business_overview_data(previous["start"], previous["end"], False, "day")
+        self.assertEqual((previous["sales"], previous["orders"]), (direct["sales"], direct["order_count"]))
+
     def test_previous_period_has_the_same_length_and_ends_before_start(self):
         data = self._extras(self.head, days=10)
         comparison = data["comparison"]

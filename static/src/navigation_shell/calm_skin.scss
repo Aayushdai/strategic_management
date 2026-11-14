@@ -14,6 +14,26 @@ $page: #f6f8fa;
 $accent: #635bff;
 $accent-ink: #5546e8;
 
+@mixin calm-ledger-cards {
+    .o_sm_ledger.o_sm_ledger.o_sm_ledger.o_sm_ledger {
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; overflow: visible;
+        border: 0; border-radius: 0; background: transparent; box-shadow: none;
+        > article, > div, > button {
+            gap: 4px; padding: 18px 20px; border: 1px solid $line; border-radius: 10px; background: #fff; box-shadow: none;
+            &.is-drill:hover { border-color: #c1c9d2; background: #fff; box-shadow: 0 2px 6px rgba(26, 31, 54, .06); }
+            &[data-tone="bad"] strong { color: #b3093c; }
+            &[data-tone="warn"] strong { color: #b54708; }
+            &[data-tone="good"] strong { color: #05690d; }
+        }
+        [class*="metric_copy"] > :first-child, .o_sm_dash_kpi > small:first-of-type, .o_spm_metric_topline > :first-child {
+            color: $muted; font-size: 13px; font-weight: 500; letter-spacing: 0; text-transform: none;
+        }
+        strong, .o_spm_metric_value { color: $ink; font-size: 24px; font-weight: 600; letter-spacing: -.01em; }
+        small:not(:first-child), .o_sm_dash_kpi > small ~ small, .o_spm_metric_note { color: $muted; font-size: 12px; }
+        .o_sm_spark polyline { stroke: $accent; }
+    }
+}
+
 #{$S} {
     // ---------------------------------------------------------------- page headers
     .o_sm_sf_header h1, .o_sm_iw_header h1, .o_sm_br_header h1, .o_sm_people_header h1, .o_sm_bm_header h1, .o_sm_req_header h1,
@@ -53,23 +73,7 @@ $accent-ink: #5546e8;
     .o_sm_iw_panel_note, .o_sm_people_panel_note, .o_sm_pur_panel_sub { color: $muted; font-size: 13px; }
 
     // ---------------------------------------------------------------- figure cards (the summary rows)
-    .o_sm_ledger.o_sm_ledger.o_sm_ledger.o_sm_ledger {
-        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; overflow: visible;
-        border: 0; border-radius: 0; background: transparent; box-shadow: none;
-        > article, > div, > button {
-            gap: 4px; padding: 18px 20px; border: 1px solid $line; border-radius: 10px; background: #fff; box-shadow: none;
-            &.is-drill:hover { border-color: #c1c9d2; background: #fff; box-shadow: 0 2px 6px rgba(26, 31, 54, .06); }
-            &[data-tone="bad"] strong { color: #b3093c; }
-            &[data-tone="warn"] strong { color: #b54708; }
-            &[data-tone="good"] strong { color: #05690d; }
-        }
-        [class*="metric_copy"] > :first-child, .o_sm_dash_kpi > small:first-of-type, .o_spm_metric_topline > :first-child {
-            color: $muted; font-size: 13px; font-weight: 500; letter-spacing: 0; text-transform: none;
-        }
-        strong, .o_spm_metric_value { color: $ink; font-size: 24px; font-weight: 600; letter-spacing: -.01em; }
-        small:not(:first-child), .o_sm_dash_kpi > small ~ small, .o_spm_metric_note { color: $muted; font-size: 12px; }
-        .o_sm_spark polyline { stroke: $accent; }
-    }
+    @include calm-ledger-cards;
 
     // ---------------------------------------------------------------- tables
     .o_sm_pur_table, .o_sm_task_table, .o_sm_sf_table, .o_sm_iw_table, .o_sm_req_table {
@@ -125,4 +129,41 @@ $accent-ink: #5546e8;
         &:hover { background: $page; }
         &.is-primary { border-color: $accent; background: $accent; color: #fff; &:hover { background: $accent-ink; } }
     }
+}
+
+// ---------------------------------------------------------------- Business Goals (its own full screen)
+$BG: ".o_sm_business_goals.o_sm_business_goals.o_sm_business_goals";
+#{$BG} {
+    // Its styles read these variables: point them at the same palette.
+    --sm-purple: #{$accent};
+    --sm-purple-soft: #eeedff;
+    --sm-workspace: #{$page};
+    --sm-border: #{$line};
+    --sm-ink: #{$ink};
+    --sm-muted: #{$muted};
+
+    .o_sm_bg_page_header h1 { color: $ink; font-size: 28px; font-weight: 700; letter-spacing: -.02em; }
+    .o_sm_bg_page_header p { color: $muted; font-size: 14px; }
+    .o_sm_bg_card { border: 1px solid $line; border-radius: 10px; background: #fff; box-shadow: none; }
+    .o_sm_bg_card_heading h2 { color: $ink; font-size: 15px; font-weight: 600; }
+    .o_sm_bg_card_heading p { color: $muted; font-size: 13px; }
+    .o_sm_bg_primary { border-color: $accent; background: $accent; &:hover { background: $accent-ink; } }
+    .o_sm_bg_text_button { color: $accent-ink; font-weight: 500; }
+
+    @include calm-ledger-cards;
+    .o_sm_bg_summary:not(.o_sm_ledger) { gap: 16px; border: 0; background: transparent; }
+
+    .o_sm_bg_table_wrap { border: 1px solid $line; border-radius: 10px; }
+    .o_sm_bg_table th { background: transparent; color: $muted; font-size: 13px; font-weight: 500; text-transform: none; letter-spacing: 0; }
+    .o_sm_bg_table td { border-bottom-color: $line-soft; font-size: 13px; }
+    .o_sm_bg_table tbody tr:hover td { background: $page; }
+
+    .o_sm_bg_badge {
+        padding: 2px 7px; border-radius: 4px; background: $line-soft; color: $body !important; font-size: 12px; font-weight: 600;
+        &.is-good { background: #d7f7c2; color: #05690d !important; }
+        &.is-warn { background: #fcedb9; color: #983705 !important; }
+        &.is-bad { background: #ffe7ea; color: #b3093c !important; }
+        &.is-neutral { background: $line-soft; color: $body !important; }
+    }
+    .o_sm_bg_area_icon { border-radius: 8px; background: #eeedff; color: $accent; }
 }

@@ -387,7 +387,15 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         for row in trend:
             row["drill"] = self._overview_period_drill(row, trend_granularity, start, end, order_domain, invoices) if row["sales"] else False
         branch_count = len(branch_sales)
+        previous_period = False
+        if sales_total is not False:
+            previous_last = start - timedelta(days=1)
+            previous_first = previous_last - (end - start)
+            previous = self._overview_sales_total(previous_first, previous_last, [cond for cond in order_domain if cond[0] != "date_order"], invoice_branch)
+            previous_period = {"start": fields.Date.to_string(previous_first), "end": fields.Date.to_string(previous_last),
+                               "sales": previous["sales"], "orders": previous["orders"]}
         return {
+            "previous_period": previous_period,
             "role": "head_office" if is_head_office else "branch_manager",
             "scope_label": selected_warehouse.display_name if selected_warehouse else "All branches",
             "period": {"start": fields.Date.to_string(start), "end": fields.Date.to_string(end)},
@@ -477,6 +485,24 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
             "refund_count": int(refund_count or 0),
             "mixed_currency": mixed_currency,
         }
+
+    @api.model
+    def _overview_sales_total(self, start, end, scope_domain, invoice_branch):
+        """Sales and orders for a date range, counted like the page's headline: paid POS orders excluding tax (refunds
+        reduce sales, are not orders) plus customer invoices less credit notes. ``scope_domain`` is the headline's POS
+        domain without its dates; False figures mean the source could not be read."""
+        start_utc, end_utc = self._overview_utc_bounds(start, end)
+        domain = scope_domain + [("date_order", ">=", fields.Datetime.to_string(start_utc)), ("date_order", "<", fields.Datetime.to_string(end_utc))]
+        groups = self._overview_safe(lambda: self.env["pos.order"].read_group(
+            domain, groupby=["is_refund"], aggregates=["amount_total:sum", "amount_tax:sum", "id:count"]))
+        if groups is False:
+            return {"sales": False, "orders": False}
+        sales = sum((amount or 0.0) - (tax or 0.0) for _refund, amount, tax, _count in groups)
+        orders = sum(count for refund, _amount, _tax, count in groups if not refund)
+        for invoice in self._overview_safe(lambda: self._overview_invoices(start, end, invoice_branch)) or []:
+            sales += invoice.amount_untaxed_signed
+            orders += 1 if invoice.move_type == "out_invoice" else 0
+        return {"sales": round(sales, 2), "orders": orders}
 
     @api.model
     def _overview_invoices(self, start, end, warehouse_ids=False):

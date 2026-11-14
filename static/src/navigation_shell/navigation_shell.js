@@ -485,6 +485,30 @@ export class StrategicNavigationShell extends Component {
         return values.map((value, index) => `${((index * 100) / (values.length - 1)).toFixed(1)},${(22 - ((value - low) / range) * 20).toFixed(1)}`).join(" ");
     }
 
+    /** Headline chart in a 600 x 200 box: the running total of rows[key] (a line and the area under it) and, when the
+     * previous period had a total, a dashed reference line at it. ``change`` is the percentage against it, or null. */
+    runningChart(rows, key, total, previous) {
+        const list = rows || [];
+        let running = 0;
+        const series = list.map((row) => (running += Number(row[key]) || 0));
+        const hasPrevious = previous !== false && previous !== null && previous !== undefined && Number(previous) > 0;
+        const top = Math.max(running, hasPrevious ? Number(previous) : 0, Number(total) || 0) * 1.12 || 1;
+        const x = (index) => (list.length > 1 ? (index * 600) / (list.length - 1) : 300);
+        const y = (value) => 200 - (value / top) * 190;
+        const points = series.map((value, index) => `${x(index).toFixed(1)} ${y(value).toFixed(1)}`);
+        const line = points.length ? `M${points.join(" L")}` : "";
+        return {
+            line,
+            area: line ? `${line} L${x(points.length - 1).toFixed(1)} 200 L${x(0).toFixed(1)} 200 Z` : "",
+            ref: hasPrevious ? `M0 ${y(Number(previous)).toFixed(1)} L600 ${y(Number(previous)).toFixed(1)}` : "",
+            change: hasPrevious ? ((Number(total) - Number(previous)) / Number(previous)) * 100 : null,
+        };
+    }
+
+    formatChange(pct) {
+        return pct === null || pct === undefined ? "" : `${pct > 0 ? "+" : pct < 0 ? "−" : ""}${Math.abs(pct).toFixed(1)}%`;
+    }
+
     /** A summary card opens Odoo's own list of the records behind its number (the server decides which, and whether). */
     openDrill(drill) {
         const options = (Array.isArray(drill) ? drill : [drill]).filter(Boolean);

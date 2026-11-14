@@ -118,4 +118,21 @@ export const inventoryPage = {
         const date = new Date(`${String(value).slice(0, 10)}T12:00:00`);
         return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString(undefined, { day: "numeric", month: "short" });
     },
+
+    /** What needs attention first on Inventory, from the page's own alert list: expired lots, stock below minimum,
+     * lots about to expire and unreconciled counts, with the most serious one named. */
+    get inventoryAlert() {
+        const items = this.state.inventoryData?.attention || [];
+        if (!items.length) return null;
+        const count = (test) => items.filter(test).length;
+        const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+        const parts = [
+            [count((item) => item.kind === "expiry" && item.severity === "high"), "expired lot", "expired lots"],
+            [count((item) => item.kind === "stock"), "product below minimum stock", "products below minimum stock"],
+            [count((item) => item.kind === "expiry" && item.severity !== "high"), "lot expiring soon", "lots expiring soon"],
+            [count((item) => item.kind === "variance"), "stock count to review", "stock counts to review"],
+        ].filter(([n]) => n).map(([n, one, many]) => plural(n, one, many));
+        const first = items[0];
+        return { headline: parts.join(" · "), detail: `${first.title}: ${first.detail}`, serious: items.some((item) => item.severity === "high") };
+    },
 };

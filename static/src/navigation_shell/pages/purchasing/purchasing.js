@@ -170,22 +170,14 @@ export const purchasingPage = {
         if (!pd || !pd.available) return null;
         const orders = this.state.purHeroMetric === "orders";
         const days = pd.daily_spend || [];
-        let running = 0;
-        const series = days.map((day) => (running += orders ? Number(day.orders) || 0 : Number(day.amount) || 0));
         const total = orders ? pd.purchase_order_count : pd.purchase_order_value;
         const previous = pd.previous_period ? (orders ? pd.previous_period.orders : pd.previous_period.spend) : false;
         const hasPrevious = previous !== false && previous !== null && previous !== undefined;
-        const top = Math.max(running, hasPrevious ? Number(previous) : 0, Number(total) || 0) * 1.12 || 1;
-        const x = (index) => (days.length > 1 ? (index * 600) / (days.length - 1) : 300);
-        const y = (value) => 200 - (value / top) * 190;
-        const points = series.map((value, index) => `${x(index).toFixed(1)} ${y(value).toFixed(1)}`);
-        const line = points.length ? `M${points.join(" L")}` : "";
+        const chart = this.runningChart(days, orders ? "orders" : "amount", total, previous);
         const format = (value) => (orders ? this.formatNumber(value) : this.formatPurchaseCurrency(value));
-        let change = "";
+        const change = this.formatChange(chart.change);
         let compare = "";
-        if (hasPrevious && Number(previous) > 0) {
-            const pct = ((Number(total) - Number(previous)) / Number(previous)) * 100;
-            change = `${pct > 0 ? "+" : pct < 0 ? "−" : ""}${Math.abs(pct).toFixed(1)}%`;
+        if (chart.change !== null) {
             compare = `vs ${format(previous)} previous period`;
         } else if (hasPrevious) {
             compare = orders ? "No orders in the previous period" : "No spend in the previous period";
@@ -196,9 +188,9 @@ export const purchasingPage = {
             value: format(total),
             change,
             compare,
-            line,
-            area: line ? `${line} L${x(points.length - 1).toFixed(1)} 200 L${x(0).toFixed(1)} 200 Z` : "",
-            ref: hasPrevious && Number(previous) > 0 ? `M0 ${y(Number(previous)).toFixed(1)} L600 ${y(Number(previous)).toFixed(1)}` : "",
+            line: chart.line,
+            area: chart.area,
+            ref: chart.ref,
             axis: days.length ? [days[0].date, middle && middle.date, days[days.length - 1].date].filter(Boolean) : [],
             label: `${orders ? "Running count of confirmed orders" : "Running purchase spend"} over the period: ${format(total)}${compare ? ", " + compare : ""}`,
         };
