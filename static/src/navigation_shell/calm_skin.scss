@@ -1,0 +1,128 @@
+// Calm dashboard skin (design D) for the pages that still use their own markup: Sales, Inventory, Branches,
+// People, Tasks & Issues, Inbox, the Branch Manager and employee pages, Reports and Settings. It restyles their
+// existing blocks (headers, filters, panels, figure cards, tables, badges, links) to match the rebuilt
+// Purchasing page (calm.scss), without touching their markup, data or behaviour.
+// The tripled shell class outranks each page's own, more specific rules; it loads after them.
+
+$S: ".o_sm_navigation_shell.o_sm_navigation_shell.o_sm_navigation_shell";
+$ink: #1a1f36;
+$body: #3c4257;
+$muted: #697386;
+$line: #e3e8ee;
+$line-soft: #eef1f6;
+$page: #f6f8fa;
+$accent: #635bff;
+$accent-ink: #5546e8;
+
+#{$S} {
+    // ---------------------------------------------------------------- page headers
+    .o_sm_sf_header h1, .o_sm_iw_header h1, .o_sm_br_header h1, .o_sm_people_header h1, .o_sm_bm_header h1, .o_sm_req_header h1,
+    .o_sm_appdep_header h1, .o_sm_adm_header h1, .o_sm_pur_header h1 {
+        color: $ink; font-size: 28px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15;
+    }
+    .o_sm_sf_header p, .o_sm_iw_header p, .o_sm_br_header p, .o_sm_people_header p, .o_sm_bm_header p, .o_sm_req_header p,
+    .o_sm_appdep_header p, .o_sm_adm_header p, .o_sm_pur_header p { color: $muted; font-size: 14px; }
+    // "Live data" lines: a quiet line with a green dot.
+    .o_sm_pur_preview_badge, .o_sm_iw_preview_badge, .o_sm_br_live_badge, .o_sm_sf_preview_badge, .o_sm_people_preview_note, .o_sm_br_preview_note {
+        display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 0; border: 0; border-radius: 0; background: none;
+        color: $muted; font-size: 12px; font-weight: 500;
+        i { width: 7px; height: 7px; border-radius: 50%; background: #2ab06f; box-shadow: none; animation: none; }
+        svg { display: none; }
+    }
+
+    // ---------------------------------------------------------------- filters: compact white fields
+    .o_sm_pur_filter, .o_sm_iw_filter, .o_sm_sf_filter, .o_sm_req_filter {
+        display: inline-flex; align-items: center; gap: 6px; height: 32px; min-height: 0; padding: 0 10px;
+        border: 1px solid $line; border-radius: 6px; background: #fff; box-shadow: 0 1px 1px rgba(0, 0, 0, .04);
+        color: $muted; font-size: 13px; font-weight: 500;
+        > span { color: $muted; font-size: 13px; font-weight: 500; text-transform: none; letter-spacing: 0; }
+        input, select { height: auto; min-height: 0; padding: 0; border: 0; background: transparent; box-shadow: none; color: $ink; font-size: 13px; font-weight: 500; }
+        &:focus-within { border-color: $accent; box-shadow: 0 0 0 3px rgba(99, 91, 255, .15); }
+    }
+
+    // ---------------------------------------------------------------- panels
+    .o_sm_sf_panel, .o_sm_iw_panel, .o_sm_br_panel, .o_sm_people_panel, .o_sm_pur_panel, .o_sm_bm_card, .o_sm_req_card,
+    .o_sm_report_section, .o_sm_area_goals, .o_sm_cfg_group {
+        border: 1px solid $line; border-radius: 10px; background: #fff; box-shadow: none;
+    }
+    .o_sm_sf_panel_heading h2, .o_sm_iw_panel_heading h2, .o_sm_br_panel_heading h2, .o_sm_people_panel_heading h2, .o_sm_pur_panel_heading h2,
+    .o_sm_bm_card_head h2, .o_sm_req_card_head h2, .o_sm_area_goals_head h2 {
+        color: $ink; font-size: 15px; font-weight: 600; letter-spacing: 0;
+    }
+    .o_sm_sf_panel_heading p, .o_sm_iw_panel_heading p, .o_sm_br_panel_heading p, .o_sm_people_panel_heading p, .o_sm_bm_card_head p,
+    .o_sm_iw_panel_note, .o_sm_people_panel_note, .o_sm_pur_panel_sub { color: $muted; font-size: 13px; }
+
+    // ---------------------------------------------------------------- figure cards (the summary rows)
+    .o_sm_ledger.o_sm_ledger.o_sm_ledger.o_sm_ledger {
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; overflow: visible;
+        border: 0; border-radius: 0; background: transparent; box-shadow: none;
+        > article, > div, > button {
+            gap: 4px; padding: 18px 20px; border: 1px solid $line; border-radius: 10px; background: #fff; box-shadow: none;
+            &.is-drill:hover { border-color: #c1c9d2; background: #fff; box-shadow: 0 2px 6px rgba(26, 31, 54, .06); }
+            &[data-tone="bad"] strong { color: #b3093c; }
+            &[data-tone="warn"] strong { color: #b54708; }
+            &[data-tone="good"] strong { color: #05690d; }
+        }
+        [class*="metric_copy"] > :first-child, .o_sm_dash_kpi > small:first-of-type, .o_spm_metric_topline > :first-child {
+            color: $muted; font-size: 13px; font-weight: 500; letter-spacing: 0; text-transform: none;
+        }
+        strong, .o_spm_metric_value { color: $ink; font-size: 24px; font-weight: 600; letter-spacing: -.01em; }
+        small:not(:first-child), .o_sm_dash_kpi > small ~ small, .o_spm_metric_note { color: $muted; font-size: 12px; }
+        .o_sm_spark polyline { stroke: $accent; }
+    }
+
+    // ---------------------------------------------------------------- tables
+    .o_sm_pur_table, .o_sm_task_table, .o_sm_sf_table, .o_sm_iw_table, .o_sm_req_table {
+        color: $ink; font-size: 13px;
+        th { padding: 8px 10px 8px 0; border-bottom: 1px solid $line; background: transparent; color: $muted; font-size: 13px; font-weight: 500; letter-spacing: 0; text-transform: none; }
+        td { padding: 11px 10px 11px 0; border-bottom: 1px solid $line-soft; color: $ink; font-size: 13px; }
+        tbody tr:hover td { background: $page; }
+    }
+
+    // ---------------------------------------------------------------- soft badges (Stripe-like)
+    .o_sm_pur_status, .o_sm_br_status, .o_sm_area_goal_status, .o_sm_task_status, .o_sm_people_task_status, .o_sm_iw_status,
+    .o_sm_bm_reason, .o_sm_people_badge, .o_sm_task_overdue, .o_sm_adm_badge, .o_sm_req_badge {
+        display: inline-block; padding: 2px 7px; border: 0; border-radius: 4px; background: $line-soft; color: $body;
+        font-size: 12px; font-weight: 600; line-height: 1.4; letter-spacing: 0; text-transform: none; white-space: nowrap;
+        &::before { display: none; }
+    }
+    .o_sm_pur_status_good, .o_sm_br_status_good, .o_sm_area_goal_status.is-good, .o_sm_task_status.is-done, .o_sm_people_coverage_good,
+    .o_sm_iw_status_ok, .o_sm_people_badge_low { background: #d7f7c2; color: #05690d; }
+    .o_sm_pur_status_warn, .o_sm_br_status_warn, .o_sm_area_goal_status.is-warn, .o_sm_task_status.is-changes_requested, .o_sm_people_task_progress,
+    .o_sm_iw_status_low, .o_sm_people_badge_medium, .o_sm_bm_reason.is-overdue, .o_sm_bm_reason.is-due_soon, .o_sm_bm_reason.is-attention {
+        background: #fcedb9; color: #983705;
+    }
+    .o_sm_pur_status_bad, .o_sm_br_status_critical, .o_sm_area_goal_status.is-bad, .o_sm_people_task_open, .o_sm_iw_status_critical,
+    .o_sm_people_badge_high, .o_sm_bm_reason.is-at_risk, .o_sm_task_overdue { background: #ffe7ea; color: #b3093c; }
+    .o_sm_pur_status_info, .o_sm_br_status_info, .o_sm_task_status.is-in_progress, .o_sm_task_status.is-submitted, .o_sm_bm_reason.is-no_data {
+        background: #e8e6ff; color: #4535c9;
+    }
+    .o_sm_task_status.is-cancelled { background: $line-soft; color: $muted; text-decoration: line-through; }
+    .o_sm_task_overdue { margin-left: 6px; }
+
+    // Counts next to headings: plain numbers.
+    .o_sm_pur_count, .o_sm_br_count, .o_sm_iw_count {
+        min-width: 0; height: auto; margin-left: 6px; padding: 0; border: 0; border-radius: 0; background: none;
+        color: $muted; font-size: 13px; font-weight: 500;
+    }
+
+    // Inventory alerts: the severity badge says it; no round icon in front.
+    .o_sm_iw_attention_icon { display: none; }
+    .o_sm_iw_attention_row { grid-template-columns: minmax(0, 1fr) auto auto; }
+    @media (max-width: 900px) { .o_sm_iw_attention_row .o_sm_iw_item_action { grid-column: 1; } }
+
+    // Primary actions use the accent, as on Purchasing (they were green).
+    .o_sm_req_btn.is-approve { background: $accent; color: #fff; &:hover:not(:disabled) { background: $accent-ink; } }
+
+    // ---------------------------------------------------------------- links and small actions
+    .o_sm_pur_link, .o_sm_ov_text_action, .o_sm_iw_link, .o_sm_br_link {
+        color: $accent-ink; font-size: 13px; font-weight: 500;
+        &:hover { color: #3b2fc4; }
+    }
+    .o_sm_pur_item_action, .o_sm_br_item_action, .o_sm_iw_item_action, .o_sm_task_btn {
+        height: 30px; padding: 0 12px; border: 1px solid $line; border-radius: 6px; background: #fff; box-shadow: 0 1px 1px rgba(0, 0, 0, .04);
+        color: $ink; font-size: 13px; font-weight: 500;
+        &:hover { background: $page; }
+        &.is-primary { border-color: $accent; background: $accent; color: #fff; &:hover { background: $accent-ink; } }
+    }
+}
