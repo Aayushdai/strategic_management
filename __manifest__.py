@@ -85,8 +85,6 @@
             "strategic_management/static/src/business_goals/business_goals.js",
             "strategic_management/static/src/business_goals/business_goals.xml",
             "strategic_management/static/src/business_goals/business_goals.scss",
-            # The app's visual language (editorial ledger): an override layer over every screen, so it stays last.
-            "strategic_management/static/src/navigation_shell/editorial.scss",
         ],
     },
     "installable": True,

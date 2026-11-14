@@ -30,13 +30,16 @@ const NEXT_STEP = {
     measured: "The target is approved and linked. Submit the goal for approval.",
     submitted: "The goal has been submitted through the normal approval process.",
 };
+// Icon per business area (names from Odoo's icon font, as used in the sidebar).
+const AREA_ICONS = {
+    sales_finance: "bar_chart", inventory_waste: "inventory_2", purchasing: "shopping_cart",
+    people: "group", customers: "storefront", operations: "settings",
+};
 const formatDate = (iso) => {
     if (!iso) return "—";
     const date = new Date(`${iso}T00:00:00`);
     return Number.isNaN(date.getTime()) ? iso : date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 };
-
-const BULLET_MAX = 125;  // bullet graphs show up to 125% of a target
 
 export class BusinessGoalsAction extends Component {
     static components = { BackButton };
@@ -246,6 +249,7 @@ export class BusinessGoalsAction extends Component {
         }
     }
 
+    areaIcon(goal) { return AREA_ICONS[(goal.areas || [])[0]] || "flag"; }
 
     toggle(flag) { this.state[flag] = !this.state[flag]; }
 
@@ -264,9 +268,6 @@ export class BusinessGoalsAction extends Component {
     }
 
     statusClass(tone) { return `is-${tone || "neutral"}`; }
-    // Bullet graph scale: 0-125% of the target; the tick marks 100%, the darker band ends where "almost met" starts (90%).
-    bulletStyle() { return `--sm-target:${(100 / BULLET_MAX) * 100}%;--sm-warn-at:${(90 / BULLET_MAX) * 100}%`; }
-    bulletWidth(bar) { return Math.max(0, Math.min(Number(bar.pct) || 0, BULLET_MAX)) * (100 / BULLET_MAX); }
     barTitle(bar) { return !bar || bar.kind === "waiting" ? "Progress" : bar.kind === "usage" ? "Limit used" : "Target reached"; }
 
     // OWL 3 t-model only binds signals, so form fields write through this instead.
