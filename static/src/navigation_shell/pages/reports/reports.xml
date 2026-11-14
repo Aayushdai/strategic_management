@@ -8,7 +8,7 @@
             <h1><t t-esc="this.state.activeSection === 'configuration' ? 'Settings' : this.activeItem.label"/></h1>
             <p t-if="this.state.activeSection === 'reports'">Open Odoo's live analysis views (pivot, graph, list) with filters, grouping and export.</p>
             <p t-elif="this.state.navContext and this.state.navContext.role === 'head_office'">How the app behaves, and the strategy, targets and operational data it measures.</p>
-            <p t-else="">Set up the strategy, targets and operational data the dashboards measure.</p>
+            <p t-else="">Your account: contact details, time zone, notifications and password.</p>
         </div></header>
         <t t-set="hasSettings" t-value="this.state.activeSection === 'configuration' and this.state.navContext and this.state.navContext.role === 'head_office'"/>
         <div t-if="hasSettings" class="o_sm_set_tabs" role="tablist" aria-label="Settings">
@@ -16,6 +16,7 @@
             <button type="button" role="tab" t-att-aria-selected="this.state.settingsTab === 'data'" t-att-class="this.state.settingsTab === 'data' ? 'is-on' : ''" t-on-click="() => this.setSettingsTab('data')">Data setup</button>
         </div>
         <t t-if="hasSettings and this.state.settingsTab === 'settings'"><t t-call="strategic_management.SettingsPanel"/></t>
+        <t t-elif="this.state.activeSection === 'configuration' and this.state.navContext and ['branch_manager', 'employee'].includes(this.state.navContext.role)"><t t-call="strategic_management.MySettingsPanel"/></t>
         <t t-else="">
         <t t-if="this.state.activeSection === 'reports' and this.canUseReports"><t t-call="strategic_management.BranchReports"/></t>
         <p t-if="!links.length" class="o_sm_br_notice">No items are available for your role.</p>

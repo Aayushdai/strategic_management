@@ -4,6 +4,8 @@
 // reports show. These functions become methods of StrategicNavigationShell (see navigation_shell.js); template
 // settings.xml. Server: models/settings.py (every change is written to the admin audit log).
 
+import { user } from "@web/core/user";
+
 export const settingsPage = {
     async loadSettings() {
         this.state.settingsError = "";
@@ -83,6 +85,37 @@ export const settingsPage = {
         } finally {
             s.saving = false;
         }
+    },
+
+    async loadMySettings() {
+        this.state.settingsError = "";
+        try {
+            this.applyMySettings(await this.orm.call("strategic.performance.dashboard", "get_my_settings", []));
+        } catch (error) {
+            this.state.settingsError = error.data?.message || error.message || "Your settings could not be loaded.";
+        }
+    },
+
+    applyMySettings(data) {
+        this.state.mySettings = { ...data, draft: { email: data.email, phone: data.phone, tz: data.tz, notify_by_email: data.notify_by_email }, saving: false };
+    },
+
+    async saveMySettings() {
+        const m = this.state.mySettings;
+        if (!m || m.saving) return;
+        m.saving = true;
+        try {
+            this.applyMySettings(await this.orm.call("strategic.performance.dashboard", "save_my_settings", [m.draft]));
+            this.notification.add("Your settings are saved.", { type: "success" });
+        } catch (error) {
+            m.saving = false;
+            this.notification.add(error.data?.message || error.message || "Your settings could not be saved.", { type: "danger" });
+        }
+    },
+
+    async changeMyPassword() {
+        // Odoo's own "change password" dialog, which asks for the current password first.
+        this.action.doAction(await this.orm.call("res.users", "preference_change_password", [[user.userId]]));
     },
 
     onLogoPicked(event) {

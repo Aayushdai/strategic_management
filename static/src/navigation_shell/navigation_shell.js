@@ -111,6 +111,7 @@ export class StrategicNavigationShell extends Component {
             drillChoice: null,
             // Settings tab (pages/settings), Head Office.
             settings: null,
+            mySettings: null,
             settingsTab: "settings",
             settingsError: "",
             staffingWork: [],
@@ -387,6 +388,8 @@ export class StrategicNavigationShell extends Component {
         }
         if (sectionId === "configuration" && this.state.navContext?.role === "head_office" && this.state.settingsTab === "settings") {
             this.loadSettings();
+        } else if (sectionId === "configuration" && ["branch_manager", "employee"].includes(this.state.navContext?.role)) {
+            this.loadMySettings();
         }
         if (sectionId === "bm_dashboard" && this.isBranchManager) {
             return this.loadBranchObjectives();

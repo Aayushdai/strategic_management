@@ -132,3 +132,25 @@ class TestSettings(StrategyFixture):
             head.send_test_email()
         self.head_user.email = "head@example.com"
         self.assertEqual(head.send_test_email(), {"sent_to": "head@example.com"})  # test mode: built and handed over, not sent
+
+    def test_my_settings_own_account_only(self):
+        Dashboard = self.env["strategic.performance.dashboard"]
+        for user in (self.branch_user_a, self.emp_user):
+            mine = Dashboard.with_user(user)
+            data = mine.get_my_settings()
+            self.assertEqual(data["login"], user.login)
+            with self.assertRaises(UserError):
+                mine.save_my_settings({"email": "not an email"})
+            with self.assertRaises(UserError):
+                mine.save_my_settings({"email": "a@example.com", "tz": "Mars/Base"})
+            with self.assertRaises(UserError):
+                mine.save_my_settings({"email": "", "notify_by_email": True})
+            data = mine.save_my_settings({"email": "new.%s@example.com" % user.login, "phone": "9800000000",
+                                          "tz": "Asia/Kathmandu", "notify_by_email": False, "login": "hijack", "group_ids": []})
+            user.invalidate_recordset()
+            self.assertEqual((user.email, user.phone, user.tz, user.notification_type),
+                             ("new.%s@example.com" % user.login, "9800000000", "Asia/Kathmandu", "inbox"))
+            self.assertNotEqual(user.login, "hijack", "only the account's own contact fields can change")
+            self.assertTrue(user.has_group("base.group_user"))
+            self.assertFalse(data["notify_by_email"])
+        self.assertNotEqual(self.emp_user.email, self.branch_user_a.email)

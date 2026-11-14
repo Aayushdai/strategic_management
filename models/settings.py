@@ -11,6 +11,7 @@ import pytz
 from odoo import api, fields, models
 from odoo.addons.base.models.ir_mail_server import MailDeliveryException
 from odoo.exceptions import AccessError, UserError
+from odoo.tools import email_normalize
 
 # key: (kind, label, minimum, maximum). Booleans have no range.
 SETTINGS = {
@@ -142,6 +143,35 @@ class StrategicPerformanceDashboardSettings(models.AbstractModel):
         if tz:
             self._reschedule_nightly_job(company)
         return self.get_strategic_settings()
+
+    @api.model
+    def get_my_settings(self):
+        """Branch Managers and Employees: their own account (Settings shows this instead of the data setup)."""
+        user = self.env.user
+        server = self.env["ir.mail_server"].sudo().search([("active", "=", True)], limit=1)
+        return {
+            "name": user.name, "login": user.login, "email": user.email or "", "phone": user.phone or "", "tz": user.tz or "",
+            "notify_by_email": user.notification_type == "email",
+            "email_ready": bool(server) and (bool(server.smtp_pass) or not server.smtp_user),
+            "timezones": list(pytz.common_timezones),
+        }
+
+    @api.model
+    def save_my_settings(self, values):
+        """Only fields Odoo lets every user change on their own account; written as the user, not as superuser."""
+        values = values or {}
+        email = (values.get("email") or "").strip()
+        if email and not email_normalize(email):
+            raise UserError("Enter a valid email address.")
+        tz = values.get("tz") or False
+        if tz and tz not in pytz.all_timezones:
+            raise UserError("Choose a time zone from the list.")
+        notify_by_email = bool(values.get("notify_by_email"))
+        if notify_by_email and not email:
+            raise UserError("Add your email address to get notifications by email.")
+        self.env.user.write({"email": email or False, "phone": (values.get("phone") or "").strip() or False, "tz": tz,
+                             "notification_type": "email" if notify_by_email else "inbox"})
+        return self.get_my_settings()
 
     @api.model
     def save_mail_server(self, values):

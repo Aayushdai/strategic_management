@@ -105,6 +105,44 @@
         </div>
     </t>
 
+    <t t-name="strategic_management.MySettingsPanel">
+        <t t-set="m" t-value="this.state.mySettings"/>
+        <p t-if="this.state.settingsError" class="o_sm_br_notice is-error" role="alert" t-esc="this.state.settingsError"/>
+        <p t-elif="!m" class="o_sm_br_notice">Loading your settings…</p>
+        <div t-else="" class="o_sm_set">
+            <section class="o_sm_set_card" aria-labelledby="o_sm_my_account">
+                <header><h2 id="o_sm_my_account">My account</h2><p>Signed in as <strong t-esc="m.name"/> (<t t-esc="m.login"/>).</p></header>
+                <div class="o_sm_set_fields">
+                    <div class="o_sm_set_row">
+                        <label>Email<input type="email" t-att-value="m.draft.email" t-on-input="(ev) => { m.draft.email = ev.target.value; }"/></label>
+                        <label>Phone<input type="tel" t-att-value="m.draft.phone" t-on-input="(ev) => { m.draft.phone = ev.target.value; }"/></label>
+                    </div>
+                    <label>Time zone<select t-on-change="(ev) => { m.draft.tz = ev.target.value; }">
+                        <option value="">—</option>
+                        <option t-foreach="m.timezones" t-as="tz" t-key="tz" t-att-value="tz" t-att-selected="tz === m.draft.tz" t-esc="tz"/>
+                    </select></label>
+                </div>
+            </section>
+            <section class="o_sm_set_card" aria-labelledby="o_sm_my_notifications">
+                <header><h2 id="o_sm_my_notifications">Notifications</h2><p>Tasks, reminders, report reviews and messages always appear in the app.</p></header>
+                <div class="o_sm_set_item">
+                    <div><strong>Also email them to me</strong><small t-if="m.email_ready">Sent to the email address above.</small><small t-else="">Email isn't set up by Head Office yet; until then they stay in the app.</small></div>
+                    <button type="button" role="switch" t-att-aria-checked="m.draft.notify_by_email ? 'true' : 'false'" aria-label="Also email them to me"
+                            t-att-class="'o_sm_set_switch' + (m.draft.notify_by_email ? ' is-on' : '')" t-on-click="() => { m.draft.notify_by_email = !m.draft.notify_by_email; }">
+                        <span/><em t-esc="m.draft.notify_by_email ? 'On' : 'Off'"/>
+                    </button>
+                </div>
+            </section>
+            <section class="o_sm_set_card" aria-labelledby="o_sm_my_password">
+                <header><h2 id="o_sm_my_password">Password</h2><p>You are asked for your current password first.</p></header>
+                <div><button type="button" class="o_sm_set_btn" t-on-click="() => this.changeMyPassword()">Change password</button></div>
+            </section>
+            <footer class="o_sm_set_save">
+                <button type="button" class="o_sm_set_btn is-primary" t-att-disabled="m.saving" t-on-click="() => this.saveMySettings()">Save</button>
+            </footer>
+        </div>
+    </t>
+
     <t t-name="strategic_management.SettingsSwitch">
         <t t-set="s" t-value="this.state.settings"/>
         <div class="o_sm_set_item">
