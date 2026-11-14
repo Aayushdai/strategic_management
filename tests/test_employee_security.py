@@ -6,7 +6,7 @@ Global ir.access restrictions apply to Strategic Employees only; other roles and
 from datetime import datetime
 
 from odoo import fields
-from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.exceptions import AccessError
 from odoo.tests.common import TransactionCase, tagged
 
 PERIOD = ("2001-03-05", "2001-03-11")

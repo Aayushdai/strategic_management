@@ -4,9 +4,9 @@ All 16 required scenarios from the Phase 2 spec are covered.
 Uses isolated transactions; no dependency on fixed database IDs or
 pre-existing business records.
 """
-from datetime import date, timedelta
+from datetime import date
 
-from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.exceptions import AccessError, ValidationError
 from odoo.tests.common import TransactionCase, tagged
 
 

@@ -557,7 +557,11 @@ class StrategicPerformanceDashboardBusinessOverview(models.AbstractModel):
         """Run one optional source query without making the whole dashboard fail."""
         try:
             return function()
-        except (AccessError, UserError, ValidationError, KeyError, TypeError, ValueError):
+        except AccessError as error:
+            # Expected for users without that app's rights: the section stays empty; not a server fault.
+            _logger.info("Business overview section skipped, no access: %s", str(error).splitlines()[0])
+            return False
+        except (UserError, ValidationError, KeyError, TypeError, ValueError):
             _logger.exception("Business overview query failed (callable=%r)", function)
             return False
 
