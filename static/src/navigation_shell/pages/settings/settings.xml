@@ -51,6 +51,7 @@
                 <t t-call="strategic_management.SettingsNumber" key="'sm_due_soon_days'" label="'Remind'" unit="'days before'" min="1" max="60" off="!s.draft.sm_due_soon_reminders"/>
                 <t t-call="strategic_management.SettingsSwitch" key="'sm_due_result_notes'" label="'Due-date result notes'" hint="'When an objective’s due date passes, its result is noted and Head Office gets a To-Do.'"/>
                 <t t-call="strategic_management.SettingsSwitch" key="'sm_achievement_reports'" label="'Achievement reports'" hint="'Completing an objective saves what was achieved as a report (Reports → Achievements).'"/>
+                <t t-call="strategic_management.SettingsSwitch" key="'sm_company_reports'" label="'Monthly company report'" hint="'On the 1st, Head Office gets last month’s figures for every branch in one report, with the PDF (Reports → Company).'"/>
                 <t t-call="strategic_management.SettingsNumber" key="'sm_nightly_hour'" label="'Nightly update runs at'" unit="':00, company time'" min="0" max="23" off="false"/>
                 <p t-if="s.next_run" class="o_sm_set_hint">Next run: <t t-esc="this.nextRunLabel()"/></p>
             </section>
@@ -70,8 +71,10 @@
 
             <section class="o_sm_set_card" aria-labelledby="o_sm_set_email">
                 <header><h2 id="o_sm_set_email">Email</h2><p>Notifications, reminders and report alerts are emailed through this server, as well as shown in the app.</p></header>
-                <p t-if="s.email.configured" class="o_sm_set_status is-ok">Email is set up: <t t-esc="s.email.servers.join(', ')"/>.</p>
+                <p t-if="s.email.ready" class="o_sm_set_status is-ok">Email is set up: <t t-esc="s.email.servers.join(', ')"/>. Use "Send test email" to check it works.</p>
+                <p t-elif="s.email.configured" class="o_sm_set_status is-warn">A mail server is saved but has no password, so emails can't be sent. Enter the password (for Gmail, an App Password) and save.</p>
                 <p t-else="" class="o_sm_set_status is-warn">Email isn't set up yet: notifications stay in the app until a server is saved below.</p>
+                <p t-if="s.email.failed" class="o_sm_set_hint"><t t-esc="s.email.failed"/> email(s) could not be sent so far; they stay in the app as notifications.</p>
                 <div class="o_sm_set_fields">
                     <div class="o_sm_set_row">
                         <label>Mail server<input type="text" placeholder="smtp.gmail.com" autocomplete="off" t-att-value="s.mail.host" t-on-input="(ev) => { s.mail.host = ev.target.value; }"/></label>

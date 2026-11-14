@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Monthly company report (models/company_report.py): Head Office, read-only; Reports > Company. -->
+    <record id="paperformat_strategic_landscape" model="report.paperformat">
+        <field name="name">Strategic Management landscape</field>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">30</field>
+        <field name="margin_bottom">20</field>
+        <field name="margin_left">10</field>
+        <field name="margin_right">10</field>
+        <field name="header_spacing">25</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_strategic_company" model="ir.actions.report">
+        <field name="name">Company report</field>
+        <field name="model">strategic.company.report</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">strategic_management.report_company_document</field>
+        <field name="print_report_name">'Company report - %s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_strategic_landscape"/>
+        <field name="binding_model_id" ref="model_strategic_company_report"/>
+    </record>
+
+    <record id="view_strategic_company_report_list" model="ir.ui.view">
+        <field name="name">strategic.company.report.list</field>
+        <field name="model">strategic.company.report</field>
+        <field name="arch" type="xml">
+            <list string="Company reports" create="false" delete="false" edit="false">
+                <header>
+                    <button name="action_create_last_month" type="object" string="Create last month's report" display="always"/>
+                </header>
+                <field name="name"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="net_sales"/>
+                <field name="taken_at" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_strategic_company_report_form" model="ir.ui.view">
+        <field name="name">strategic.company.report.form</field>
+        <field name="model">strategic.company.report</field>
+        <field name="arch" type="xml">
+            <form string="Company report" create="false" delete="false" edit="false">
+                <header>
+                    <button name="%(action_report_strategic_company)d" type="action" string="Download PDF" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <h1><field name="name" readonly="1"/></h1>
+                    <field name="summary_html" readonly="1" nolabel="1"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_strategic_company_report" model="ir.actions.act_window">
+        <field name="name">Company reports</field>
+        <field name="res_model">strategic.company.report</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html"><p class="o_view_nocontent_smiling_face">No company reports yet</p>
+            <p>When a month ends, a report with every branch's figures for that month is made here and sent to Head Office.
+               Use "Create last month's report" to make one now.</p></field>
+    </record>
+
+    <template id="report_company_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>Monthly company report</h2>
+                        <h3><t t-out="doc.company_id.name"/> · <t t-out="doc.date_start"/> – <t t-out="doc.date_end"/></h3>
+                        <div t-out="doc.summary_html"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

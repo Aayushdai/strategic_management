@@ -117,7 +117,8 @@ class TestSettings(StrategyFixture):
         self.assertEqual(len(server), 1)
         self.assertEqual((server.smtp_host, server.smtp_port, server.smtp_pass, server.from_filter),
                          ("smtp.example.com", 587, "app-secret", "cafe@example.com"))
-        self.assertTrue(data["email"]["configured"])
+        self.assertTrue(data["email"]["configured"] and data["email"]["ready"])
+        self.assertIn("failed", data["email"])
         self.assertNotIn("app-secret", str(data), "the password never goes back to the browser")
         self.assertTrue(data["email"]["server"]["has_password"])
 

@@ -78,7 +78,8 @@ export const settingsPage = {
             const result = await this.orm.call("strategic.performance.dashboard", "send_test_email", []);
             this.notification.add(`Test email sent to ${result.sent_to}. Check that inbox (and spam).`, { type: "success" });
         } catch (error) {
-            this.notification.add(error.data?.message || error.message || "The test email could not be sent.", { type: "danger" });
+            // Sticky: the reason (wrong password, blocked port) is what Head Office needs to read.
+            this.notification.add(error.data?.message || error.message || "The test email could not be sent.", { type: "danger", sticky: true });
         } finally {
             s.saving = false;
         }

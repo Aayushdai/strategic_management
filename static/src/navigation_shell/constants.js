@@ -31,6 +31,7 @@ export const REPORT_GROUPS = [
     { key: "stock", label: "Purchasing & Stock", description: "What was bought, received and moved." },
     { key: "kpi", label: "KPIs", description: "KPI results over time, and the ones that could not be measured." },
     { key: "achievements", label: "Achievements", description: "What was achieved when an objective was completed, ready to print." },
+    { key: "company", label: "Company", description: "Every branch's month in one report, sent to Head Office when the month ends." },
 ];
 export const SECTION_LINKS = {
     reports: [
@@ -40,6 +41,7 @@ export const SECTION_LINKS = {
         { xmlid: "account.action_account_moves_all", group: "sales", icon: "M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h3", label: "Journal Items", description: "Posted income and expenses behind net profit.", roles: ["head_office"] },
         { xmlid: "strategic_management.action_strategic_kpi_analysis", group: "kpi", icon: "M4 19l5-6 4 3 7-9M15 7h5v5", label: "KPI Analysis", description: "KPI evaluations over time, by branch and status.", roles: ["head_office", "branch_manager"] },
         { xmlid: "strategic_management.action_strategic_achievement_report", group: "achievements", icon: "M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4ZM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3", label: "Achievement Reports", description: "Completed objectives: key results achieved, tasks done and who confirmed them.", roles: ["head_office", "branch_manager"] },
+        { xmlid: "strategic_management.action_strategic_company_report", group: "company", icon: "M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6M9 11h.01M15 11h.01", label: "Monthly Company Reports", description: "Sales, waste, purchasing and objectives for every branch, one report per month.", roles: ["head_office"] },
         { xmlid: "strategic_management.action_strategic_kpi_exceptions", group: "kpi", icon: "M12 3 2 20h20L12 3ZM12 10v4M12 17h.01", label: "KPI Exceptions", description: "Targets that could not be evaluated, with reasons.", roles: ["head_office", "branch_manager"] },
     ],
     configuration: [

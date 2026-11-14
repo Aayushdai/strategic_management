@@ -21,6 +21,7 @@ SETTINGS = {
     "sm_due_soon_days": ("int", "Due-soon warning (days before)", 1, 60),
     "sm_due_result_notes": ("bool", "Due-date result notes", None, None),
     "sm_achievement_reports": ("bool", "Achievement reports", None, None),
+    "sm_company_reports": ("bool", "Monthly company report", None, None),
     "sm_nightly_hour": ("int", "Nightly update hour", 0, 23),
     "sm_expiring_days": ("int", "Expiring stock window (days)", 1, 90),
     "sm_late_critical_days": ("int", "Late delivery is critical after (days)", 1, 60),
@@ -43,6 +44,7 @@ class ResCompanyStrategicSettings(models.Model):
     sm_due_soon_days = fields.Integer("Due-soon warning (days)", default=3)
     sm_due_result_notes = fields.Boolean("Due-date result notes", default=True)
     sm_achievement_reports = fields.Boolean("Achievement reports", default=True)
+    sm_company_reports = fields.Boolean("Monthly company report", default=True)
     sm_nightly_hour = fields.Integer("Nightly update hour", default=22)
     sm_expiring_days = fields.Integer("Expiring stock window (days)", default=7)
     sm_late_critical_days = fields.Integer("Late delivery critical after (days)", default=7)
@@ -74,7 +76,10 @@ class StrategicPerformanceDashboardSettings(models.AbstractModel):
             },
             "countries": [{"id": country.id, "name": country.name} for country in self.env["res.country"].sudo().search([], order="name")],
             "timezones": [tz for tz in pytz.common_timezones],
-            "email": {"configured": bool(servers), "servers": servers.mapped("name"), "company_email": company.email or "",
+            # Ready: a server that can sign in (a username without a password is refused by providers such as Gmail).
+            "email": {"configured": bool(servers), "ready": bool(server) and (bool(server.smtp_pass) or not server.smtp_user),
+                      "failed": self.env["mail.mail"].sudo().search_count([("state", "=", "exception")]),
+                      "servers": servers.mapped("name"), "company_email": company.email or "",
                       # The password never goes back to the browser; only whether one is saved.
                       "server": {"host": server.smtp_host or "", "port": server.smtp_port or 587,
                                  "encryption": server.smtp_encryption or "starttls", "user": server.smtp_user or "",

@@ -42,7 +42,8 @@ class StrategicPeriodReports(models.AbstractModel):
     @api.model
     def _run_daily(self, today=None):
         today = today or fields.Date.context_today(self)
-        return {"reports": self._open_monthly_branch_reports(today), "objectives": self._objective_due_dates(today)}
+        return {"reports": self._open_monthly_branch_reports(today), "objectives": self._objective_due_dates(today),
+                "company_reports": self._open_monthly_company_reports(today)}
 
     @api.model
     def _open_monthly_branch_reports(self, today):
@@ -69,6 +70,15 @@ class StrategicPeriodReports(models.AbstractModel):
                 recipients=managers, company=branch.company_id, date_deadline=today + timedelta(days=branch.company_id.sm_report_submit_days - 1))
             opened += 1
         return opened
+
+    @api.model
+    def _open_monthly_company_reports(self, today):
+        if today.day > REPORT_WINDOW_DAYS:
+            return 0
+        Report = self.env["strategic.company.report"]
+        start, end = Report._last_month(today)
+        companies = self.env["res.company"].sudo().search([("sm_company_reports", "=", True)])
+        return sum(1 for company in companies if Report._create_for_month(company, start, end))
 
     @api.model
     def _objective_due_dates(self, today):
