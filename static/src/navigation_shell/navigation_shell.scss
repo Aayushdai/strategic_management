@@ -67,6 +67,8 @@
 .o_sm_navigation_shell {
     height: calc(100vh - 46px);
     height: calc(100dvh - 46px);
+    // The area Odoo actually gives the screen (its action area), whatever sits above it.
+    max-height: 100%;
     min-height: 0;
     overflow: hidden;
     align-items: stretch;
@@ -79,6 +81,9 @@
     overflow-y: auto;
     overscroll-behavior-y: contain;
     flex-shrink: 0;
+    // Room after the last item, so it can always be scrolled clear of whatever covers the window's bottom edge
+    // (taskbar, browser bars, display zoom).
+    padding-bottom: 4rem !important;
 }
 
 .o_sm_navigation_shell > .o_sm_workspace {
