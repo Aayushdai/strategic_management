@@ -56,7 +56,6 @@
                         </div>
                         <div class="o_sm_bg_rows">
                             <div t-foreach="this.progressGoals" t-as="goal" t-key="goal.objective_id" class="o_sm_bg_row o_sm_bg_progress_row">
-                                <span class="o_sm_bg_area_icon"><i class="oi" t-att-data-icon="this.areaIcon(goal)"/></span>
                                 <div class="o_sm_bg_row_text"><strong t-att-title="goal.title" t-esc="goal.title"/><small><t t-esc="goal.area_label"/> · <t t-esc="goal.scope"/></small></div>
                                 <div class="o_sm_bg_row_bar" t-att-title="goal.current + ' / ' + (goal.target or 'Not set')"><t t-call="strategic_management.GoalBar" bar="goal.bar" showLabel="true"/></div>
                                 <span t-att-class="'o_sm_bg_badge ' + this.statusClass(goal.tone)" t-att-title="goal.status" t-esc="goal.status"/>
@@ -77,7 +76,6 @@
                         </div>
                         <div class="o_sm_bg_rows">
                             <div t-foreach="this.attentionGoals" t-as="goal" t-key="goal.objective_id" class="o_sm_bg_row o_sm_bg_attention_row">
-                                <span class="o_sm_bg_area_icon"><i class="oi" t-att-data-icon="this.areaIcon(goal)"/></span>
                                 <div class="o_sm_bg_row_text"><strong t-att-title="goal.title" t-esc="goal.title"/><small><t t-esc="goal.area_label"/> · <t t-esc="goal.scope"/></small><small class="o_sm_bg_row_reason" t-att-title="goal.reason or this.nextStep(goal)" t-esc="goal.reason or this.nextStep(goal) or 'A valid measurement and target must be set up before progress can be calculated.'"/><div t-if="goal.bar" class="o_sm_bg_row_bar is-inline"><t t-call="strategic_management.GoalBar" bar="goal.bar" showLabel="false"/><small t-if="goal.target">Target: <t t-esc="goal.target"/></small></div></div>
                                 <span t-att-class="'o_sm_bg_badge ' + this.statusClass(goal.tone)" t-att-title="goal.status" t-esc="goal.status"/>
                                 <button type="button" class="o_sm_bg_text_button" t-on-click="() => this.openGoal(goal.objective_id)">View →</button>
@@ -92,7 +90,6 @@
                     <div class="o_sm_bg_rows">
                         <div t-foreach="this.monitoringGoals" t-as="goal" t-key="goal.objective_id" class="o_sm_bg_monitor_item">
                         <div class="o_sm_bg_row o_sm_bg_monitor_row">
-                            <span class="o_sm_bg_area_icon"><i class="oi" t-att-data-icon="this.areaIcon(goal)"/></span>
                             <div class="o_sm_bg_row_text"><strong t-att-title="goal.title" t-esc="goal.title"/><small><t t-esc="goal.area_label"/> · <t t-esc="goal.scope"/></small></div>
                             <div class="o_sm_bg_row_text"><span t-esc="goal.monitor.title"/><small t-esc="goal.monitor.period_label"/></div>
                             <strong class="o_sm_bg_row_value" t-esc="goal.current"/>
@@ -176,7 +173,6 @@
                     </div>
                     <div t-if="this.targetMissedGoals.length" class="o_sm_bg_rows">
                         <div t-foreach="this.targetMissedGoals" t-as="goal" t-key="goal.objective_id" class="o_sm_bg_row o_sm_bg_missed_row">
-                            <span class="o_sm_bg_area_icon"><i class="oi" t-att-data-icon="this.areaIcon(goal)"/></span>
                             <div class="o_sm_bg_row_text"><strong t-att-title="goal.title" t-esc="goal.title"/><small><t t-esc="goal.area_label"/> · <t t-esc="goal.scope"/></small></div>
                             <div class="o_sm_bg_row_text"><span><t t-esc="goal.current"/> / <t t-esc="goal.target or 'Not set'"/></span><small>Period ended <t t-esc="this.formatDate(this.periodEnd(goal))"/></small></div>
                             <div class="o_sm_bg_row_bar"><t t-call="strategic_management.GoalBar" bar="goal.bar" showLabel="true"/></div>
@@ -503,14 +499,14 @@
             </div>
         </div>
     </t>
-    <!-- One bar for dashboard and detail: real % as text, width capped at 100, tone from the server. -->
+    <!-- One bullet graph for dashboard and detail: real % as text; the bar runs to 125% with the target tick at 100%. -->
     <t t-name="strategic_management.GoalBar">
         <div t-if="bar and bar.kind === 'waiting'" class="o_sm_bg_bar is-waiting" role="img" t-att-aria-label="bar.label">
             <div class="o_sm_bg_mini_progress"/>
             <strong class="is-neutral" t-esc="bar.label"/>
         </div>
         <div t-elif="bar" class="o_sm_bg_bar" role="img" t-att-aria-label="bar.label">
-            <div class="o_sm_bg_mini_progress"><span t-att-class="'is-' + bar.tone" t-att-style="'width:' + bar.bar + '%'"/></div>
+            <div t-att-class="'o_sm_bullet is-' + bar.tone" t-att-style="this.bulletStyle()" aria-hidden="true"><span class="o_sm_bullet_measure" t-att-style="'width:' + this.bulletWidth(bar) + '%'"/><span class="o_sm_bullet_target"/></div>
             <strong t-att-class="'is-' + bar.tone"><t t-esc="bar.pct"/>%<t t-if="bar.tone === 'exceeded'"> ⚠</t></strong>
         </div>
         <small t-if="bar and showLabel and bar.kind !== 'waiting'" class="o_sm_bg_bar_label" t-esc="bar.label"/>

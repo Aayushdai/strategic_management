@@ -18,19 +18,24 @@
             </div>
         </header>
 
-        <section class="o_sm_pur_goals_strip" aria-label="Purchasing goals">
+        <section class="o_sm_goal_mix" aria-label="Purchasing goals">
             <t t-set="goalSummary" t-value="this.purchasingGoalSummary"/>
-            <span class="o_sm_pur_strip_icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg></span>
-            <strong>Purchasing goals</strong>
+            <div class="o_sm_goal_mix_title"><span>Purchasing goals</span><strong t-if="goalSummary" t-esc="goalSummary.total"/></div>
             <t t-if="goalSummary and goalSummary.total">
-                <span class="o_sm_pur_strip_count"><b><t t-esc="goalSummary.total"/></b> goals</span>
-                <span class="o_sm_pur_pill is-good"><t t-esc="goalSummary.onTrack"/> on track</span>
-                <span class="o_sm_pur_pill is-warn"><t t-esc="goalSummary.attention"/> need attention</span>
-                <span class="o_sm_pur_pill is-neutral"><t t-esc="goalSummary.other"/> in setup or waiting</span>
+                <div class="o_sm_goal_mix_bar" role="img" t-att-aria-label="goalSummary.onTrack + ' on track, ' + goalSummary.attention + ' need attention, ' + goalSummary.other + ' in setup or waiting'">
+                    <i class="is-good" t-att-style="'width:' + (goalSummary.onTrack * 100 / goalSummary.total) + '%'"/>
+                    <i class="is-warn" t-att-style="'width:' + (goalSummary.attention * 100 / goalSummary.total) + '%'"/>
+                    <i class="is-neutral" t-att-style="'width:' + (goalSummary.other * 100 / goalSummary.total) + '%'"/>
+                </div>
+                <button type="button" class="o_sm_pur_link" t-on-click="() => this.togglePurchasing('goals')"><t t-esc="ex.goals ? 'Hide goals' : 'View goals →'"/></button>
+                <ul class="o_sm_goal_mix_legend">
+                    <li class="is-good"><b t-esc="goalSummary.onTrack"/> on track</li>
+                    <li class="is-warn"><b t-esc="goalSummary.attention"/> need attention</li>
+                    <li><b t-esc="goalSummary.other"/> in setup or waiting</li>
+                </ul>
             </t>
-            <span t-elif="goalSummary" class="o_sm_pur_strip_count">No purchasing goals yet</span>
-            <span t-else="" class="o_sm_pur_strip_count">Loading goals…</span>
-            <button t-if="goalSummary and goalSummary.total" type="button" class="o_sm_pur_link" t-on-click="() => this.togglePurchasing('goals')"><t t-esc="ex.goals ? 'Hide goals' : 'View goals →'"/></button>
+            <p t-elif="goalSummary" class="o_sm_goal_mix_empty">No purchasing goals yet.</p>
+            <p t-else="" class="o_sm_goal_mix_empty">Loading goals…</p>
         </section>
         <t t-if="ex.goals"><t t-call="strategic_management.AreaGoals" areaKey="'purchasing'"/></t>
 
