@@ -94,7 +94,7 @@
                         <div t-foreach="br.attention.slice(0, 3)" t-as="item" t-key="item_index" class="o_sm_br_issue_item">
                             <span t-att-class="'o_sm_br_status ' + (item.severity === 'critical' ? 'o_sm_br_status_critical' : 'o_sm_br_status_warn')"><t t-esc="item.severity === 'critical' ? 'Critical' : 'Warning'"/></span>
                             <div class="o_sm_br_issue_copy"><strong t-att-title="item.title"><t t-esc="item.title"/></strong><small t-att-title="item.evidence"><t t-esc="item.branch"/> · <t t-esc="item.evidence"/></small></div>
-                            <button t-if="item.res_model" type="button" class="o_sm_br_item_action" t-on-click="() => this.openIssueRecord(item)">View</button>
+                            <button t-if="item.can_open" type="button" class="o_sm_br_item_action" t-on-click="() => this.openIssueRecord(item)">View</button>
                         </div>
                     </div>
                     <t t-else="">
@@ -109,7 +109,7 @@
                                     <td><t t-esc="item.responsible"/></td>
                                     <td><t t-esc="this.formatPurchaseDate(item.deadline)"/></td>
                                     <td><t t-esc="item.action_status"/></td>
-                                    <td><span t-if="item.res_model" class="o_sm_issue_actions"><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.openIssueRecord(item)">Open</button><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.createIssueFollowup(item)">Assign follow-up</button></span></td>
+                                    <td><span t-if="item.res_model" class="o_sm_issue_actions"><button t-if="item.can_open" type="button" class="o_sm_ov_text_action" t-on-click="() => this.openIssueRecord(item)">Open</button><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.createIssueFollowup(item)">Assign follow-up</button></span></td>
                                 </tr>
                             </tbody>
                         </table></div><t t-call="strategic_management.ListPager" pagerKey="'br_attention'" pagerRows="br.attention"/>
@@ -297,7 +297,7 @@
                         <div t-foreach="br.attention.slice(0, 3)" t-as="item" t-key="item_index" class="o_sm_br_issue_item">
                             <span t-att-class="'o_sm_br_status ' + (item.severity === 'critical' ? 'o_sm_br_status_critical' : 'o_sm_br_status_warn')"><t t-esc="item.severity === 'critical' ? 'Critical' : 'Warning'"/></span>
                             <div class="o_sm_br_issue_copy"><strong t-att-title="item.title"><t t-esc="item.title"/></strong><small t-att-title="item.evidence"><t t-esc="item.branch"/> · <t t-esc="item.evidence"/></small></div>
-                            <button t-if="item.res_model" type="button" class="o_sm_br_item_action" t-on-click="() => this.openIssueRecord(item)">View</button>
+                            <button t-if="item.can_open" type="button" class="o_sm_br_item_action" t-on-click="() => this.openIssueRecord(item)">View</button>
                         </div>
                     </div>
                     <t t-else="">
@@ -312,7 +312,7 @@
                                     <td><t t-esc="item.responsible"/></td>
                                     <td><t t-esc="this.formatPurchaseDate(item.deadline)"/></td>
                                     <td><t t-esc="item.action_status"/></td>
-                                    <td><span t-if="item.res_model" class="o_sm_issue_actions"><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.openIssueRecord(item)">Open</button><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.createIssueFollowup(item)">Assign follow-up</button></span></td>
+                                    <td><span t-if="item.res_model" class="o_sm_issue_actions"><button t-if="item.can_open" type="button" class="o_sm_ov_text_action" t-on-click="() => this.openIssueRecord(item)">Open</button><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.createIssueFollowup(item)">Assign follow-up</button></span></td>
                                 </tr>
                             </tbody>
                         </table></div><t t-call="strategic_management.ListPager" pagerKey="'br_attention'" pagerRows="br.attention"/>

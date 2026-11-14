@@ -16,3 +16,17 @@
 }
 
 .o_sm_task_panel { margin-top: 12px; display: grid; gap: 10px; }
+
+// Tasks & Issues reuses Purchasing's blocks; issue rows stack title, evidence and severity in one cell so nothing overflows.
+.o_sm_navigation_shell .o_sm_tasks_issues {
+    .o_sm_pur_metric.is-active { border-color: var(--sm-home-purple); box-shadow: 0 0 0 2px rgba(99, 91, 255, .18); }
+    .o_sm_issue_table { table-layout: auto; }
+    .o_sm_issue_table td { vertical-align: top; }
+    .o_sm_issue_cell { min-width: 16rem; white-space: normal;
+        > .o_sm_pur_status { margin-right: .4rem; vertical-align: middle; }
+        > strong { font-weight: 600; }
+        > small { display: block; margin-top: .2rem; color: var(--sm-home-muted); font-size: .76rem; line-height: 1.35; }
+    }
+    .o_sm_issue_status { white-space: normal; min-width: 8rem; }
+    .is-action { text-align: right; white-space: nowrap; }
+}

@@ -97,6 +97,28 @@ class TestPeopleDashboard(TransactionCase):
         self.assertEqual(item["severity"], "critical", "More than 7 days overdue is critical.")
         self.assertEqual(item["responsible"], self.StaffA.name)
 
+    def test_task_cards_and_rows_open_what_they_count(self):
+        late = self._activity(self.StaffA, self.today - timedelta(days=4), "Clean the grinder")
+        planned = self._activity(self.StaffA, self.today + timedelta(days=2), "Order cups")
+        data = self._people(self.ManagerA)
+        drill = data["drill"]
+        self.assertEqual(drill["open_tasks"]["model"], "mail.activity")
+        self.assertTrue({late.id, planned.id} <= set(drill["open_tasks"]["domain"][0][2]))
+        self.assertIn(late.id, drill["overdue_tasks"]["domain"][0][2])
+        self.assertNotIn(planned.id, drill["overdue_tasks"]["domain"][0][2], "overdue opens only the overdue ones")
+        row = next(row for row in data["actions"] if row["task"] == "Clean the grinder")
+        self.assertEqual((row["res_model"], row["res_id"]), ("res.partner", self.StaffA.partner_id.id))
+        # A record the viewer may not open gives no link (no error dialog on click).
+        hidden = self.env["ir.config_parameter"].sudo().search([], limit=1)
+        Dashboard = self.env["strategic.performance.dashboard"].with_user(self.StaffA)
+        self.assertEqual(Dashboard._people_openable("ir.config_parameter", hidden.id), {})
+        self.assertEqual(Dashboard._people_openable("no.such.model", 1), {})
+        # Forms that need another app's rights (a receipt shows lots) are not offered without them.
+        picking = self.env["stock.picking"].sudo().search([], limit=1)
+        if picking:
+            manager = self.env["strategic.performance.dashboard"].with_user(self.ManagerA)
+            self.assertEqual(manager._can_open_record("stock.picking", picking.id), self.ManagerA.has_group("stock.group_stock_user"))
+
     def test_missing_attendance_app_is_reported_not_fabricated(self):
         if "hr.attendance" in self.env.registry.models:
             self.skipTest("Attendances app installed.")

@@ -89,55 +89,92 @@
     </div>
     </t>
     <t t-name="strategic_management.TasksIssuesPage">
-    <div class="o_sm_branches_ui">
-        <t t-set="ox" t-value="this.state.overviewExtras"/>
-        <t t-set="pp" t-value="this.state.peopleData"/>
-        <header class="o_sm_br_header">
-            <div class="o_sm_br_title_block">
+    <t t-set="ox" t-value="this.state.overviewExtras"/>
+    <t t-set="pp" t-value="this.state.peopleData"/>
+    <t t-set="drill" t-value="(pp and pp.drill) or {}"/>
+    <!-- Same building blocks as Purchasing, so the pages look alike. -->
+    <div class="o_sm_purchasing_ui o_sm_tasks_issues">
+        <header class="o_sm_pur_header">
+            <div class="o_sm_pur_title_block">
                 <h1>Tasks &amp; Issues</h1>
-                <p>Measured business issues and the follow-up actions assigned to resolve them.</p>
-                <span class="o_sm_br_preview_note">Live Odoo data · updates automatically</span>
+                <p>Measured business issues and the follow-up tasks assigned to resolve them.</p>
+                <span class="o_sm_pur_preview_badge"><i class="o_sm_pur_live_dot"/> Live Odoo data</span>
             </div>
             <div class="o_sm_pur_filters">
-                <label class="o_sm_pur_filter">From <input type="date" t-att-value="this.state.dateStart" t-att-max="this.state.todayDate" t-on-change="this.onStartDateChanged" aria-label="Tasks start date"/></label>
-                <label class="o_sm_pur_filter">To <input type="date" t-att-value="this.state.dateEnd" t-att-max="this.state.todayDate" t-on-change="this.onEndDateChanged" aria-label="Tasks end date"/></label>
-                <label t-if="pp and pp.role === 'head_office'" class="o_sm_pur_filter">Branch <select t-att-value="this.branchSelectValue" t-on-change="this.onWarehouseChanged" aria-label="Tasks branch filter"><option value="all">All Branches</option><t t-foreach="pp.branch_options" t-as="branch" t-key="branch.id"><option t-att-value="branch.id"><t t-esc="branch.name"/></option></t></select></label>
+                <label class="o_sm_pur_filter"><span>From</span><input type="date" t-att-value="this.state.dateStart" t-att-max="this.state.todayDate" t-on-change="this.onStartDateChanged" aria-label="Tasks start date"/></label>
+                <label class="o_sm_pur_filter"><span>To</span><input type="date" t-att-value="this.state.dateEnd" t-att-max="this.state.todayDate" t-on-change="this.onEndDateChanged" aria-label="Tasks end date"/></label>
+                <label t-if="pp and pp.role === 'head_office'" class="o_sm_pur_filter"><span>Branch</span><select t-att-value="this.branchSelectValue" t-on-change="this.onWarehouseChanged" aria-label="Tasks branch filter"><option value="all">All Branches</option><t t-foreach="pp.branch_options" t-as="branch" t-key="branch.id"><option t-att-value="branch.id"><t t-esc="branch.name"/></option></t></select></label>
             </div>
         </header>
 
-        <section class="o_sm_br_summary" aria-label="Tasks and issues summary">
-            <article class="o_sm_br_metric"><div class="o_sm_br_metric_icon o_sm_br_red"><svg class="o_sm_br_metric_svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3 22 20H2Z"/><path d="M12 9v5M12 17h.01"/></svg></div><div class="o_sm_br_metric_copy"><span>Critical Issues</span><strong><t t-esc="this.issueCount('critical')"/></strong><small>Need prompt action</small></div></article>
-            <article class="o_sm_br_metric"><div class="o_sm_br_metric_icon o_sm_br_amber"><svg class="o_sm_br_metric_svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/></svg></div><div class="o_sm_br_metric_copy"><span>Warnings</span><strong><t t-esc="this.issueCount('warning')"/></strong><small>Below target or delayed</small></div></article>
-            <article class="o_sm_br_metric"><div class="o_sm_br_metric_icon o_sm_br_blue"><svg class="o_sm_br_metric_svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="5" y="4.5" width="14" height="17" rx="2"/><path d="M8 11l2 2 4-4M8 17h8"/></svg></div><div class="o_sm_br_metric_copy"><span>Open Tasks</span><strong><t t-esc="this.openTaskCount()"/></strong><small>Assigned Odoo activities</small></div></article>
-            <article class="o_sm_br_metric"><div class="o_sm_br_metric_icon o_sm_br_red"><svg class="o_sm_br_metric_svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><div class="o_sm_br_metric_copy"><span>Overdue Tasks</span><strong><t t-esc="pp ? pp.summary.overdue_tasks : '—'"/></strong><small>Past their due date</small></div></article>
+        <section class="o_sm_pur_summary" aria-label="Tasks and issues summary">
+            <t t-set="canFilter" t-value="pp and pp.role !== 'employee'"/>
+            <article t-att-class="'o_sm_pur_metric' + (canFilter ? ' is-drill' : '') + (this.state.issueSeverity === 'critical' ? ' is-active' : '')" t-att-role="canFilter ? 'button' : false" t-att-tabindex="canFilter ? 0 : false"
+                     t-att-aria-pressed="canFilter ? (this.state.issueSeverity === 'critical' ? 'true' : 'false') : false"
+                     t-on-click="() => canFilter and this.toggleIssueSeverity('critical')" t-on-keydown="(ev) => canFilter and this.onIssueSeverityKey(ev, 'critical')">
+                <span class="o_sm_pur_metric_icon is-red"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 21.5 20h-19Z"/><path d="M12 10v4.5M12 17.2h.01"/></svg></span>
+                <div class="o_sm_pur_metric_copy"><span>Critical Issues</span><strong><t t-esc="this.issueCount('critical')"/></strong><small>Need prompt action</small></div></article>
+            <article t-att-class="'o_sm_pur_metric' + (canFilter ? ' is-drill' : '') + (this.state.issueSeverity === 'warning' ? ' is-active' : '')" t-att-role="canFilter ? 'button' : false" t-att-tabindex="canFilter ? 0 : false"
+                     t-att-aria-pressed="canFilter ? (this.state.issueSeverity === 'warning' ? 'true' : 'false') : false"
+                     t-on-click="() => canFilter and this.toggleIssueSeverity('warning')" t-on-keydown="(ev) => canFilter and this.onIssueSeverityKey(ev, 'warning')">
+                <span class="o_sm_pur_metric_icon is-orange"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/></svg></span>
+                <div class="o_sm_pur_metric_copy"><span>Warnings</span><strong><t t-esc="this.issueCount('warning')"/></strong><small>Below target or delayed</small></div></article>
+            <article t-att-class="'o_sm_pur_metric' + (drill.open_tasks ? ' is-drill' : '')" t-att-role="drill.open_tasks ? 'button' : false" t-att-tabindex="drill.open_tasks ? 0 : false"
+                     t-on-click="() => this.openDrill(drill.open_tasks)" t-on-keydown="(ev) => this.onDrillKey(ev, drill.open_tasks)">
+                <span class="o_sm_pur_metric_icon is-purple"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4.5" width="14" height="17" rx="2"/><path d="M8 11l2 2 4-4M8 17h8"/></svg></span>
+                <div class="o_sm_pur_metric_copy"><span>Open Tasks</span><strong><t t-esc="this.openTaskCount()"/></strong><small>Assigned follow-ups</small></div></article>
+            <article t-att-class="'o_sm_pur_metric' + (drill.overdue_tasks ? ' is-drill' : '')" t-att-role="drill.overdue_tasks ? 'button' : false" t-att-tabindex="drill.overdue_tasks ? 0 : false"
+                     t-on-click="() => this.openDrill(drill.overdue_tasks)" t-on-keydown="(ev) => this.onDrillKey(ev, drill.overdue_tasks)">
+                <span class="o_sm_pur_metric_icon is-red"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+                <div class="o_sm_pur_metric_copy"><span>Overdue Tasks</span><strong><t t-esc="pp ? pp.summary.overdue_tasks : '—'"/></strong><small t-att-class="pp and pp.summary.overdue_tasks ? 'is-bad' : ''">Past their due date</small></div></article>
         </section>
 
-        <article t-if="pp and pp.role !== 'employee'" class="o_sm_br_panel">
-            <div class="o_sm_br_panel_heading"><h2>Open Issues</h2><span class="o_sm_br_count"><t t-esc="ox ? ox.attention.length : 0"/></span></div>
-            <p t-if="ox and !ox.attention.length" class="o_sm_br_panel_hint">No measurable issues in this period.</p>
-            <div t-elif="ox" class="o_sm_pur_table_wrap"><table class="o_sm_pur_table">
-                <thead><tr><th>Severity</th><th>Issue</th><th>Branch</th><th>Evidence</th><th>Responsible</th><th>Deadline</th><th>Action status</th><th>Actions</th></tr></thead>
-                <tbody><tr t-foreach="this.pageRows('task_issues', ox.attention)" t-as="item" t-key="item_index">
-                    <td><span t-att-class="'o_sm_br_status ' + (item.severity === 'critical' ? 'o_sm_br_status_critical' : 'o_sm_br_status_warn')"><t t-esc="item.severity === 'critical' ? 'Critical' : 'Warning'"/></span></td>
-                    <td><t t-esc="item.title"/></td><td><t t-esc="item.branch or '—'"/></td><td style="white-space:normal"><t t-esc="item.evidence"/></td>
-                    <td><t t-esc="item.responsible or 'Not assigned'"/></td><td><t t-esc="item.deadline ? this.formatPurchaseDate(item.deadline) : '—'"/></td><td><t t-esc="item.action_status or '—'"/></td>
-                    <td><span t-if="item.res_model" class="o_sm_issue_actions"><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.openIssueRecord(item)">Open</button><button type="button" class="o_sm_ov_text_action" t-on-click="() => this.createIssueFollowup(item)">Assign follow-up</button></span></td>
-                </tr></tbody>
-            </table></div>
-            <p t-else="" class="o_sm_br_panel_hint">Loading…</p><t t-call="strategic_management.ListPager" pagerKey="'task_issues'" pagerRows="ox and ox.attention"/>
+        <article t-if="pp and pp.role !== 'employee'" class="o_sm_pur_panel">
+            <t t-set="issues" t-value="this.visibleIssues"/>
+            <div class="o_sm_pur_panel_heading">
+                <h2 class="is-warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 21.5 20h-19Z"/><path d="M12 10v4.5M12 17.2h.01"/></svg>Open Issues <span class="o_sm_pur_count" t-esc="issues ? issues.length : 0"/></h2>
+                <button t-if="this.state.issueSeverity" type="button" class="o_sm_pur_link" t-on-click="() => this.toggleIssueSeverity(this.state.issueSeverity)">Showing <t t-esc="this.state.issueSeverity === 'critical' ? 'critical' : 'warnings'"/> only · Show all</button>
+            </div>
+            <p t-if="!ox" class="o_sm_pur_empty">Loading…</p>
+            <p t-elif="!issues.length" class="o_sm_pur_empty">No measurable issues in this period.</p>
+            <t t-else="">
+                <div class="o_sm_pur_table_wrap"><table class="o_sm_pur_table o_sm_issue_table">
+                    <thead><tr><th>Issue</th><th>Branch</th><th>Responsible</th><th>Deadline</th><th>Action status</th><th/></tr></thead>
+                    <tbody><tr t-foreach="this.pageRows('task_issues', issues)" t-as="item" t-key="item_index" t-att-class="item.can_open ? 'is-drill' : ''"
+                               t-att-tabindex="item.can_open ? 0 : false" t-att-title="item.can_open ? 'Open the record behind this issue' : false"
+                               t-on-click="() => item.can_open and this.openIssueRecord(item)" t-on-keydown="(ev) => item.can_open and (ev.key === 'Enter') and this.openIssueRecord(item)">
+                        <td class="o_sm_issue_cell"><span t-att-class="'o_sm_pur_status ' + (item.severity === 'critical' ? 'o_sm_pur_status_bad' : 'o_sm_pur_status_warn')" t-esc="item.severity === 'critical' ? 'Critical' : 'Warning'"/>
+                            <strong t-esc="item.title"/><small t-if="item.evidence" t-esc="item.evidence"/></td>
+                        <td t-esc="item.branch or '—'"/>
+                        <td t-esc="item.responsible or 'Not assigned'"/>
+                        <td t-esc="item.deadline ? this.formatPurchaseDate(item.deadline) : '—'"/>
+                        <td class="o_sm_issue_status" t-esc="item.action_status or '—'"/>
+                        <td class="is-action"><button t-if="item.res_model" type="button" class="o_sm_pur_item_action" t-on-click.stop="() => this.createIssueFollowup(item)">Assign follow-up</button></td>
+                    </tr></tbody>
+                </table></div>
+                <t t-call="strategic_management.ListPager" pagerKey="'task_issues'" pagerRows="issues"/>
+            </t>
         </article>
 
-        <article class="o_sm_br_panel">
-            <div class="o_sm_br_panel_heading"><h2>Follow-up Tasks</h2><span class="o_sm_br_panel_hint">Open activities and those completed in the period</span></div>
-            <p t-if="pp and !pp.actions.length" class="o_sm_br_panel_hint">No tasks found.</p>
-            <div t-elif="pp" class="o_sm_pur_table_wrap"><table class="o_sm_pur_table">
-                <thead><tr><th>Task</th><th>Record</th><th>Assigned</th><th>Branch</th><th>Due / Done</th><th>Status</th></tr></thead>
-                <tbody><tr t-foreach="this.pageRows('task_actions', pp.actions)" t-as="action" t-key="action_index">
-                    <td><t t-esc="action.task"/></td><td><t t-esc="action.record"/></td><td><t t-esc="action.assigned"/></td><td><t t-esc="action.branch"/></td>
-                    <td><t t-esc="this.formatPurchaseDate(action.due_date)"/></td><td><span t-att-class="'o_sm_people_task_status ' + this.peopleTaskClass(action.status)"><t t-esc="action.status"/></span></td>
-                </tr></tbody>
-            </table></div>
-            <p t-else="" class="o_sm_br_panel_hint">Loading…</p><t t-call="strategic_management.ListPager" pagerKey="'task_actions'" pagerRows="pp and pp.actions"/>
+        <article class="o_sm_pur_panel">
+            <div class="o_sm_pur_panel_heading"><h2>Follow-up Tasks <span class="o_sm_pur_count" t-esc="pp ? pp.actions.length : 0"/></h2><span class="o_sm_pur_panel_tag">Open, and completed in the period</span></div>
+            <p t-if="!pp" class="o_sm_pur_empty">Loading…</p>
+            <p t-elif="!pp.actions.length" class="o_sm_pur_empty">No tasks found.</p>
+            <t t-else="">
+                <div class="o_sm_pur_table_wrap"><table class="o_sm_pur_table o_sm_issue_table">
+                    <thead><tr><th>Task</th><th>Assigned</th><th>Branch</th><th>Due / Done</th><th>Status</th></tr></thead>
+                    <tbody><tr t-foreach="this.pageRows('task_actions', pp.actions)" t-as="action" t-key="action_index" t-att-class="action.res_model ? 'is-drill' : ''"
+                               t-att-tabindex="action.res_model ? 0 : false" t-att-title="action.res_model ? 'Open ' + (action.record or 'the record') : false"
+                               t-on-click="() => action.res_model and this.openIssueRecord(action)" t-on-keydown="(ev) => action.res_model and (ev.key === 'Enter') and this.openIssueRecord(action)">
+                        <td class="o_sm_issue_cell"><strong t-esc="action.task"/><small t-if="action.record" t-esc="action.record"/></td>
+                        <td t-esc="action.assigned"/>
+                        <td t-esc="action.branch"/>
+                        <td t-esc="this.formatPurchaseDate(action.due_date)"/>
+                        <td><span t-att-class="'o_sm_people_task_status ' + this.peopleTaskClass(action.status)" t-esc="action.status"/></td>
+                    </tr></tbody>
+                </table></div>
+                <t t-call="strategic_management.ListPager" pagerKey="'task_actions'" pagerRows="pp.actions"/>
+            </t>
         </article>
     </div>
     </t>

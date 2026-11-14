@@ -142,6 +142,8 @@ class StrategicPerformanceDashboardBranches(models.AbstractModel):
         contribution_known = totals["cost_known"] and totals["waste_known"]
         result["branches"] = rows
         result["attention"] = attention[:_LIST_LIMIT]
+        for item in result["attention"]:
+            item["can_open"] = self._can_open_record(item.get("res_model"), item.get("res_id"))
         result["summary"] = {
             "active_branches": len(rows),
             "meeting_target": sum(1 for row in rows if row["status"] == "meeting_target"),

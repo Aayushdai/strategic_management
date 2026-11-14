@@ -214,6 +214,26 @@ export const tasksPage = {
         return items.filter((item) => (severity === "critical") === (item.severity === "critical")).length;
     },
 
+    /** Open Issues, narrowed by the Critical / Warnings card when one is selected. */
+    get visibleIssues() {
+        const items = this.state.overviewExtras?.attention;
+        if (!items) return null;
+        const severity = this.state.issueSeverity;
+        return severity ? items.filter((item) => (severity === "critical") === (item.severity === "critical")) : items;
+    },
+
+    toggleIssueSeverity(severity) {
+        this.state.issueSeverity = this.state.issueSeverity === severity ? null : severity;
+        this.setPage("task_issues", 1);
+    },
+
+    onIssueSeverityKey(event, severity) {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            this.toggleIssueSeverity(severity);
+        }
+    },
+
     openTaskCount() {
         const rows = this.state.peopleData?.workload;
         return rows ? rows.reduce((sum, row) => sum + row.open, 0) : "—";

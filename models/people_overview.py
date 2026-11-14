@@ -178,9 +178,12 @@ class StrategicPerformanceDashboardPeople(models.AbstractModel):
             {"day": label, **weekday_counts[index]} for index, label in enumerate(_WEEKDAYS)
         ] if attendance_installed else []
 
-        actions, workload = self._people_tasks(staff_users, start, end, today)
+        actions, workload, open_ids, overdue_ids = self._people_tasks(staff_users, start, end, today)
         result["actions"] = actions
         result["workload"] = workload
+        # The task cards open Odoo's activity list of exactly the activities they count (Odoo's rules still apply).
+        result["drill"] = {"open_tasks": self._overview_drill("mail.activity", [], "Open tasks", ids=open_ids),
+                           "overdue_tasks": self._overview_drill("mail.activity", [], "Overdue tasks", ids=overdue_ids)}
 
         attention = []
         for row in staffing:
@@ -323,7 +326,7 @@ class StrategicPerformanceDashboardPeople(models.AbstractModel):
         Activity = self.env["mail.activity"].sudo()
         activities = Activity.search([("user_id", "in", staff_users.ids)], order="date_deadline asc, id asc")
         workload = defaultdict(lambda: {"open": 0, "overdue": 0, "oldest_overdue": False})
-        actions = []
+        actions, overdue_ids = [], []
         for activity in activities:
             user = activity.user_id
             bucket = workload[user.id]
@@ -331,6 +334,7 @@ class StrategicPerformanceDashboardPeople(models.AbstractModel):
             bucket["open"] += 1
             if activity.date_deadline < today:
                 bucket["overdue"] += 1
+                overdue_ids.append(activity.id)
                 if not bucket["oldest_overdue"] or fields.Date.to_string(activity.date_deadline) < bucket["oldest_overdue"]:
                     bucket["oldest_overdue"] = fields.Date.to_string(activity.date_deadline)
             if len(actions) < 15:
@@ -341,6 +345,7 @@ class StrategicPerformanceDashboardPeople(models.AbstractModel):
                     "branch": user.strategic_branch_warehouse_id.display_name or "Unassigned",
                     "due_date": fields.Date.to_string(activity.date_deadline),
                     "status": "Overdue" if activity.date_deadline < today else "Due today" if activity.date_deadline == today else "Planned",
+                    **self._people_openable(activity.res_model, activity.res_id),
                 })
         # Completed activities become chatter messages carrying their activity type.
         start_utc, end_utc = self._overview_utc_bounds(start, end)
@@ -360,12 +365,18 @@ class StrategicPerformanceDashboardPeople(models.AbstractModel):
                 "branch": user.strategic_branch_warehouse_id.display_name if user and user.strategic_branch_warehouse_id else "Unassigned",
                 "due_date": fields.Date.to_string(fields.Datetime.context_timestamp(self, message.date).date()),
                 "status": "Done",
+                **self._people_openable(message.model, message.res_id),
             })
         workload_rows = sorted(
             ({"user_id": user_id, **values} for user_id, values in workload.items()),
             key=lambda row: (-row["overdue"], -row["open"], row["name"]),
         )
-        return actions, workload_rows
+        return actions, workload_rows, activities.ids, overdue_ids
+
+    @api.model
+    def _people_openable(self, model, res_id):
+        """The record a task row opens, only when this user may open it (the rows themselves are read as the system)."""
+        return {"res_model": model, "res_id": res_id} if self._can_open_record(model, res_id) else {}
 
     @api.model
     def _people_insights(self, staffing, exceptions, workload, by_weekday):

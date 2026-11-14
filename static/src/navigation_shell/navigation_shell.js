@@ -112,6 +112,7 @@ export class StrategicNavigationShell extends Component {
             // Settings tab (pages/settings), Head Office.
             settings: null,
             mySettings: null,
+            issueSeverity: null,
             settingsTab: "settings",
             settingsError: "",
             staffingWork: [],

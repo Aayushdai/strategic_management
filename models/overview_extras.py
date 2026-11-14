@@ -25,6 +25,8 @@ _FOLLOWUP_MODELS = {
     "product.product", "stock.lot", "hr.employee",
 }
 
+# Odoo forms that show data from another app: opening them needs that app's user rights.
+_FORM_GROUPS = {"stock.picking": "stock.group_stock_user", "stock.lot": "stock.group_stock_user", "hr.employee": "hr.group_hr_user"}
 
 class StrategicPerformanceDashboardOverview(models.AbstractModel):
     _inherit = "strategic.performance.dashboard"
@@ -165,7 +167,20 @@ class StrategicPerformanceDashboardOverview(models.AbstractModel):
             item["action_status"] = self._action_status(
                 Activity.search([("res_model", "=", record._name), ("res_id", "=", record.id)]), today,
             ) if record else False
+            item["can_open"] = self._can_open_record(item.get("res_model"), item.get("res_id"))
         return items
+
+    @api.model
+    def _can_open_record(self, res_model, res_id):
+        """Whether this user can open the record's Odoo form: they may read it, and have the app rights its form needs
+        (a receipt's form shows lots, which only Inventory users may read)."""
+        if not res_model or not res_id or res_model not in self.env.registry.models:
+            return False
+        group = _FORM_GROUPS.get(res_model)
+        if group and not self.env.user.has_group(group):
+            return False
+        record = self.env[res_model].browse(int(res_id))
+        return bool(record.exists()) and record.has_access("read")
 
     @api.model
     def _followup_record(self, res_model, res_id):
