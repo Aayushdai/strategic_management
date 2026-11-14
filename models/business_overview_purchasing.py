@@ -53,6 +53,11 @@ class StrategicPerformanceDashboardPurchasingOverview(models.AbstractModel):
             "recent_orders": [],
             "price_months": [],
             "ingredient_price_trend": [],
+            "daily_spend": [],
+            "previous_period": False,
+            "spend_by_branch": [],
+            "largest_order": False,
+            "top_supplier": False,
             "messages": [],
         }
         if not (is_head_office or is_branch_manager):
@@ -396,6 +401,7 @@ class StrategicPerformanceDashboardPurchasingOverview(models.AbstractModel):
                 "expected_date": fields.Date.to_string(min(dates)) if dates else "",
                 "outstanding_value": round(outstanding_by_order.get(order.id, 0.0), 2),
                 "date_order": fields.Date.to_string(order_date(order)) if order_date(order) else "",
+                "days_late": (fields.Date.context_today(self) - min(dates)).days if status == "Overdue" and dates else 0,
             })
         open_deliveries.sort(key=lambda row: (row["status"] != "Overdue", row["expected_date"] or "9999-12-31", row["name"]))
 
@@ -441,6 +447,42 @@ class StrategicPerformanceDashboardPurchasingOverview(models.AbstractModel):
                                               ids=product_line_ids[product_id]),
             })
 
+        def order_amount(order):
+            return to_company_currency(order.amount_untaxed, order.currency_id if "currency_id" in order._fields else company_currency, order.date_order)
+
+        spend_by_day = defaultdict(float)
+        orders_by_day = defaultdict(int)
+        spend_by_branch = defaultdict(float)
+        spend_by_supplier = defaultdict(float)
+        for order in confirmed:
+            amount = order_amount(order)
+            day = order_date(order)
+            if day:
+                spend_by_day[day] += amount
+                orders_by_day[day] += 1
+            spend_by_branch[order_branch(order)] += amount
+            spend_by_supplier[order.partner_id.display_name if order.partner_id else "Unknown supplier"] += amount
+        daily_spend = []
+        day = start
+        while day <= end:
+            daily_spend.append({"date": fields.Date.to_string(day), "amount": round(spend_by_day.get(day, 0.0), 2), "orders": orders_by_day.get(day, 0)})
+            day += timedelta(days=1)
+        # Same length, immediately before; measured the same way as the headline (the purchase KPI's calculation).
+        previous_last = start - timedelta(days=1)
+        previous_first = previous_last - (end - start)
+        prev_start_utc, prev_end_utc = self._overview_utc_bounds(previous_first, previous_last)
+        previous_committed, _previous_rows, previous_value, _previous_issue = confirmed_purchase_commitments(
+            self.env, company, prev_start_utc, prev_end_utc, Warehouse.browse(warehouse_ids))
+        previous_period = {
+            "start": fields.Date.to_string(previous_first), "end": fields.Date.to_string(previous_last),
+            "spend": round(previous_value, 2) if previous_value is not None else False,
+            "orders": len(previous_committed) if previous_committed is not None else False,
+        }
+        branch_rows = {row["name"]: 0.0 for row in branch_options} if not selected_warehouse else {}
+        branch_rows.update(spend_by_branch)
+        largest = max(confirmed, key=order_amount) if confirmed else False
+        top_supplier = max(spend_by_supplier.items(), key=lambda pair: pair[1]) if spend_by_supplier else False
+
         recent_orders = []
         for order in orders[:_LIST_LIMIT]:
             status_label, status_class = order_status(order)
@@ -485,5 +527,11 @@ class StrategicPerformanceDashboardPurchasingOverview(models.AbstractModel):
             "recent_orders": recent_orders,
             "price_months": [{"key": key, "label": month_label_by_key[key]} for key in month_keys],
             "ingredient_price_trend": price_trends,
+            "daily_spend": daily_spend,
+            "previous_period": previous_period,
+            "spend_by_branch": sorted(({"name": name, "value": round(value, 2)} for name, value in branch_rows.items()),
+                                      key=lambda row: (-row["value"], row["name"])),
+            "largest_order": {"name": largest.name, "amount": round(order_amount(largest), 2)} if largest else False,
+            "top_supplier": {"name": top_supplier[0], "amount": round(top_supplier[1], 2)} if top_supplier else False,
             "messages": ([] if orders else ["No purchase orders match the selected period and branch."]) + ([committed_issue] if committed_issue else []),
         }

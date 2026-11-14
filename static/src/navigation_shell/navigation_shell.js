@@ -155,6 +155,9 @@ export class StrategicNavigationShell extends Component {
             overviewExtras: null,
             // Purchasing: compact previews; "See more" expands the existing full lists in place.
             purExpanded: {},
+            purTab: "overview",
+            purHeroMetric: "spend",
+            purchasingLoadedAt: null,
             // Inventory & Waste: compact previews; "See all" and the detail toggles expand the existing sections in place.
             invExpanded: {},
             brExpanded: {},

@@ -33,6 +33,7 @@ export const purchasingPage = {
             );
             if (requestId === this.purchasingRequestId) {
                 this.state.purchasingData = data;
+                this.state.purchasingLoadedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
             }
         } catch (purchasingError) {
             // A failed background refresh keeps the last good figures on screen.
@@ -152,5 +153,110 @@ export const purchasingPage = {
 
     purchaseStatusClass(status) {
         return status || "o_sm_pur_status_info";
+    },
+
+    // ------------------------------------------------------------------ calm page (design D)
+    setPurTab(tab) {
+        this.state.purTab = tab;
+    },
+
+    setPurHeroMetric(metric) {
+        this.state.purHeroMetric = metric;
+    },
+
+    /** Headline: the period's running total (spend or orders) against the previous period's total, as SVG paths. */
+    get purchasingHero() {
+        const pd = this.state.purchasingData;
+        if (!pd || !pd.available) return null;
+        const orders = this.state.purHeroMetric === "orders";
+        const days = pd.daily_spend || [];
+        let running = 0;
+        const series = days.map((day) => (running += orders ? Number(day.orders) || 0 : Number(day.amount) || 0));
+        const total = orders ? pd.purchase_order_count : pd.purchase_order_value;
+        const previous = pd.previous_period ? (orders ? pd.previous_period.orders : pd.previous_period.spend) : false;
+        const hasPrevious = previous !== false && previous !== null && previous !== undefined;
+        const top = Math.max(running, hasPrevious ? Number(previous) : 0, Number(total) || 0) * 1.12 || 1;
+        const x = (index) => (days.length > 1 ? (index * 600) / (days.length - 1) : 300);
+        const y = (value) => 200 - (value / top) * 190;
+        const points = series.map((value, index) => `${x(index).toFixed(1)} ${y(value).toFixed(1)}`);
+        const line = points.length ? `M${points.join(" L")}` : "";
+        const format = (value) => (orders ? this.formatNumber(value) : this.formatPurchaseCurrency(value));
+        let change = "";
+        let compare = "";
+        if (hasPrevious && Number(previous) > 0) {
+            const pct = ((Number(total) - Number(previous)) / Number(previous)) * 100;
+            change = `${pct > 0 ? "+" : pct < 0 ? "−" : ""}${Math.abs(pct).toFixed(1)}%`;
+            compare = `vs ${format(previous)} previous period`;
+        } else if (hasPrevious) {
+            compare = orders ? "No orders in the previous period" : "No spend in the previous period";
+        }
+        const middle = days[Math.floor((days.length - 1) / 2)];
+        return {
+            title: orders ? "Confirmed orders" : "Purchase spend",
+            value: format(total),
+            change,
+            compare,
+            line,
+            area: line ? `${line} L${x(points.length - 1).toFixed(1)} 200 L${x(0).toFixed(1)} 200 Z` : "",
+            ref: hasPrevious && Number(previous) > 0 ? `M0 ${y(Number(previous)).toFixed(1)} L600 ${y(Number(previous)).toFixed(1)}` : "",
+            axis: days.length ? [days[0].date, middle && middle.date, days[days.length - 1].date].filter(Boolean) : [],
+            label: `${orders ? "Running count of confirmed orders" : "Running purchase spend"} over the period: ${format(total)}${compare ? ", " + compare : ""}`,
+        };
+    },
+
+    /** The one thing that needs attention first: overdue deliveries, with the oldest named. */
+    get purchasingAlert() {
+        const pd = this.state.purchasingData;
+        if (!pd || !pd.available || !pd.overdue_delivery_count) return null;
+        const oldest = (pd.open_deliveries || []).find((row) => row.status === "Overdue");
+        const count = pd.overdue_delivery_count;
+        return {
+            headline: `${count} of ${pd.pending_delivery_count} open deliveries ${count === 1 ? "is" : "are"} overdue`,
+            detail: oldest ? `Oldest is ${oldest.name} from ${oldest.supplier}, ${oldest.days_late} day${oldest.days_late === 1 ? "" : "s"} late at ${oldest.branch}.` : "",
+        };
+    },
+
+    get overdueDeliveries() {
+        return (this.state.purchasingData?.open_deliveries || []).filter((row) => row.status === "Overdue");
+    },
+
+    onTimePendingCount() {
+        const pd = this.state.purchasingData;
+        return pd ? Math.max(0, (pd.pending_delivery_count || 0) - (pd.overdue_delivery_count || 0)) : 0;
+    },
+
+    oldestOverdueDays() {
+        const first = this.overdueDeliveries[0];
+        return first ? first.days_late : 0;
+    },
+
+    purBadge(statusClass) {
+        return { o_sm_pur_status_good: "is-good", o_sm_pur_status_warn: "is-warn", o_sm_pur_status_bad: "is-bad", o_sm_pur_status_info: "is-info" }[statusClass] || "";
+    },
+
+    deliveryBadge(row) {
+        if (row.status === "Overdue") return { cls: "is-bad", label: row.days_late ? `${row.days_late} day${row.days_late === 1 ? "" : "s"} late` : "Overdue" };
+        if (row.status === "Partial") return { cls: "is-warn", label: "Partly received" };
+        return { cls: "", label: "Awaiting" };
+    },
+
+    goalBadge(tone) {
+        return { good: "is-good", warn: "is-warn", bad: "is-bad" }[tone] || "";
+    },
+
+    /** Dash length for the on-time ring (circumference of r=15 is 94.25). */
+    ringDash(rate) {
+        const value = Math.max(0, Math.min(100, Number(rate) || 0));
+        return `${((value * 94.25) / 100).toFixed(2)} 94.25`;
+    },
+
+    shareWidth(value, rows) {
+        const top = Math.max(0, ...(rows || []).map((row) => Number(row.value) || 0));
+        return top ? `width:${Math.max(0, (Number(value) || 0) / top) * 100}%` : "width:0";
+    },
+
+    goalSplitStyle(part) {
+        const summary = this.purchasingGoalSummary;
+        return summary && summary.total ? `flex:${summary[part] || 0}` : "flex:0";
     },
 };

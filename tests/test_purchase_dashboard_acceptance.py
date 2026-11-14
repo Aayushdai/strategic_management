@@ -345,6 +345,24 @@ class TestPurchaseDashboardAcceptance(TransactionCase):
             branch_b = self._purchasing_overview(self.WarehouseB)
             self.assertNotIn(order.name, [row["name"] for row in branch_b["recent_orders"]])
 
+    def test_headline_figures_daily_spend_previous_period_and_breakdowns(self):
+        before = self._purchasing_overview()
+        order = self._confirm_purchase_order(8.0)
+        data = self._purchasing_overview()
+        today = fields.Date.to_string(fields.Date.context_today(self.env.user))
+        days = {row["date"]: row["amount"] for row in data["daily_spend"]}
+        self.assertEqual(list(days)[-1], today, "one point per day up to the period end")
+        before_days = {row["date"]: row["amount"] for row in before["daily_spend"]}
+        self.assertAlmostEqual(days[today] - before_days[today], order.amount_untaxed, places=2)
+        previous = data["previous_period"]
+        self.assertEqual(fields.Date.to_date(previous["end"]), fields.Date.to_date(data["period"]["start"]) - timedelta(days=1))
+        self.assertEqual((fields.Date.to_date(previous["end"]) - fields.Date.to_date(previous["start"])),
+                         (fields.Date.to_date(data["period"]["end"]) - fields.Date.to_date(data["period"]["start"])), "same length")
+        branch = next(row for row in data["spend_by_branch"] if row["name"] == self.WarehouseA.display_name)
+        self.assertGreaterEqual(branch["value"], order.amount_untaxed - 0.01)
+        self.assertTrue(data["largest_order"]["amount"] >= order.amount_untaxed - 0.01)
+        self.assertTrue(data["top_supplier"]["name"])
+
     def test_branch_manager_reads_and_drills_into_own_branch_purchases_only(self):
         order = self._confirm_purchase_order(20.0)
         Order = self.env["purchase.order"]
