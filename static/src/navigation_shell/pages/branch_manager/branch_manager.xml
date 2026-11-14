@@ -25,7 +25,7 @@
                 </div>
             </header>
 
-            <section class="o_sm_dash_kpis" aria-label="Performance summary">
+            <section class="o_sm_dash_kpis o_sm_ledger" aria-label="Performance summary">
                 <p t-if="this.state.branchOpsError and !ops" class="o_sm_bm_notice is-error" role="alert" t-esc="this.state.branchOpsError"/>
                 <p t-elif="!ops or !ops.sales" class="o_sm_bm_empty">Loading branch figures…</p>
                 <t t-else="">
@@ -34,7 +34,7 @@
                         <small>Net sales</small>
                         <strong t-att-class="ops.sales.available ? '' : 'is-missing'" t-esc="ops.sales.available ? this.formatOpsMoney(ops.sales.net_sales, ops.sales) : 'Not available'"/>
                         <span>Paid POS sales excl. tax</span>
-                    </article>
+                    <svg t-if="this.sparkPoints(ops.sales.trend, 'sales')" class="o_sm_spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline t-att-points="this.sparkPoints(ops.sales.trend, 'sales')"/></svg></article>
                     <article class="o_sm_dash_kpi" t-att-class="(ops.sales.drill and ops.sales.drill.orders) ? 'is-drill' : ''" t-att-role="(ops.sales.drill and ops.sales.drill.orders) ? 'button' : false" t-att-tabindex="(ops.sales.drill and ops.sales.drill.orders) ? 0 : false" t-on-click="() => this.openDrill(ops.sales.drill and ops.sales.drill.orders)" t-on-keydown="(ev) => this.onDrillKey(ev, ops.sales.drill and ops.sales.drill.orders)">
                         <span class="o_sm_dash_icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z"/><path d="M9 8h6M9 12h6"/></svg></span>
                         <small>Completed orders</small>
@@ -47,7 +47,7 @@
                         <strong t-att-class="ops.sales.available and ops.sales.average_order_value !== false ? '' : 'is-missing'" t-esc="!ops.sales.available ? 'Not available' : ops.sales.average_order_value === false ? 'No orders' : this.formatOpsMoney(ops.sales.average_order_value, ops.sales)"/>
                         <span>Net sales ÷ completed orders</span>
                     </article>
-                    <article class="o_sm_dash_kpi">
+                    <article t-att-data-tone="ops.inventory and ops.inventory.low_stock_count ? 'warn' : ''" class="o_sm_dash_kpi">
                         <span class="o_sm_dash_icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3.500 7.500v9L12 21l8.500-4.500v-9Z"/><path d="M3.500 7.500 12 12l8.500-4.500M12 12v9"/></svg></span>
                         <small>Inventory alerts</small>
                         <t t-if="ops.inventory.available">
@@ -56,7 +56,7 @@
                         </t>
                         <strong t-else="" class="is-missing">Not available</strong>
                     </article>
-                    <article class="o_sm_dash_kpi">
+                    <article t-att-data-tone="ops.purchasing and ops.purchasing.overdue_count ? 'bad' : ''" class="o_sm_dash_kpi">
                         <span class="o_sm_dash_icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.500 6h11v11h-11ZM13.500 10h4.500l3.500 3.500V17h-8Z"/><circle cx="7" cy="18" r="1.800"/><circle cx="17" cy="18" r="1.800"/></svg></span>
                         <small>Outstanding deliveries</small>
                         <t t-if="ops.purchasing.available">

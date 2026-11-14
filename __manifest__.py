@@ -68,6 +68,8 @@
             "strategic_management/static/src/navigation_shell/pages/employee_home/employee_home.scss",
             "strategic_management/static/src/navigation_shell/pages/admin/admin.scss",
             "strategic_management/static/src/navigation_shell/pages/settings/settings.scss",
+            # Summary strip shared by every page (and the KPI dashboard); outranks the page card styles above.
+            "strategic_management/static/src/navigation_shell/ledger.scss",
             # Other screens, one folder each.
             # Original KPI dashboards, kept for the hidden Strategy & KPIs menu.
             "strategic_management/static/src/kpi_dashboards/dashboard_helpers.js",

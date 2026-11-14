@@ -34,13 +34,14 @@
 </header>
         <t t-call="strategic_management.AreaGoals" areaKey="'sales_finance'"/>
 
-        <section class="o_sm_sf_summary" aria-label="Sales summary preview">
+        <section class="o_sm_sf_summary o_sm_ledger" aria-label="Sales summary preview">
             <article t-att-class="'o_sm_sf_metric' + (this.state.data.drill and this.state.data.drill.sales ? ' is-drill' : '')" t-att-role="this.state.data.drill and this.state.data.drill.sales ? 'button' : false" t-att-tabindex="this.state.data.drill and this.state.data.drill.sales ? 0 : false" t-on-click="() => this.openDrill(this.state.data.drill and this.state.data.drill.sales)" t-on-keydown="(ev) => this.onDrillKey(ev, this.state.data.drill and this.state.data.drill.sales)">
                 <div class="o_sm_sf_metric_icon o_sm_sf_icon_sales"><svg class="o_sm_sf_ui_icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 9h.01M18 15h.01"/></svg></div>
                 <div class="o_sm_sf_metric_copy">
     <span>Total Sales (excl. tax)</span>
     <strong><t t-esc="this.formatCurrency(this.state.data.sales)"/></strong>
     <small>POS sales and customer invoices for the selected period</small>
+    <svg t-if="this.sparkPoints(this.state.data.sales_trend, 'sales')" class="o_sm_spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline t-att-points="this.sparkPoints(this.state.data.sales_trend, 'sales')"/></svg>
 </div>
             </article>
             <article t-att-class="'o_sm_sf_metric' + (this.state.data.drill and this.state.data.drill.orders ? ' is-drill' : '')" t-att-role="this.state.data.drill and this.state.data.drill.orders ? 'button' : false" t-att-tabindex="this.state.data.drill and this.state.data.drill.orders ? 0 : false" t-on-click="() => this.openDrill(this.state.data.drill and this.state.data.drill.orders)" t-on-keydown="(ev) => this.onDrillKey(ev, this.state.data.drill and this.state.data.drill.orders)">

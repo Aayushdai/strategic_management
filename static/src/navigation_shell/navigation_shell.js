@@ -472,6 +472,16 @@ export class StrategicNavigationShell extends Component {
         return role === "branch_manager";
     }
 
+    /** Points of a small trend line (100 x 24 box) from rows[key]; "" with fewer than two points or no movement, so none is drawn. */
+    sparkPoints(rows, key) {
+        const values = (rows || []).map((row) => Number(row[key]) || 0);
+        if (values.length < 2) return "";
+        const low = Math.min(...values);
+        const range = Math.max(...values) - low;
+        if (!range) return "";
+        return values.map((value, index) => `${((index * 100) / (values.length - 1)).toFixed(1)},${(22 - ((value - low) / range) * 20).toFixed(1)}`).join(" ");
+    }
+
     /** A summary card opens Odoo's own list of the records behind its number (the server decides which, and whether). */
     openDrill(drill) {
         const options = (Array.isArray(drill) ? drill : [drill]).filter(Boolean);

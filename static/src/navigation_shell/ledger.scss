@@ -1,0 +1,106 @@
+// Ledger strip: the summary row at the top of every page (Sales, Purchasing, Inventory, People, Branches,
+// Tasks & Issues, Branch Manager dashboard, Business Goals, KPI dashboard). No icon tiles: one strip of cells split
+// by hairlines, each with a small-caps label, the figure, a note, an optional trend line, and a coloured top edge
+// set by the cell's data-tone (good / warn / bad) only when its number means something.
+// The repeated class outranks each page's own card rules, so those stay untouched for anywhere else they are used.
+
+.o_sm_ledger.o_sm_ledger.o_sm_ledger.o_sm_ledger {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+    gap: 1px;
+    margin-bottom: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid #e4e7ec;
+    border-radius: .75rem;
+    background: #e4e7ec;  // shows through the 1px gaps as the dividing rules
+    box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
+
+    // Loading and error lines span the whole strip.
+    > p { grid-column: 1 / -1; margin: 0; padding: 1rem 1.1rem; background: #fff; }
+
+    > article, > div, > button {
+        --sm-ledger-tone: #d0d5dd;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: .25rem;
+        min-width: 0;
+        min-height: 0;
+        margin: 0;
+        padding: 1.05rem 1.15rem .95rem;
+        border: 0;
+        border-radius: 0;
+        background: #fff;
+        box-shadow: inset 0 3px 0 var(--sm-ledger-tone);
+        color: #101828;
+        text-align: left;
+        transform: none;
+        transition: background-color .12s ease;
+
+        &::before, &::after { display: none; }  // no decorative bubbles (the KPI dashboard cards had them)
+        &[data-tone="good"] { --sm-ledger-tone: #12b76a; }
+        &[data-tone="warn"] { --sm-ledger-tone: #f79009; }
+        &[data-tone="bad"] { --sm-ledger-tone: #f04438; }
+        &.is-drill { cursor: pointer; }
+        &.is-drill:hover, &.is-active { background: #f8f9fc; }
+        &.is-active { box-shadow: inset 0 3px 0 var(--sm-ledger-tone), inset 0 0 0 2px #635bff; }
+        &:focus-visible { outline: 2px solid #635bff; outline-offset: -2px; }
+    }
+
+    // No icon tiles.
+    [class*="metric_icon"], .o_sm_dash_icon, .o_spm_metric_icon { display: none; }
+    // Copy wrappers flow as part of the cell, so every page lines up the same way.
+    [class*="metric_copy"], .o_spm_metric_topline { display: contents; }
+
+    // Label: the first line of the cell.
+    [class*="metric_copy"] > :first-child, .o_sm_dash_kpi > small:first-of-type, .o_spm_metric_topline > :first-child {
+        order: 0;
+        overflow: hidden;
+        color: #667085;
+        font-size: .68rem;
+        font-weight: 600;
+        letter-spacing: .08em;
+        line-height: 1.3;
+        text-overflow: ellipsis;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+    // Figure.
+    strong, .o_spm_metric_value {
+        overflow: hidden;
+        color: #101828;
+        font-size: 1.7rem;
+        font-variant-numeric: tabular-nums;
+        font-weight: 700;
+        letter-spacing: -.02em;
+        line-height: 1.15;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    strong.is-missing { color: #98a2b3; font-size: 1.05rem; font-weight: 600; letter-spacing: 0; }
+    // Notes under the figure.
+    small:not(:first-child), .o_sm_dash_kpi > small ~ small, .o_spm_metric_note {
+        overflow: visible;
+        color: #667085;
+        font-size: .76rem;
+        line-height: 1.35;
+        text-overflow: clip;
+        white-space: normal;
+    }
+    .is-bad, small.is-bad { color: #d92d20; font-weight: 600; }
+
+    // Change against the previous period.
+    .o_sm_ledger_delta { color: #475467; font-size: .76rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+    // Trend line along the bottom of a cell.
+    .o_sm_spark {
+        display: block;
+        width: 100%;
+        height: 1.5rem;
+        margin-top: auto;
+        padding-top: .35rem;
+        overflow: visible;
+        polyline { fill: none; stroke: #635bff; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+    }
+}

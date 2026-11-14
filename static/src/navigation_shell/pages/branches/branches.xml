@@ -30,20 +30,20 @@
 
         <t t-if="br and br.role === 'branch_manager'"><t t-call="strategic_management.BranchOperations"/></t>
         <t t-if="br and br.available and br.role !== 'branch_manager'">
-            <section class="o_sm_br_summary" aria-label="Branch summary">
+            <section class="o_sm_br_summary o_sm_ledger" aria-label="Branch summary">
                 <article class="o_sm_br_metric">
                     <span class="o_sm_br_metric_icon is-purple"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="11" height="18" rx="1.5"/><path d="M14 9h7v12h-7M6.5 7h4M6.5 11h4M6.5 15h4"/></svg></span>
                     <div class="o_sm_br_metric_copy"><span>Active Branches</span><strong><t t-esc="br.summary.active_branches"/></strong><small>Branches in your scope</small></div>
                 </article>
-                <article class="o_sm_br_metric">
+                <article t-att-data-tone="br.summary.meeting_target ? 'good' : ''" class="o_sm_br_metric">
                     <span class="o_sm_br_metric_icon is-green"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m7.5 12.5 3 3 6-7"/></svg></span>
                     <div class="o_sm_br_metric_copy"><span>Meeting Targets</span><strong><t t-esc="br.summary.meeting_target"/></strong><small title="Branches whose evaluated KPI targets are all met">Evaluated targets met</small></div>
                 </article>
-                <article class="o_sm_br_metric">
+                <article t-att-data-tone="br.summary.below_target ? 'warn' : ''" class="o_sm_br_metric">
                     <span class="o_sm_br_metric_icon is-orange"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 21.5 20h-19Z"/><path d="M12 10v4.5M12 17.2h.01"/></svg></span>
                     <div class="o_sm_br_metric_copy"><span>Below Target</span><strong><t t-esc="br.summary.below_target"/></strong><small t-att-title="'Branches with an evaluated KPI target below target. Not counted here: ' + br.summary.not_evaluated + ' branch(es) not evaluated.'">Evaluated targets not met</small></div>
                 </article>
-                <article class="o_sm_br_metric">
+                <article t-att-data-tone="br.summary.critical_issues ? 'bad' : ''" class="o_sm_br_metric">
                     <span class="o_sm_br_metric_icon is-red"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/></svg></span>
                     <div class="o_sm_br_metric_copy"><span>Critical Issues</span><strong><t t-esc="br.summary.critical_issues"/></strong><small title="Unresolved critical branch issues">Needs attention</small></div>
                 </article>

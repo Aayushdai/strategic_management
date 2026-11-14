@@ -107,14 +107,14 @@
             </div>
         </header>
 
-        <section class="o_sm_pur_summary" aria-label="Tasks and issues summary">
+        <section class="o_sm_pur_summary o_sm_ledger" aria-label="Tasks and issues summary">
             <t t-set="canFilter" t-value="pp and pp.role !== 'employee'"/>
-            <article t-att-class="'o_sm_pur_metric' + (canFilter ? ' is-drill' : '') + (this.state.issueSeverity === 'critical' ? ' is-active' : '')" t-att-role="canFilter ? 'button' : false" t-att-tabindex="canFilter ? 0 : false"
+            <article t-att-data-tone="this.issueCount('critical') > 0 ? 'bad' : ''" t-att-class="'o_sm_pur_metric' + (canFilter ? ' is-drill' : '') + (this.state.issueSeverity === 'critical' ? ' is-active' : '')" t-att-role="canFilter ? 'button' : false" t-att-tabindex="canFilter ? 0 : false"
                      t-att-aria-pressed="canFilter ? (this.state.issueSeverity === 'critical' ? 'true' : 'false') : false"
                      t-on-click="() => canFilter and this.toggleIssueSeverity('critical')" t-on-keydown="(ev) => canFilter and this.onIssueSeverityKey(ev, 'critical')">
                 <span class="o_sm_pur_metric_icon is-red"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 21.5 20h-19Z"/><path d="M12 10v4.5M12 17.2h.01"/></svg></span>
                 <div class="o_sm_pur_metric_copy"><span>Critical Issues</span><strong><t t-esc="this.issueCount('critical')"/></strong><small>Need prompt action</small></div></article>
-            <article t-att-class="'o_sm_pur_metric' + (canFilter ? ' is-drill' : '') + (this.state.issueSeverity === 'warning' ? ' is-active' : '')" t-att-role="canFilter ? 'button' : false" t-att-tabindex="canFilter ? 0 : false"
+            <article t-att-data-tone="this.issueCount('warning') > 0 ? 'warn' : ''" t-att-class="'o_sm_pur_metric' + (canFilter ? ' is-drill' : '') + (this.state.issueSeverity === 'warning' ? ' is-active' : '')" t-att-role="canFilter ? 'button' : false" t-att-tabindex="canFilter ? 0 : false"
                      t-att-aria-pressed="canFilter ? (this.state.issueSeverity === 'warning' ? 'true' : 'false') : false"
                      t-on-click="() => canFilter and this.toggleIssueSeverity('warning')" t-on-keydown="(ev) => canFilter and this.onIssueSeverityKey(ev, 'warning')">
                 <span class="o_sm_pur_metric_icon is-orange"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/></svg></span>
@@ -123,7 +123,7 @@
                      t-on-click="() => this.openDrill(drill.open_tasks)" t-on-keydown="(ev) => this.onDrillKey(ev, drill.open_tasks)">
                 <span class="o_sm_pur_metric_icon is-purple"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4.5" width="14" height="17" rx="2"/><path d="M8 11l2 2 4-4M8 17h8"/></svg></span>
                 <div class="o_sm_pur_metric_copy"><span>Open Tasks</span><strong><t t-esc="this.openTaskCount()"/></strong><small>Assigned follow-ups</small></div></article>
-            <article t-att-class="'o_sm_pur_metric' + (drill.overdue_tasks ? ' is-drill' : '')" t-att-role="drill.overdue_tasks ? 'button' : false" t-att-tabindex="drill.overdue_tasks ? 0 : false"
+            <article t-att-data-tone="pp and pp.summary.overdue_tasks ? 'bad' : ''" t-att-class="'o_sm_pur_metric' + (drill.overdue_tasks ? ' is-drill' : '')" t-att-role="drill.overdue_tasks ? 'button' : false" t-att-tabindex="drill.overdue_tasks ? 0 : false"
                      t-on-click="() => this.openDrill(drill.overdue_tasks)" t-on-keydown="(ev) => this.onDrillKey(ev, drill.overdue_tasks)">
                 <span class="o_sm_pur_metric_icon is-red"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
                 <div class="o_sm_pur_metric_copy"><span>Overdue Tasks</span><strong><t t-esc="pp ? pp.summary.overdue_tasks : '—'"/></strong><small t-att-class="pp and pp.summary.overdue_tasks ? 'is-bad' : ''">Past their due date</small></div></article>

@@ -43,7 +43,7 @@
                 </section>
             </t>
             <t t-elif="this.state.data">
-                <div class="o_spm_dashboard_metrics">
+                <div class="o_spm_dashboard_metrics o_sm_ledger">
                     <article class="o_spm_metric_card o_spm_metric_card--purple">
                         <div class="o_spm_metric_topline">
                             <span>Average KPI attainment</span>
@@ -64,7 +64,7 @@
                             <t t-esc="this.state.data.objective_summary.pending_approval_count"/> awaiting approval
                         </div>
                     </article>
-                    <article class="o_spm_metric_card o_spm_metric_card--amber">
+                    <article class="o_spm_metric_card o_spm_metric_card--amber" t-att-data-tone="this.state.data.objective_summary.overdue_count ? 'bad' : ''">
                         <div class="o_spm_metric_topline">
                             <span>Overdue objectives</span>
                             <span class="o_spm_metric_icon"><i class="fa fa-clock-o" aria-hidden="true"/></span>
@@ -72,7 +72,7 @@
                         <div class="o_spm_metric_value" t-esc="this.state.data.objective_summary.overdue_count"/>
                         <div class="o_spm_metric_note">Active objectives past their deadline</div>
                     </article>
-                    <article class="o_spm_metric_card o_spm_metric_card--rose">
+                    <article class="o_spm_metric_card o_spm_metric_card--rose" t-att-data-tone="this.state.data.kpi_summary.exception_count ? 'warn' : ''">
                         <div class="o_spm_metric_topline">
                             <span>KPI exceptions</span>
                             <span class="o_spm_metric_icon"><i class="fa fa-flag-o" aria-hidden="true"/></span>

@@ -86,6 +86,16 @@ export const purchasingPage = {
         return rows.map((row, index) => `${this.purchasingTrendX(index, rows.length)},${this.purchasingTrendY(row[series])}`).join(" ");
     },
 
+    /** "▲ 12% spend vs previous period", or "" when the previous period had no spend to compare with. */
+    purchasingSpendChange() {
+        const rows = this.state.purchasingData?.expenditure_trend || [];
+        const current = rows.reduce((sum, row) => sum + (Number(row.current) || 0), 0);
+        const previous = rows.reduce((sum, row) => sum + (Number(row.previous) || 0), 0);
+        if (!previous) return "";
+        const pct = Math.round(((current - previous) / previous) * 100);
+        return `${pct > 0 ? "▲" : pct < 0 ? "▼" : "="} ${Math.abs(pct)}% spend vs previous period`;
+    },
+
     purchasingCategoryDonutStyle() {
         const rows = this.state.purchasingData?.purchase_categories || [];
         const colors = PURCHASE_COLORS;
