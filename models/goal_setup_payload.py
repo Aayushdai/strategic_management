@@ -28,6 +28,7 @@ class StrategicGoalSetupPayload(models.Model):
     def get_app_goals(self, res_model):
         """Active goals for an Odoo list's business area (Purchase, Inventory, POS orders), as this user may see them
         on the dashboards; nothing for other lists or for users outside the app's roles."""
+        self.env["strategic.performance.dashboard"]._strategic_role()  # Admin stops here, as on every data method.
         area = APP_GOAL_AREAS.get(res_model)
         if not area:
             return []
