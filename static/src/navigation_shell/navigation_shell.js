@@ -164,7 +164,6 @@ export class StrategicNavigationShell extends Component {
             peopleLoading: false,
             overviewExtras: null,
             // Purchasing: compact previews; "See more" expands the existing full lists in place.
-            purExpanded: {},
             purTab: "overview",
             sidebarCollapsed: readSidebarCollapsed(),
             purHeroMetric: "spend",

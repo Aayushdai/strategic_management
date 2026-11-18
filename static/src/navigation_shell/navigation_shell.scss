@@ -114,9 +114,6 @@
 
 .o_sm_navigation_shell .o_sm_pur_filters { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:.5rem; }
 .o_sm_navigation_shell .o_sm_pur_filter { display:flex; align-items:center; gap:.42rem; min-height:2.25rem; padding:.4rem .6rem; border:1px solid #d0d5dd; border-radius:.4rem; background:#fff; color:#344054; font-size:.76rem; white-space:nowrap; }
-.o_sm_navigation_shell .o_sm_pur_bar_good { background:#26ae78; }
-.o_sm_navigation_shell .o_sm_pur_bar_medium { background:#f59e0b; }
-.o_sm_navigation_shell .o_sm_pur_bar_bad { background:#ef5148; }
 .o_sm_navigation_shell .o_sm_pur_table_wrap { width:100%; overflow-x:auto; }
 .o_sm_navigation_shell .o_sm_pur_table { width:100%; border-collapse:collapse; color:#344054; font-size:.67rem; }
 .o_sm_navigation_shell .o_sm_pur_table th { padding:.5rem .38rem; background:#f8fafc; color:#475467; font-weight:600; text-align:left; white-space:nowrap; }
@@ -156,9 +153,6 @@
 .o_sm_navigation_shell .o_sm_br_status_warn { background:#fff0d3; color:#b54708; }
 .o_sm_navigation_shell .o_sm_br_status_critical { background:#fee4e2; color:#b42318; }
 .o_sm_navigation_shell .o_sm_br_status_info { background:#efe7ff; color:#6941c6; }
-
-.o_sm_navigation_shell .o_sm_br_issue_red { background:#fee4e2; color:#d92d20; }
-.o_sm_navigation_shell .o_sm_br_issue_amber { background:#fff0d3; color:#b54708; }
 
 @media (max-width: 1100px) {
     .o_sm_navigation_shell .o_sm_br_summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -485,11 +479,7 @@ Branch Performance's operations view (.o_sm_ops) reuses the same tables, tabs an
 
 /* Staffing requests and employee performance. */
 .o_sm_navigation_shell .o_sm_bm {
-    .o_sm_staff_actions { display: flex; justify-content: flex-end; }
     .o_sm_staff_buttons { display: flex; flex-wrap: wrap; gap: .5rem; }
-    .o_sm_staff_approved { background: #e3f4ea; color: #1d6b3f; }
-    .o_sm_staff_rejected { background: #fde7e5; color: #b4321f; }
-    .o_sm_staff_submitted { background: #fff3d6; color: #925f0b; }
 }
 .o_sm_navigation_shell .o_sm_bm {
     .o_sm_bm_header { flex-wrap: wrap; }
@@ -506,7 +496,6 @@ Branch Performance's operations view (.o_sm_ops) reuses the same tables, tabs an
     .o_sm_navigation_shell .o_sm_bm .o_sm_bm_header_actions { justify-content: flex-start; }
 }
 
-.o_sm_navigation_shell .o_sm_staff_pending { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .85rem; }
 .o_sm_navigation_shell .o_sm_people_tabs { display: flex; flex-wrap: wrap; gap: .25rem; margin: 0 1.75rem; padding-top: 1rem; border-bottom: 1px solid #e3e5ee; }
 .o_sm_navigation_shell .o_sm_people_tab { margin-bottom: -1px; padding: .55rem .9rem; border: 0; border-bottom: 2px solid transparent; background: none; color: #5b6178; font-size: .9rem; font-weight: 600;
     &:hover { color: #3d2d68; }

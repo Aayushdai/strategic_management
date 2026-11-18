@@ -129,8 +129,6 @@ export const PERIOD_PRESETS = [
     { key: "custom", label: "Custom dates" },
 ];
 // Purchasing category colours, purple first like the Overview (donut and legend share them).
-export const PURCHASE_COLORS = ["#6f5bd3", "#35b56f", "#f5a524", "#4a8fe7", "#a39bc8", "#e86a5a"];
-
 export const CHART_COLORS = ["#2e9cf0", "#25a56a", "#f5a23d", "#9673c9", "#91a0ae"];
 export const PAGE_SIZE = 5;
 

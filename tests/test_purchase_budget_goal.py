@@ -106,6 +106,12 @@ class TestPurchaseBudgetGoal(TransactionCase):
         self.assertFalse([g for g in Setup.with_user(self.head).get_app_goals("stock.picking") if g["title"] == "Purchasing under 1000"],
                          "an Inventory list shows inventory goals only")
         self.assertEqual(Setup.with_user(self.head).get_app_goals("res.partner"), [], "other lists: nothing")
+        # Each app shows the goals measured from it; receipt goals are shared by Purchase and Inventory.
+        from odoo.addons.strategic_management.models.goal_setup_payload import goal_shown_in
+        self.assertTrue(goal_shown_in("purchase", {"purchase"}, "purchase_confirmed_amount"))
+        self.assertFalse(goal_shown_in("inventory", {"purchase"}, "purchase_confirmed_amount"), "spend is not an Inventory goal")
+        self.assertTrue(goal_shown_in("inventory", {"purchase"}, "purchase_on_time_delivery_count_pct"), "receipts: shared")
+        self.assertFalse(goal_shown_in("pos", {"accounting"}, "accounting_net_profit"), "net profit is not a POS goal")
         outsider = self._make_user("bg_budget_outsider", [self.env.ref("base.group_user"), self.env.ref("purchase.group_purchase_user")])
         self.assertEqual(Setup.with_user(outsider).get_app_goals("purchase.order"), [], "no strategic role: nothing, no error")
 

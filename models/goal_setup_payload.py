@@ -7,7 +7,7 @@ from odoo import api, fields, models
 from odoo.exceptions import AccessError
 
 from .goal_templates import GOAL_TYPES, attainment_tone
-from .goal_setup import _AREA_LABELS, _LOCKED_STATES, _human_date, _time_label, _waiting_bar
+from .goal_setup import MEASURES, _AREA_LABELS, _LOCKED_STATES, _human_date, _time_label, _waiting_bar
 
 
 _MONITOR_NEXT_STEP = {
@@ -15,8 +15,20 @@ _MONITOR_NEXT_STEP = {
     "ready": "All checks passed. Submit the goal for approval; its sales are already shown above.",
 }
 
-# Odoo lists that show the active goals of their business area above their records (app_goal_strip.js).
-APP_GOAL_AREAS = {"purchase.order": "purchasing", "stock.picking": "inventory_waste", "pos.order": "sales_finance"}
+# Odoo apps that show goals above their orders (app_goal_strip.js): each shows the goals measured from it. Goals
+# measured on purchase deliveries and receipts also show on Inventory transfers, where receipts are done: the
+# goals Purchase and Inventory share. A goal not measured yet goes by its business area.
+APP_GOAL_SOURCES = {"purchase.order": "purchase", "stock.picking": "inventory", "pos.order": "pos"}
+_AREA_SOURCE = {"purchasing": "purchase", "inventory_waste": "inventory", "sales_finance": "pos"}
+RECEIPT_MEASURES = {
+    "purchase_average_receipt_lead_days", "purchase_on_time_delivery_count_pct", "purchase_average_delivery_delay_days",
+    "supplier_on_time_delivery_pct", "purchase_mon_received", "purchase_mon_overdue", "purchase_mon_on_time", "purchase_mon_delay",
+}
+
+
+def goal_shown_in(app_source, goal_sources, measure_key):
+    """Whether a goal measured from ``goal_sources`` (KPI source types) belongs on the app reading ``app_source``."""
+    return app_source in goal_sources or (app_source == "inventory" and measure_key in RECEIPT_MEASURES)
 
 
 class StrategicGoalSetupPayload(models.Model):
@@ -26,18 +38,29 @@ class StrategicGoalSetupPayload(models.Model):
 
     @api.model
     def get_app_goals(self, res_model):
-        """Active goals for an Odoo list's business area (Purchase, Inventory, POS orders), as this user may see them
-        on the dashboards; nothing for other lists or for users outside the app's roles."""
+        """Active goals for an Odoo app's orders (Purchase, Inventory, POS), as this user may see them on the
+        dashboards: those measured from that app (see APP_GOAL_SOURCES); nothing for other lists or other users."""
         self.env["strategic.performance.dashboard"]._strategic_role()  # Admin stops here, as on every data method.
-        area = APP_GOAL_AREAS.get(res_model)
-        if not area:
+        app_source = APP_GOAL_SOURCES.get(res_model)
+        if not app_source:
             return []
         try:
-            goals = self.get_goals(area)
+            goals = [goal for goal in self.get_goals() if goal["state"] == "active"]
         except AccessError:
             return []
+        objectives = self.env["strategic.objective"].browse([goal["objective_id"] for goal in goals])
+        by_id = {objective.id: objective for objective in objectives}
         keys = ("objective_id", "title", "status", "tone", "current", "target", "bar")
-        return [{key: goal.get(key) for key in keys} for goal in goals if goal["state"] == "active"]
+        shown = []
+        for goal in goals:
+            objective = by_id[goal["objective_id"]]
+            measure_key = objective.goal_setup_ids[:1].measure_key
+            sources = set(objective.okr_objective_ids.key_result_ids.primary_kpi_id.mapped("source_type"))
+            if not sources:
+                sources = {MEASURES.get(measure_key, {}).get("source_type") or _AREA_SOURCE.get(objective.business_area)}
+            if goal_shown_in(app_source, sources, measure_key):
+                shown.append({key: goal.get(key) for key in keys})
+        return shown
 
     @api.model
     def get_goals(self, area=False):

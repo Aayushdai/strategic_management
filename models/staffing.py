@@ -62,11 +62,6 @@ class HrEmployee(models.Model):
     # Backs up the check in register_employee for parallel registrations; other employees' existing data is not touched.
     _strategic_staffing_email_unique = models.UniqueIndex("(lower(work_email)) WHERE strategic_staffing_request_id IS NOT NULL", "An employee with this work email already exists.")
 
-    def _strategic_branch(self):
-        self.ensure_one()
-        employee = self.sudo()
-        return employee.user_id.strategic_branch_warehouse_id if employee.user_id else employee.strategic_branch_warehouse_id
-
 
 class StrategicStaffingRequest(models.Model):
     _name = "strategic.staffing.request"

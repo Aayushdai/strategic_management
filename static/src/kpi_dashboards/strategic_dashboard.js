@@ -65,10 +65,6 @@ export class StrategicHeadOfficeDashboard extends Component {
         return `${this.prettyDate(data.period.start)} – ${this.prettyDate(data.period.end)}`;
     }
 
-    perspectiveLabel(value) {
-        return PERSPECTIVE_LABELS[value] || "Strategic";
-    }
-
     openKpiAnalysis() {
         return this.action.doAction("strategic_management.action_strategic_kpi_analysis");
     }

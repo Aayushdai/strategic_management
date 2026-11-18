@@ -60,6 +60,11 @@ class TestStaffing(TransactionCase):
         return result, employee.user_id
 
     # ------------------------------------------------------------------ requests
+    def _branch_of(self, employee):
+        """The employee's branch: their user's branch, or the employee's own when there is no user."""
+        employee = employee.sudo()
+        return employee.user_id.strategic_branch_warehouse_id if employee.user_id else employee.strategic_branch_warehouse_id
+
     def test_manager_request_is_tied_to_their_branch(self):
         forged = dict(self.values, warehouse_id=self.branch2.id, requested_by_id=self.emp1.id, state="approved")
         row = self.Request.with_user(self.manager1).save_staffing_request(forged)
@@ -143,7 +148,7 @@ class TestStaffing(TransactionCase):
         employee = self._register(self._approved())
         self.assertEqual(employee._name, "hr.employee")
         self.assertEqual((employee.work_email, employee.work_phone, employee.job_id.name), ("stf.new@example.com", "555", "STF Barista"))
-        self.assertEqual(employee._strategic_branch(), self.branch1)
+        self.assertEqual(self._branch_of(employee), self.branch1)
         self.assertEqual(employee.parent_id.user_id, self.manager1)
         self.assertFalse(employee.user_id)
         self.assertEqual(users, self.env["res.users"].with_context(active_test=False).search_count([]))
@@ -170,7 +175,7 @@ class TestStaffing(TransactionCase):
         employee = self._register(self._approved())
         result, user = self._login(employee)
         self.assertEqual((user.login, user.strategic_branch_warehouse_id, result["invitation"]), ("stf.new@example.com", self.branch1, "sent"))
-        self.assertEqual(employee._strategic_branch(), self.branch1)
+        self.assertEqual(self._branch_of(employee), self.branch1)
         self.assertTrue(user.has_group("strategic_management.group_strategic_employee"))
         for xmlid in ("strategic_management.group_strategic_branch_manager", "base.group_erp_manager", "base.group_system", "stock.group_stock_user", "hr.group_hr_user"):
             self.assertFalse(user.has_group(xmlid), xmlid)
@@ -425,7 +430,7 @@ class TestStaffing(TransactionCase):
         head_employee = self.env["hr.employee"].search([("user_id", "=", self.head.id)])
         row = Head.register_employee({"name": "STF Y", "work_email": "stfy@example.com", "warehouse_id": self.branch1.id, "department_id": other.id, "parent_id": head_employee.id})
         employee = self.env["hr.employee"].sudo().browse(row["new_employee_id"])
-        self.assertEqual((employee.department_id, employee.parent_id, employee._strategic_branch()), (other, head_employee, self.branch1))
+        self.assertEqual((employee.department_id, employee.parent_id, self._branch_of(employee)), (other, head_employee, self.branch1))
         employee = self._register(request, "stf.z@example.com", "STF Z")
         self.assertEqual(employee.department_id, self.department, "the request's department is the default")
         self.assertEqual(employee.parent_id.user_id, self.manager1, "the branch's manager is the default")
