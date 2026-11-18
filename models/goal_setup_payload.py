@@ -4,6 +4,7 @@ Part of strategic.goal.setup."""
 import json
 
 from odoo import api, fields, models
+from odoo.exceptions import AccessError
 
 from .goal_templates import GOAL_TYPES, attainment_tone
 from .goal_setup import _AREA_LABELS, _LOCKED_STATES, _human_date, _time_label, _waiting_bar
@@ -14,11 +15,28 @@ _MONITOR_NEXT_STEP = {
     "ready": "All checks passed. Submit the goal for approval; its sales are already shown above.",
 }
 
+# Odoo lists that show the active goals of their business area above their records (app_goal_strip.js).
+APP_GOAL_AREAS = {"purchase.order": "purchasing", "stock.picking": "inventory_waste", "pos.order": "sales_finance"}
+
 
 class StrategicGoalSetupPayload(models.Model):
     _inherit = "strategic.goal.setup"
 
     # ------------------------------------------------------------------ read model
+
+    @api.model
+    def get_app_goals(self, res_model):
+        """Active goals for an Odoo list's business area (Purchase, Inventory, POS orders), as this user may see them
+        on the dashboards; nothing for other lists or for users outside the app's roles."""
+        area = APP_GOAL_AREAS.get(res_model)
+        if not area:
+            return []
+        try:
+            goals = self.get_goals(area)
+        except AccessError:
+            return []
+        keys = ("objective_id", "title", "status", "tone", "current", "target", "bar")
+        return [{key: goal.get(key) for key in keys} for goal in goals if goal["state"] == "active"]
 
     @api.model
     def get_goals(self, area=False):

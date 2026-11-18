@@ -93,6 +93,22 @@ class TestPurchaseBudgetGoal(TransactionCase):
         setup.approve_target()
         return setup
 
+    def test_purchase_list_shows_active_purchasing_goals_to_who_may_see_them(self):
+        setup = self._goal(warehouse=False, name="Purchasing under 1000", limit=1000.0)
+        Setup = self.env["strategic.goal.setup"]
+        self.assertFalse([g for g in Setup.with_user(self.head).get_app_goals("purchase.order") if g["title"] == "Purchasing under 1000"],
+                         "not active yet: not shown")
+        setup.submit_goal()
+        setup.approve_goal()
+        shown = [g for g in Setup.with_user(self.head).get_app_goals("purchase.order") if g["title"] == "Purchasing under 1000"]
+        self.assertEqual(len(shown), 1)
+        self.assertEqual(set(shown[0]), {"objective_id", "title", "status", "tone", "current", "target", "bar"})
+        self.assertFalse([g for g in Setup.with_user(self.head).get_app_goals("stock.picking") if g["title"] == "Purchasing under 1000"],
+                         "an Inventory list shows inventory goals only")
+        self.assertEqual(Setup.with_user(self.head).get_app_goals("res.partner"), [], "other lists: nothing")
+        outsider = self._make_user("bg_budget_outsider", [self.env.ref("base.group_user"), self.env.ref("purchase.group_purchase_user")])
+        self.assertEqual(Setup.with_user(outsider).get_app_goals("purchase.order"), [], "no strategic role: nothing, no error")
+
     def _view(self, setup):
         return next(goal for goal in self.Setup.get_goals("purchasing") if goal["objective_id"] == setup.objective_id.id)
 

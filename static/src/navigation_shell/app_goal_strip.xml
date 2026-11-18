@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <!-- See app_goal_strip.js. -->
+    <t t-name="strategic_management.AppGoalStrip">
+        <div t-if="this.state.goals.length" class="o_sm_app_goals d-flex flex-wrap align-items-center gap-2" role="region" aria-label="Goals for this area">
+            <span class="o_sm_app_goals_label text-muted small fw-semibold">Goals</span>
+            <button t-foreach="this.shown" t-as="goal" t-key="goal.objective_id" type="button" class="o_sm_app_goal"
+                    t-att-title="goal.title + ': ' + goal.status" t-on-click="() => this.openGoal(goal)">
+                <span class="o_sm_app_goal_title" t-esc="goal.title"/>
+                <span class="progress" role="progressbar" t-att-aria-label="goal.status">
+                    <span t-att-class="'progress-bar ' + this.barClass(goal)" t-att-style="this.barStyle(goal)"/>
+                </span>
+                <span class="o_sm_app_goal_value small text-muted"><t t-esc="goal.current"/><t t-if="goal.target"> · <t t-esc="goal.target"/></t></span>
+            </button>
+            <button t-if="this.more" type="button" class="btn btn-link btn-sm p-0" t-on-click="() => this.openAll()">+<t t-esc="this.more"/> more</button>
+        </div>
+    </t>
+
+    <t t-inherit="web.ControlPanel" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('o_control_panel')]" position="inside">
+            <AppGoalStrip t-if="this.smGoalModel" resModel="this.smGoalModel"/>
+        </xpath>
+    </t>
+</templates>

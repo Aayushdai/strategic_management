@@ -74,6 +74,8 @@
             "strategic_management/static/src/navigation_shell/calm.scss",
             # The same design over the pages that keep their own markup (loads after their styles).
             "strategic_management/static/src/navigation_shell/calm_skin.scss",
+            # Goal strip above Odoo's Purchase, Inventory and POS orders lists.
+            "strategic_management/static/src/navigation_shell/app_goal_strip.scss",
             # Other screens, one folder each.
             # Original KPI dashboards, kept for the hidden Strategy & KPIs menu.
             "strategic_management/static/src/kpi_dashboards/dashboard_helpers.js",
