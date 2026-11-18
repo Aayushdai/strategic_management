@@ -1,7 +1,7 @@
 /** @odoo-module **/
 
 // The active goals of a business area, shown above Odoo's own Purchase orders, Inventory transfers and POS orders
-// lists, so people see them where they work. Server: strategic.goal.setup.get_app_goals (same goals and access
+// (lists and forms), so people see them where they work. Server: strategic.goal.setup.get_app_goals (same goals and access
 // as the dashboards). A list whose user sees no goal shows nothing extra.
 
 import { Component, onWillStart, proxy, t, useProps } from "@odoo/owl";
@@ -62,9 +62,9 @@ export class AppGoalStrip extends Component {
 ControlPanel.components = { ...ControlPanel.components, AppGoalStrip };
 
 patch(ControlPanel.prototype, {
-    /** The list's model when it is one of the three that carry goals (lists and kanbans, not single records). */
+    /** The model when it is one of the three that carry goals: their lists, and their forms, where an order is written. */
     get smGoalModel() {
         const model = this.env.searchModel?.resModel;
-        return ["list", "kanban"].includes(this.env.config.viewType) && MODELS.includes(model) ? model : false;
+        return ["list", "kanban", "form"].includes(this.env.config.viewType) && MODELS.includes(model) ? model : false;
     },
 });
